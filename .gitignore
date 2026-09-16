@@ -1,0 +1,35 @@
+# OS/editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.iml
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+application-local.yml
+application-*.local.yml
+secrets/
+*.pem
+*.key
+*.p12
+*.jks
+
+# Java/Maven
+target/
+**/target/
+.mvn/wrapper/maven-wrapper.jar
+
+# Logs/temp
+*.log
+logs/
+tmp/
+temp/
+
+# Node/frontend, for later phases
+node_modules/
+dist/
+build/
+coverage/
