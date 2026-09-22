@@ -15,7 +15,7 @@ Backend Spring Boot cho hệ thống quản lý phòng gym Dương Double.
 
 ## PostgreSQL Local
 
-Ứng dụng đang cấu hình kết nối PostgreSQL local:
+Ứng dụng dùng PostgreSQL local:
 
 ```properties
 host=localhost
@@ -45,16 +45,9 @@ Trong giai đoạn phát triển ban đầu, Hibernate đang dùng:
 spring.jpa.hibernate.ddl-auto: update
 ```
 
-Nghĩa là entity Java sẽ tự ánh xạ và cập nhật schema xuống PostgreSQL khi chạy ứng dụng. Flyway đã được cài dependency và cấu hình sẵn theo profile, nhưng profile `dev` hiện tạm tắt Flyway để phát triển entity nhanh. Khi database ổn định hơn sẽ chuyển sang migration versioned.
+Flyway đã được cài dependency và cấu hình sẵn theo profile, nhưng profile `dev` hiện tạm tắt Flyway để phát triển entity nhanh. Khi database ổn định hơn sẽ chuyển sang migration versioned.
 
 ## Chạy Backend
-
-```powershell
-$env:DB_PASSWORD='your_local_password'
-.\mvnw.cmd spring-boot:run
-```
-
-Nếu terminal in quá nhiều `DEBUG` hoặc `CONDITIONS EVALUATION REPORT`, máy đang có biến môi trường `DEBUG`. Có thể chạy gọn bằng PowerShell:
 
 ```powershell
 $env:DEBUG='false'
@@ -75,3 +68,33 @@ GET http://localhost:8080/api/v1/health
 ```
 
 Nếu app báo `password authentication failed`, hãy kiểm tra lại username/password PostgreSQL đang dùng trong DBeaver. Project hiện đang default theo user PostgreSQL phổ biến là `postgres`.
+
+## Sprint 1 Local Test
+
+Set biến môi trường trước khi chạy lần đầu để seed tài khoản OWNER:
+
+```powershell
+$env:DEBUG='false'
+$env:DB_PASSWORD='your_local_password'
+$env:JWT_SECRET='change_me_to_a_long_random_secret_at_least_32_chars'
+$env:OWNER_USERNAME='owner'
+$env:OWNER_PASSWORD='your_owner_password'
+.\mvnw.cmd spring-boot:run
+```
+
+File request mẫu:
+
+```text
+backend/http/sprint1.http
+```
+
+Luồng test chính:
+
+```text
+OWNER login
+-> tạo gói tập
+-> tạo khách hàng
+-> đăng ký gói cho khách
+-> ghi nhận thanh toán
+-> xem danh sách khách kèm trạng thái gói
+```

@@ -2,31 +2,55 @@ package com.gymduongdouble.backend.common.config;
 
 import com.gymduongdouble.backend.common.domain.SystemSetting;
 import com.gymduongdouble.backend.common.enums.FinancialCategoryType;
+import com.gymduongdouble.backend.common.enums.UserStatus;
 import com.gymduongdouble.backend.common.repository.SystemSettingRepository;
 import com.gymduongdouble.backend.finance.domain.FinancialCategory;
 import com.gymduongdouble.backend.finance.repository.FinancialCategoryRepository;
 import com.gymduongdouble.backend.user.domain.Role;
+import com.gymduongdouble.backend.user.domain.User;
 import com.gymduongdouble.backend.user.repository.RoleRepository;
+import com.gymduongdouble.backend.user.repository.UserRepository;
 import java.time.Instant;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 @Component
 @RequiredArgsConstructor
 public class DataInitializer implements ApplicationRunner {
 
     private final RoleRepository roleRepository;
+    private final UserRepository userRepository;
     private final FinancialCategoryRepository financialCategoryRepository;
     private final SystemSettingRepository systemSettingRepository;
+    private final PasswordEncoder passwordEncoder;
+
+    @Value("${app.seed.owner.username:owner}")
+    private String ownerUsername;
+
+    @Value("${app.seed.owner.password:change_me}")
+    private String ownerPassword;
+
+    @Value("${app.seed.owner.full-name:Gym Owner}")
+    private String ownerFullName;
+
+    @Value("${app.seed.owner.phone:}")
+    private String ownerPhone;
+
+    @Value("${app.seed.owner.email:}")
+    private String ownerEmail;
 
     @Override
     @Transactional
     public void run(ApplicationArguments args) {
         seedRoles();
+        seedOwner();
         seedFinancialCategories();
         seedSystemSettings();
     }
@@ -44,6 +68,31 @@ public class DataInitializer implements ApplicationRunner {
             role.setName(name);
             return roleRepository.save(role);
         });
+    }
+
+    private void seedOwner() {
+        if (!StringUtils.hasText(ownerPassword)) {
+            return;
+        }
+
+        Role ownerRole = roleRepository.findByCode("OWNER")
+            .orElseThrow(() -> new IllegalStateException("OWNER role is missing."));
+
+        User owner = userRepository.findByUsername(ownerUsername)
+            .orElseGet(() -> {
+                User user = new User();
+                user.setUsername(ownerUsername);
+                return user;
+            });
+
+        owner.setPasswordHash(passwordEncoder.encode(ownerPassword));
+        owner.setFullName(ownerFullName);
+        owner.setPhone(StringUtils.hasText(ownerPhone) ? ownerPhone : null);
+        owner.setEmail(StringUtils.hasText(ownerEmail) ? ownerEmail : null);
+        owner.setStatus(UserStatus.ACTIVE);
+        owner.getRoles().clear();
+        owner.getRoles().add(ownerRole);
+        userRepository.save(owner);
     }
 
     private void seedFinancialCategories() {

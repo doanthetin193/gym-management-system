@@ -10,6 +10,13 @@
 
 ## 2. Sprint 1 - Nền tảng
 
+Trạng thái cập nhật ngày 22/09/2026:
+
+- Backend Sprint 1 đã hoàn thành và kiểm thử pass 36/36 API checks.
+- File kiểm thử chính: `backend/http/sprint1.http`.
+- Tài liệu review: `plans/active/08-sprint-1-review.md`.
+- Phần frontend của Sprint 1 chưa triển khai; sẽ bắt đầu sau khi backend core flow được chốt.
+
 Mục tiêu:
 
 - Có app chạy end-to-end với auth và layout cơ bản.

@@ -39,6 +39,17 @@ management:
         include: health,info
 
 app:
+  security:
+    jwt:
+      secret: ${JWT_SECRET:dev-only-change-this-secret-at-least-32-characters}
+      access-token-minutes: ${JWT_ACCESS_TOKEN_MINUTES:120}
+  seed:
+    owner:
+      username: ${OWNER_USERNAME:owner}
+      password: ${OWNER_PASSWORD:change_me}
+      full-name: ${OWNER_FULL_NAME:Gym Owner}
+      phone: ${OWNER_PHONE:}
+      email: ${OWNER_EMAIL:}
   cors:
     allowed-origins:
       - http://localhost:5173

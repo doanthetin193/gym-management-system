@@ -1,0 +1,417 @@
+# ==============================================================================
+# GYM DUONG DOUBLE - SPRINT 1 API TEST SCENARIO
+# ==============================================================================
+# Base URL khi chạy local:
+# - http://localhost:8080/api
+#
+# Tài khoản seed mặc định:
+# - username: owner
+# - password: change_me
+#
+# Cách test thủ công bằng Postman/REST Client:
+# 1. Chạy Bước 01 để kiểm tra server.
+# 2. Chạy Bước 04 để login, copy data.accessToken vào biến accessToken bên dưới.
+# 3. Các bước tạo dữ liệu sẽ trả về data.id. Copy lần lượt vào các biến plan/member/membership.
+# 4. Nên đổi suffix dữ liệu nếu chạy lại nhiều lần để tránh trùng số điện thoại.
+# ==============================================================================
+
+@baseUrl = http://localhost:8080/api
+@accessToken = PASTE_ACCESS_TOKEN_HERE
+
+@uniqueSuffix = 0922001
+@selfPlanId = PASTE_SELF_PLAN_ID_HERE
+@guidancePlanId = PASTE_GUIDANCE_PLAN_ID_HERE
+@ptMainPlanId = PASTE_PT_MAIN_PLAN_ID_HERE
+@inactivePlanId = PASTE_INACTIVE_PLAN_ID_HERE
+@memberId = PASTE_MEMBER_ID_HERE
+@secondMemberId = PASTE_SECOND_MEMBER_ID_HERE
+@membershipId = PASTE_MEMBERSHIP_ID_HERE
+@partialMembershipId = PASTE_PARTIAL_MEMBERSHIP_ID_HERE
+@ptMembershipId = PASTE_PT_MEMBERSHIP_ID_HERE
+
+
+### 01. Health check - public
+GET {{baseUrl}}/v1/health
+
+
+### 02. Auth/me khi chưa đăng nhập - kỳ vọng 401 UNAUTHORIZED
+GET {{baseUrl}}/v1/auth/me
+
+
+### 03. Login sai mật khẩu - kỳ vọng 401 BAD_CREDENTIALS
+POST {{baseUrl}}/v1/auth/login
+Content-Type: application/json
+
+{
+  "username": "owner",
+  "password": "wrong_password"
+}
+
+
+### 03B. Login sai username - kỳ vọng 401 BAD_CREDENTIALS
+POST {{baseUrl}}/v1/auth/login
+Content-Type: application/json
+
+{
+  "username": "unknown_{{uniqueSuffix}}",
+  "password": "change_me"
+}
+
+
+### 04. Login đúng OWNER - copy data.accessToken vào biến accessToken
+POST {{baseUrl}}/v1/auth/login
+Content-Type: application/json
+
+{
+  "username": "owner",
+  "password": "change_me"
+}
+
+
+### 05. Auth/me với token hợp lệ - kỳ vọng roles có OWNER
+GET {{baseUrl}}/v1/auth/me
+Authorization: Bearer {{accessToken}}
+
+
+### 06. Tạo gói PT thiếu ptLevel - kỳ vọng 400 BAD_REQUEST
+POST {{baseUrl}}/v1/membership-plans
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "name": "PT thiếu cấp {{uniqueSuffix}}",
+  "planType": "PT",
+  "durationDays": 60,
+  "defaultPrice": 6000000,
+  "ptSessionCount": 20,
+  "practiceSessionCount": 20,
+  "contentAccessLevel": "PREMIUM",
+  "active": true
+}
+
+
+### 07. Tạo gói Tự tập 1 tháng - copy data.id vào selfPlanId
+POST {{baseUrl}}/v1/membership-plans
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "name": "Tự tập 1 tháng {{uniqueSuffix}}",
+  "planType": "SELF_TRAINING",
+  "durationDays": 30,
+  "defaultPrice": 300000,
+  "contentAccessLevel": "BASIC",
+  "active": true,
+  "description": "Gói tự do tập luyện trong 30 ngày"
+}
+
+
+### 08. Tạo gói Giáo án/Hướng dẫn - copy data.id vào guidancePlanId
+POST {{baseUrl}}/v1/membership-plans
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "name": "Giáo án 30 buổi {{uniqueSuffix}}",
+  "planType": "GUIDANCE",
+  "durationDays": 90,
+  "defaultPrice": 900000,
+  "guidanceSessionCount": 30,
+  "contentAccessLevel": "BASIC",
+  "active": true,
+  "description": "Khách tập theo giáo án, có hỗ trợ hướng dẫn khi cần"
+}
+
+
+### 09. Tạo gói PT chính - copy data.id vào ptMainPlanId
+POST {{baseUrl}}/v1/membership-plans
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "name": "PT chính 20 buổi {{uniqueSuffix}}",
+  "planType": "PT",
+  "ptLevel": "MAIN",
+  "durationDays": 60,
+  "defaultPrice": 6000000,
+  "ptSessionCount": 20,
+  "practiceSessionCount": 20,
+  "contentAccessLevel": "PREMIUM",
+  "active": true,
+  "description": "Gói 20 PT + 20 ôn tập"
+}
+
+
+### 10. Tạo gói inactive - copy data.id vào inactivePlanId
+POST {{baseUrl}}/v1/membership-plans
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "name": "Gói ngừng bán {{uniqueSuffix}}",
+  "planType": "SELF_TRAINING",
+  "durationDays": 15,
+  "defaultPrice": 150000,
+  "contentAccessLevel": "NONE",
+  "active": false
+}
+
+
+### 11. Danh sách gói active - kỳ vọng không có gói inactive
+GET {{baseUrl}}/v1/membership-plans
+Authorization: Bearer {{accessToken}}
+
+
+### 12. Tạo khách thiếu tên - kỳ vọng 400 VALIDATION_ERROR
+POST {{baseUrl}}/v1/members
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "fullName": "",
+  "phone": "099{{uniqueSuffix}}",
+  "dateOfBirth": "1998-09-20",
+  "gender": "MALE",
+  "source": "WALK_IN"
+}
+
+
+### 13. Tạo khách chính - copy data.id vào memberId
+POST {{baseUrl}}/v1/members
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "fullName": "Nguyễn Văn Sprint {{uniqueSuffix}}",
+  "phone": "090{{uniqueSuffix}}",
+  "dateOfBirth": "1998-09-20",
+  "gender": "MALE",
+  "address": "Quy Nhơn",
+  "zaloPhone": "090{{uniqueSuffix}}",
+  "source": "WALK_IN",
+  "note": "Khách dùng để test Sprint 1"
+}
+
+
+### 14. Tạo khách trùng SĐT - kỳ vọng 409 CONFLICT
+POST {{baseUrl}}/v1/members
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "fullName": "Khách trùng số {{uniqueSuffix}}",
+  "phone": "090{{uniqueSuffix}}",
+  "source": "ZALO"
+}
+
+
+### 15. Tạo khách phụ để test thanh toán lệch membership - copy data.id vào secondMemberId
+POST {{baseUrl}}/v1/members
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "fullName": "Trần Văn Phụ {{uniqueSuffix}}",
+  "phone": "091{{uniqueSuffix}}",
+  "dateOfBirth": "2000-01-10",
+  "gender": "MALE",
+  "source": "FACEBOOK"
+}
+
+
+### 16. Xem chi tiết khách chính
+GET {{baseUrl}}/v1/members/{{memberId}}
+Authorization: Bearer {{accessToken}}
+
+
+### 17. Xem khách không tồn tại - kỳ vọng 404 RESOURCE_NOT_FOUND
+GET {{baseUrl}}/v1/members/999999999
+Authorization: Bearer {{accessToken}}
+
+
+### 18. Danh sách khách
+GET {{baseUrl}}/v1/members
+Authorization: Bearer {{accessToken}}
+
+
+### 19. Tìm khách theo tên
+GET {{baseUrl}}/v1/members?keyword=Sprint%20{{uniqueSuffix}}
+Authorization: Bearer {{accessToken}}
+
+
+### 20. Tìm khách theo SĐT
+GET {{baseUrl}}/v1/members?keyword=090{{uniqueSuffix}}
+Authorization: Bearer {{accessToken}}
+
+
+### 21. Đăng ký gói Tự tập cho khách chính - copy data.id vào membershipId
+POST {{baseUrl}}/v1/members/{{memberId}}/memberships
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "planId": {{selfPlanId}},
+  "startDate": "2026-09-22",
+  "discountAmount": 0,
+  "note": "Đăng ký mới gói tự tập"
+}
+
+
+### 22. Đăng ký gói inactive - kỳ vọng 400 BAD_REQUEST
+POST {{baseUrl}}/v1/members/{{memberId}}/memberships
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "planId": {{inactivePlanId}},
+  "startDate": "2026-09-22",
+  "discountAmount": 0,
+  "note": "Không được đăng ký vì gói inactive"
+}
+
+
+### 23. Đăng ký gói không tồn tại - kỳ vọng 404 RESOURCE_NOT_FOUND
+POST {{baseUrl}}/v1/members/{{memberId}}/memberships
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "planId": 999999999,
+  "startDate": "2026-09-22",
+  "discountAmount": 0
+}
+
+
+### 24. Danh sách gói đã đăng ký của khách chính
+GET {{baseUrl}}/v1/members/{{memberId}}/memberships
+Authorization: Bearer {{accessToken}}
+
+
+### 25. Thanh toán toàn bộ gói Tự tập - kỳ vọng revenueCategory SELF_TRAINING, debtAmount về 0 khi xem lại membership
+POST {{baseUrl}}/v1/payments
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "memberId": {{memberId}},
+  "membershipId": {{membershipId}},
+  "paymentDate": "2026-09-22",
+  "amount": 300000,
+  "paymentMethod": "CASH",
+  "description": "Thanh toán đủ gói tự tập"
+}
+
+
+### 26. Xem lại memberships sau thanh toán đủ - kỳ vọng paidAmount 300000, debtAmount 0
+GET {{baseUrl}}/v1/members/{{memberId}}/memberships
+Authorization: Bearer {{accessToken}}
+
+
+### 27. Đăng ký gói Giáo án có giảm giá - copy data.id vào partialMembershipId
+POST {{baseUrl}}/v1/members/{{memberId}}/memberships
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "planId": {{guidancePlanId}},
+  "startDate": "2026-09-22",
+  "actualPrice": 900000,
+  "discountAmount": 100000,
+  "note": "Đăng ký gói giáo án, test công nợ còn lại"
+}
+
+
+### 28. Thanh toán một phần gói Giáo án - kỳ vọng revenueCategory GUIDANCE
+POST {{baseUrl}}/v1/payments
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "memberId": {{memberId}},
+  "membershipId": {{partialMembershipId}},
+  "paymentDate": "2026-09-22",
+  "amount": 300000,
+  "paymentMethod": "BANK_TRANSFER",
+  "description": "Thanh toán một phần gói giáo án"
+}
+
+
+### 29. Xem lại memberships sau thanh toán một phần - kỳ vọng paidAmount 300000, debtAmount 500000
+GET {{baseUrl}}/v1/members/{{memberId}}/memberships
+Authorization: Bearer {{accessToken}}
+
+
+### 30. Đăng ký gói PT chính - copy data.id vào ptMembershipId
+POST {{baseUrl}}/v1/members/{{memberId}}/memberships
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "planId": {{ptMainPlanId}},
+  "soldByUserId": 1,
+  "ptUserId": 1,
+  "startDate": "2026-09-22",
+  "discountAmount": 0,
+  "note": "Đăng ký gói PT chính, test tạo session package"
+}
+
+
+### 31. Thanh toán gói PT chính - kỳ vọng revenueCategory PT_MAIN
+POST {{baseUrl}}/v1/payments
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "memberId": {{memberId}},
+  "membershipId": {{ptMembershipId}},
+  "paymentDate": "2026-09-22",
+  "amount": 6000000,
+  "paymentMethod": "BANK_TRANSFER",
+  "description": "Thanh toán gói PT chính"
+}
+
+
+### 32. Thanh toán dùng membership của khách khác - kỳ vọng 400 BAD_REQUEST
+POST {{baseUrl}}/v1/payments
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "memberId": {{secondMemberId}},
+  "membershipId": {{membershipId}},
+  "paymentDate": "2026-09-22",
+  "amount": 100000,
+  "paymentMethod": "CASH",
+  "description": "Test membership không thuộc khách"
+}
+
+
+### 33. Thanh toán số tiền âm/0 - kỳ vọng 400 VALIDATION_ERROR
+POST {{baseUrl}}/v1/payments
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "memberId": {{memberId}},
+  "membershipId": {{membershipId}},
+  "paymentDate": "2026-09-22",
+  "amount": 0,
+  "paymentMethod": "CASH",
+  "description": "Test validation amount"
+}
+
+
+### 34. Tạo member không có token - kỳ vọng 401 UNAUTHORIZED
+POST {{baseUrl}}/v1/members
+Content-Type: application/json
+
+{
+  "fullName": "Không có token {{uniqueSuffix}}",
+  "phone": "092{{uniqueSuffix}}",
+  "source": "OTHER"
+}
+
+
+### 35. Gọi API với token sai - kỳ vọng 401 INVALID_TOKEN
+GET {{baseUrl}}/v1/auth/me
+Authorization: Bearer invalid.token.value
