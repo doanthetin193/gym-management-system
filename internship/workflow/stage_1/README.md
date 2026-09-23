@@ -14,6 +14,10 @@ Thư mục này chứa toàn bộ ghi chú học tập, phân tích kiến trúc
 | **04** | **Quản lý Hội viên (Member Management)** | [04_quan_ly_hoi_vien_member_management.md](./04_quan_ly_hoi_vien_member_management.md) | ✅ Hoàn thành | Nghiệp vụ `Member`, Unique Phone (`ConflictException`), `ChronoUnit.DAYS.between`, Data Composition, `hasRole` convention |
 | **05** | **Đăng ký Gói & Tài chính Thanh toán** | [05_dang_ky_goi_va_dong_bo_tai_chinh.md](./05_dang_ky_goi_va_dong_bo_tai_chinh.md) | ✅ Hoàn thành | Nghiệp vụ `MemberMembership`, tự sinh `DebtRecord`, tự sinh `PtSessionPackage`, gạch nợ `syncMembershipDebt`, sổ cái `FinancialTransaction(INCOME)` |
 | **06** | **Khởi tạo Dữ liệu & Kiểm thử 36/36 API** | [06_kiem_thu_api_va_seed_du_lieu.md](./06_kiem_thu_api_va_seed_du_lieu.md) | ✅ Hoàn thành | Seeding tự động (`DataInitializer`), mã hóa mật khẩu `owner/change_me`, chống lộ username, kiểm thử hồi quy 36/36 kịch bản (`sprint1.http`) |
+| **07** | **Khởi tạo Frontend, Design System & Theme** | [07_khoi_tao_frontend_design_system_va_theme.md](./07_khoi_tao_frontend_design_system_va_theme.md) | ✅ Hoàn thành | Vite + React 19, Tailwind CSS v4, CSS Custom Properties bảng màu thương hiệu Dương Double, Theme Dark/Light tự động |
+| **08** | **Chuẩn hóa Types & API Client Axios** | [08_chuan_hoa_types_va_lop_api_client.md](./08_chuan_hoa_types_va_lop_api_client.md) | ✅ Hoàn thành | Type-safe DTOs, `axios instance`, request interceptor gắn Bearer token, response interceptor unbox `payload.data`, gom lỗi `ApiClientError` |
+| **09** | **Quản lý Phiên Đăng nhập & Auth Context** | [09_quan_ly_phien_dang_nhap_va_auth_context.md](./09_quan_ly_phien_dang_nhap_va_auth_context.md) | ✅ Hoàn thành | React Context API, Custom Hook `useAuth`, `bootstrapping` state chống nhấp nháy màn hình, chống Race Condition `cancelled = true` |
+| **10** | **Định tuyến Router, Route Guards & AppShell** | [10_dinh_tuyen_router_route_guards_va_app_shell.md](./10_dinh_tuyen_router_route_guards_va_app_shell.md) | ✅ Hoàn thành | React Router v7 lồng nhau (`<Outlet />`), `ProtectedRoute`, `PublicOnlyRoute`, Navigation config, Responsive Sidebar & Mobile Drawer |
 
 ---
 
