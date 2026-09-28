@@ -1,0 +1,223 @@
+# ==============================================================================
+# GYM DUONG DOUBLE - SPRINT 2 API TEST SCENARIO
+# ==============================================================================
+# Phạm vi:
+# - Cập nhật hội viên
+# - Lọc hội viên đang tập / sắp hết hạn / đã hết hạn
+# - Xem chi tiết hội viên gồm profile, active memberships, history, PT packages, totalDebt
+# - Gia hạn gói: còn hạn thì nối tiếp ngày cũ, hết hạn thì tính từ ngày đăng ký
+# ==============================================================================
+
+@baseUrl = http://localhost:8080/api
+@accessToken = PASTE_ACCESS_TOKEN_HERE
+
+@uniqueSuffix = 0923001
+@selfPlanId = PASTE_SELF_PLAN_ID_HERE
+@ptPlanId = PASTE_PT_PLAN_ID_HERE
+@memberId = PASTE_MEMBER_ID_HERE
+@secondMemberId = PASTE_SECOND_MEMBER_ID_HERE
+@membershipId = PASTE_MEMBERSHIP_ID_HERE
+@renewalMembershipId = PASTE_RENEWAL_MEMBERSHIP_ID_HERE
+@expiredMemberId = PASTE_EXPIRED_MEMBER_ID_HERE
+
+
+### 01. Login OWNER - copy data.accessToken vào biến accessToken
+POST {{baseUrl}}/v1/auth/login
+Content-Type: application/json
+
+{
+  "username": "owner",
+  "password": "change_me"
+}
+
+
+### 02. Tạo gói tự tập 10 ngày - copy data.id vào selfPlanId
+POST {{baseUrl}}/v1/membership-plans
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "name": "Sprint 2 tự tập 10 ngày {{uniqueSuffix}}",
+  "planType": "SELF_TRAINING",
+  "durationDays": 10,
+  "defaultPrice": 100000,
+  "contentAccessLevel": "BASIC",
+  "active": true
+}
+
+
+### 03. Tạo gói PT 20 buổi - copy data.id vào ptPlanId
+POST {{baseUrl}}/v1/membership-plans
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "name": "Sprint 2 PT chính {{uniqueSuffix}}",
+  "planType": "PT",
+  "ptLevel": "MAIN",
+  "durationDays": 40,
+  "defaultPrice": 6000000,
+  "ptSessionCount": 20,
+  "practiceSessionCount": 20,
+  "contentAccessLevel": "PREMIUM",
+  "active": true
+}
+
+
+### 04. Tạo hội viên chính - copy data.id vào memberId
+POST {{baseUrl}}/v1/members
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "fullName": "Sprint 2 Member {{uniqueSuffix}}",
+  "phone": "093{{uniqueSuffix}}",
+  "dateOfBirth": "1999-09-23",
+  "gender": "MALE",
+  "source": "WALK_IN",
+  "note": "Khách dùng để test Sprint 2"
+}
+
+
+### 05. Tạo hội viên phụ để test trùng SĐT - copy data.id vào secondMemberId
+POST {{baseUrl}}/v1/members
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "fullName": "Sprint 2 Duplicate Holder {{uniqueSuffix}}",
+  "phone": "094{{uniqueSuffix}}",
+  "source": "ZALO"
+}
+
+
+### 06. Cập nhật hội viên chính - kỳ vọng 200 OK
+PUT {{baseUrl}}/v1/members/{{memberId}}
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "fullName": "Sprint 2 Member Updated {{uniqueSuffix}}",
+  "phone": "093{{uniqueSuffix}}",
+  "dateOfBirth": "1999-09-23",
+  "gender": "MALE",
+  "address": "Quy Nhơn",
+  "zaloPhone": "093{{uniqueSuffix}}",
+  "source": "FACEBOOK",
+  "status": "ACTIVE",
+  "note": "Đã cập nhật thông tin"
+}
+
+
+### 07. Cập nhật hội viên chính sang SĐT của hội viên phụ - kỳ vọng 409 CONFLICT
+PUT {{baseUrl}}/v1/members/{{memberId}}
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "fullName": "Sprint 2 Member Updated {{uniqueSuffix}}",
+  "phone": "094{{uniqueSuffix}}",
+  "source": "FACEBOOK",
+  "status": "ACTIVE"
+}
+
+
+### 08. Đăng ký gói lần đầu - copy data.id vào membershipId
+POST {{baseUrl}}/v1/members/{{memberId}}/memberships
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "planId": {{selfPlanId}},
+  "startDate": "2026-09-23",
+  "discountAmount": 0,
+  "note": "Gói đầu tiên"
+}
+
+
+### 09. Gia hạn khi gói cũ còn hạn - copy data.id vào renewalMembershipId
+### Kỳ vọng startDate tự nối tiếp thành 2026-10-03 nếu gói đầu là 10 ngày từ 2026-09-23.
+POST {{baseUrl}}/v1/members/{{memberId}}/memberships
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "planId": {{selfPlanId}},
+  "startDate": "2026-09-24",
+  "discountAmount": 0,
+  "note": "Gia hạn nối tiếp"
+}
+
+
+### 10. Đăng ký gói PT để tạo PtSessionPackage
+POST {{baseUrl}}/v1/members/{{memberId}}/memberships
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "planId": {{ptPlanId}},
+  "soldByUserId": 1,
+  "ptUserId": 1,
+  "startDate": "2026-10-20",
+  "discountAmount": 0,
+  "note": "Tạo gói buổi PT"
+}
+
+
+### 11. Xem chi tiết hội viên - kỳ vọng có profile, activeMemberships, membershipHistory, ptSessionPackages, totalDebt
+GET {{baseUrl}}/v1/members/{{memberId}}
+Authorization: Bearer {{accessToken}}
+
+
+### 12. Lọc hội viên đang tập
+GET {{baseUrl}}/v1/members?filter=ACTIVE
+Authorization: Bearer {{accessToken}}
+
+
+### 13. Lọc hội viên sắp hết hạn trong 7 ngày
+GET {{baseUrl}}/v1/members?filter=EXPIRING_SOON
+Authorization: Bearer {{accessToken}}
+
+
+### 14. Tạo hội viên hết hạn - copy data.id vào expiredMemberId
+POST {{baseUrl}}/v1/members
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "fullName": "Sprint 2 Expired {{uniqueSuffix}}",
+  "phone": "095{{uniqueSuffix}}",
+  "source": "OTHER"
+}
+
+
+### 15. Đăng ký gói đã hết hạn cho hội viên hết hạn
+POST {{baseUrl}}/v1/members/{{expiredMemberId}}/memberships
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "planId": {{selfPlanId}},
+  "startDate": "2026-01-01",
+  "endDate": "2026-01-05",
+  "discountAmount": 0,
+  "note": "Gói đã hết hạn"
+}
+
+
+### 16. Lọc hội viên đã hết hạn
+GET {{baseUrl}}/v1/members?filter=EXPIRED
+Authorization: Bearer {{accessToken}}
+
+
+### 17. Gia hạn khi gói cũ đã hết hạn - kỳ vọng startDate giữ nguyên ngày đăng ký 2026-09-23
+POST {{baseUrl}}/v1/members/{{expiredMemberId}}/memberships
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "planId": {{selfPlanId}},
+  "startDate": "2026-09-23",
+  "discountAmount": 0,
+  "note": "Gia hạn sau khi đã hết hạn"
+}

@@ -49,7 +49,8 @@ public class MemberMembershipService {
             throw new BadRequestException("Gói tập hiện không hoạt động.");
         }
 
-        LocalDate endDate = resolveEndDate(plan, request);
+        LocalDate startDate = resolveStartDate(member.getId(), request.startDate());
+        LocalDate endDate = resolveEndDate(plan, request, startDate);
         BigDecimal actualPrice = request.actualPrice() == null ? plan.getDefaultPrice() : request.actualPrice();
         BigDecimal discountAmount = request.discountAmount() == null ? BigDecimal.ZERO : request.discountAmount();
         BigDecimal debtAmount = actualPrice.subtract(discountAmount).max(BigDecimal.ZERO);
@@ -58,7 +59,7 @@ public class MemberMembershipService {
         membership.setMember(member);
         membership.setPlan(plan);
         membership.setSoldByUser(findUserOrNull(request.soldByUserId()));
-        membership.setStartDate(request.startDate());
+        membership.setStartDate(startDate);
         membership.setEndDate(endDate);
         membership.setActualPrice(actualPrice);
         membership.setDiscountAmount(discountAmount);
@@ -88,14 +89,27 @@ public class MemberMembershipService {
             .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy lượt đăng ký gói."));
     }
 
-    private LocalDate resolveEndDate(MembershipPlan plan, CreateMemberMembershipRequest request) {
+    private LocalDate resolveStartDate(Long memberId, LocalDate requestedStartDate) {
+        return memberMembershipRepository.findByMemberIdOrderByStartDateDesc(memberId).stream()
+            .filter(membership -> membership.getStatus() != MembershipStatus.CANCELLED)
+            .filter(membership -> !membership.getEndDate().isBefore(requestedStartDate))
+            .map(MemberMembership::getEndDate)
+            .max(LocalDate::compareTo)
+            .map(endDate -> endDate.plusDays(1))
+            .orElse(requestedStartDate);
+    }
+
+    private LocalDate resolveEndDate(MembershipPlan plan, CreateMemberMembershipRequest request, LocalDate startDate) {
         if (request.endDate() != null) {
+            if (request.endDate().isBefore(startDate)) {
+                throw new BadRequestException("Ngày kết thúc không được trước ngày bắt đầu thực tế.");
+            }
             return request.endDate();
         }
         if (plan.getDurationDays() == null || plan.getDurationDays() <= 0) {
             throw new BadRequestException("Gói chưa có thời hạn, cần nhập ngày kết thúc.");
         }
-        return request.startDate().plusDays(plan.getDurationDays() - 1L);
+        return startDate.plusDays(plan.getDurationDays() - 1L);
     }
 
     private void createDebtIfNeeded(MemberMembership membership, BigDecimal debtAmount) {

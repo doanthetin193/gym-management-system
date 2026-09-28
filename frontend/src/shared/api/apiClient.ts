@@ -19,9 +19,14 @@ export class ApiClientError extends Error {
   }
 }
 
-type UnboxedAxiosInstance = Omit<AxiosInstance, 'get' | 'post'> & {
+type UnboxedAxiosInstance = Omit<AxiosInstance, 'get' | 'post' | 'put'> & {
   get<T>(url: string, config?: AxiosRequestConfig): Promise<T>
   post<T, TBody = unknown>(
+    url: string,
+    data?: TBody,
+    config?: AxiosRequestConfig<TBody>,
+  ): Promise<T>
+  put<T, TBody = unknown>(
     url: string,
     data?: TBody,
     config?: AxiosRequestConfig<TBody>,
@@ -98,4 +103,12 @@ export function apiPost<T, TBody = unknown>(
   config?: AxiosRequestConfig<TBody>,
 ): Promise<T> {
   return apiClient.post<T, TBody>(url, data, config)
+}
+
+export function apiPut<T, TBody = unknown>(
+  url: string,
+  data?: TBody,
+  config?: AxiosRequestConfig<TBody>,
+): Promise<T> {
+  return apiClient.put<T, TBody>(url, data, config)
 }

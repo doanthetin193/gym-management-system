@@ -17,8 +17,8 @@ export type AppNavItem = {
 
 export const appNavItems: AppNavItem[] = [
   { icon: LayoutDashboard, label: 'Tổng quan', path: '/', status: 'ready' },
-  { icon: Users, label: 'Khách hàng', path: '/members', status: 'soon' },
-  { icon: Dumbbell, label: 'Gói tập', path: '/membership-plans', status: 'soon' },
+  { icon: Users, label: 'Khách hàng', path: '/members', status: 'ready' },
+  { icon: Dumbbell, label: 'Gói tập', path: '/membership-plans', status: 'ready' },
   { icon: CreditCard, label: 'Thanh toán', path: '/payments', status: 'soon' },
   { icon: CalendarClock, label: 'Lịch PT', path: '/pt-schedule', status: 'soon' },
   { icon: Target, label: 'Mục tiêu', path: '/goals', status: 'soon' },
