@@ -304,3 +304,19 @@ MVP đạt khi:
 - PT cập nhật được buổi tập/chỉ số.
 - Public TikTok exercise library xem/chia sẻ được.
 - App deploy được trên VPS.
+
+## 14. Cập nhật chốt scope sau nâng cấp UI
+
+Từ ngày 07/10/2026, scope hiện tại được chốt theo implementation đã có trong code, xem chi tiết tại `plans/active/10-current-implementation-alignment.md`.
+
+Các điểm đã được bổ sung vào hệ thống so với roadmap sơ khai:
+
+- Không còn role `STAFF`; mô hình vận hành chỉ còn `OWNER`, `PT`, `MEMBER` và khách vãng lai.
+- Sprint 5 đã chuyển hẳn sang thư viện video TikTok public, không làm YouTube/LMS/training program theo tuần.
+- Sprint 6 đã bao gồm báo cáo vận hành, biểu đồ dashboard, xuất `.xlsx`, full backup nhiều sheet và đồng bộ Google Sheet qua Apps Script/token.
+- Bổ sung portal hội viên `/my-progress` để MEMBER xem gói, công nợ, lịch sử thanh toán, buổi PT, chỉ số cơ thể, biểu đồ tiến trình và mục tiêu cá nhân.
+- Bổ sung tạo tài khoản nhanh cho PT và hội viên từ trang cài đặt/chi tiết hội viên.
+- Bổ sung cấu hình VietQR tại `/settings`, hiển thị QR tại chi tiết hội viên để hỗ trợ thu nợ/thu tiền thủ công.
+- Bổ sung nhắc việc Zalo thủ công cho hết hạn, công nợ và sinh nhật; không tự gửi tin qua API Zalo.
+- Bổ sung quy tắc phân quyền dữ liệu: PT chỉ xem khách được phân công hoặc khách gói PT chưa có assignment để xử lý đăng ký mới.
+- Sprint 7 không làm trong giai đoạn hiện tại; production hardening/deploy để phase sau.

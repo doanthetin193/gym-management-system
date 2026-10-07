@@ -543,3 +543,113 @@ MEMBER:
 - CÃ¡c API list pháº£i pagination.
 - CÃ¡c API dashboard khÃ´ng nÃªn query quÃ¡ náº·ng; cÃ³ thá»ƒ tá»‘i Æ°u sau báº±ng cache.
 
+## 16. Cập nhật theo implementation hiện tại
+
+Tài liệu chốt hiện trạng sau nâng cấp UI nằm tại `plans/active/10-current-implementation-alignment.md`.
+
+Các nhóm API đã được bổ sung/chốt theo code hiện tại:
+
+### Auth và tài khoản
+
+```text
+POST /v1/auth/login
+GET  /v1/auth/me
+POST /v1/auth/change-password
+
+GET    /v1/settings/team-users
+POST   /v1/settings/team-users
+PUT    /v1/settings/team-users/{id}/role
+PUT    /v1/settings/team-users/{id}/status
+POST   /v1/settings/team-users/{id}/reset-password
+DELETE /v1/settings/team-users/{id}
+```
+
+Không còn endpoint `staff-users`; tên hiện tại là `team-users`, nhưng role vận hành chỉ dùng `PT`.
+
+### Portal hội viên
+
+```text
+GET    /v1/member-portal/me
+
+POST   /v1/members/{id}/portal-account
+PUT    /v1/members/{id}/portal-account/status
+POST   /v1/members/{id}/portal-account/reset-password
+DELETE /v1/members/{id}/portal-account
+```
+
+MEMBER chỉ đọc dữ liệu liên kết với tài khoản của mình, không tự thao tác gói/thanh toán.
+
+### VietQR
+
+```text
+GET /v1/settings/vietqr
+PUT /v1/settings/vietqr
+GET /v1/public/vietqr-setting
+```
+
+`/v1/settings/vietqr` chỉ dành cho OWNER. Public endpoint chỉ dùng để hiển thị QR, không sửa cấu hình.
+
+### PT và phân quyền dữ liệu
+
+```text
+GET    /v1/pt/profiles
+POST   /v1/pt/profiles
+GET    /v1/pt/my-members
+POST   /v1/pt/assignments
+GET    /v1/pt/schedules
+POST   /v1/pt/schedules
+DELETE /v1/pt/schedules/{scheduleId}
+GET    /v1/pt/session-packages
+GET    /v1/pt/members/{memberId}
+POST   /v1/pt/members/{memberId}/session-logs
+POST   /v1/pt/members/{memberId}/activity-logs
+POST   /v1/pt/members/{memberId}/body-measurements
+POST   /v1/pt/members/{memberId}/goals
+```
+
+PT chỉ được truy cập member được phân công hoặc member gói PT chưa có assignment để xử lý đăng ký mới.
+
+### Gói tập active/inactive
+
+```text
+GET /v1/membership-plans
+GET /v1/membership-plans/all
+PUT /v1/membership-plans/{id}/active
+```
+
+Dropdown bán/gia hạn chỉ dùng danh sách gói active.
+
+### Báo cáo và mục tiêu
+
+```text
+GET /v1/dashboard/owner
+GET /v1/business-goals
+POST /v1/business-goals
+PUT /v1/business-goals/{id}
+GET /v1/business-goals/progress
+GET /v1/reports/finance
+GET /v1/reports/members
+GET /v1/notifications
+PATCH /v1/notifications/{id}/read
+```
+
+Xuất `.xlsx`, full backup và Google Sheet sync hiện được xử lý phía frontend bằng dữ liệu report API; chưa có export API riêng ở backend.
+
+### Thư viện TikTok public
+
+```text
+GET  /v1/public/exercise-categories
+GET  /v1/public/exercises
+GET  /v1/public/exercises/{slugOrId}
+POST /v1/public/exercises/{id}/view
+
+GET    /v1/owner/exercise-categories
+POST   /v1/owner/exercise-categories
+PUT    /v1/owner/exercise-categories/{id}
+GET    /v1/owner/exercises
+POST   /v1/owner/exercises
+PUT    /v1/owner/exercises/{id}
+PATCH  /v1/owner/exercises/{id}/published
+DELETE /v1/owner/exercises/{id}
+```
+

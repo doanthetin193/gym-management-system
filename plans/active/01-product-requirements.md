@@ -383,3 +383,18 @@ MVP hoàn thành khi:
 - PT nhập được buổi tập và chỉ số.
 - Public TikTok exercise library xem/chia sẻ được.
 - Hệ thống deploy được trên VPS.
+
+## 10. Cập nhật theo implementation hiện tại
+
+Sau giai đoạn nâng cấp UI và bổ sung nghiệp vụ, tài liệu chốt hiện trạng là `plans/active/10-current-implementation-alignment.md`.
+
+Các thay đổi sản phẩm đã được chấp nhận vào scope hiện tại:
+
+- Hệ thống không còn role `STAFF`; PT kiêm vận hành cơ bản khi chủ phòng không trực.
+- Có portal hội viên `/my-progress` cho MEMBER xem tiến trình cá nhân, chỉ số cơ thể, mục tiêu, gói hiện tại, công nợ và lịch sử thanh toán.
+- OWNER/PT có thể tạo tài khoản portal nhanh cho hội viên, nhưng hội viên chỉ xem dữ liệu và liên hệ Zalo thủ công, không tự mua gói hay xác nhận thanh toán online.
+- OWNER quản lý tài khoản PT tại `/settings`.
+- VietQR là công cụ hỗ trợ chuyển khoản thủ công, không phải payment gateway tự động.
+- Báo cáo hỗ trợ xuất `.xlsx`, full backup nhiều sheet và đồng bộ Google Sheet qua Apps Script/token.
+- Nhắc việc Zalo là bán tự động: hệ thống soạn/copy tin nhắn và mở Zalo, không tự gửi tin.
+- Thư viện video public chỉ hỗ trợ TikTok trong scope hiện tại.

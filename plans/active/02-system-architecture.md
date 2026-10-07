@@ -323,4 +323,27 @@ Sau MVP có thể thêm:
 - RAG chatbot.
 - Payment online.
 
+## 14. Cập nhật kiến trúc theo implementation hiện tại
+
+Tài liệu chốt hiện trạng sau nâng cấp UI nằm tại `plans/active/10-current-implementation-alignment.md`.
+
+Điều chỉnh kiến trúc hiện tại:
+
+- `user` module dùng `TeamUserController/TeamUserService` để OWNER quản lý tài khoản PT, không còn naming `StaffUser`.
+- `member` module có thêm `MemberAccessService` để gom rule phân quyền dữ liệu theo OWNER/PT/MEMBER.
+- `member` module có thêm `MemberPortalService` và `MemberPortalController` cho portal hội viên.
+- `common` module có thêm `VietQrSettingService`, `SettingsController`, `PublicSettingsController` để tách cấu hình OWNER và cấu hình public read-only.
+- `dashboard` module gom dashboard OWNER, goals, finance/member reports và notification response tính động.
+- `reports` xuất `.xlsx` và Google Sheet sync nằm ở frontend, dùng dữ liệu từ report API thay vì backend export file.
+- `exercise` module chỉ xử lý TikTok public library, không còn module training program/LMS trong scope hiện tại.
+- `pt` module là nơi xử lý assignment, schedule, session log, activity log, body measurement và goal.
+
+Các module để phase sau:
+
+- Audit log persistence riêng.
+- Notification persistence/scheduler nâng cao.
+- Payroll.
+- Import Excel.
+- Payment online.
+
 Các phần này là module mở rộng, không làm thay đổi lõi member/membership/finance/PT.

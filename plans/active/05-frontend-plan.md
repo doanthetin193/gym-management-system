@@ -375,3 +375,48 @@ MEMBER:
 8. Public TikTok exercise library.
 9. Business goals.
 10. Production UI polish: loading, empty, error, responsive.
+
+## 14. Cập nhật route và màn hình theo implementation hiện tại
+
+Tài liệu chốt hiện trạng sau nâng cấp UI nằm tại `plans/active/10-current-implementation-alignment.md`.
+
+Route thực tế hiện tại:
+
+```text
+/
+/exercises
+/exercises/:slug
+/login
+
+/my-progress
+/dashboard
+/members
+/members/:memberId
+/membership-plans
+/payments
+/reminders
+/reminders/:type
+/reports
+/pt-schedule
+/owner/exercises
+/goals
+/settings
+/profile
+```
+
+Quy tắc layout/role hiện tại:
+
+- Public không đăng nhập: `/`, `/exercises`, `/exercises/:slug`.
+- MEMBER: `/my-progress`, `/profile`.
+- PT: `/members`, `/members/:memberId`, `/membership-plans`, `/payments`, `/reminders`, `/pt-schedule`, `/profile`.
+- OWNER: toàn bộ vùng quản trị gồm dashboard, members, plans, payments, reminders, reports, PT schedule, owner exercises, goals, settings, profile.
+
+Các màn hình bổ sung so với kế hoạch sơ khai:
+
+- Public home đầy đủ: giới thiệu, bảng giá, cơ sở vật chất, triết lý, thư viện TikTok, liên hệ.
+- Member portal `/my-progress`: gói hiện tại, công nợ, buổi PT, biểu đồ chỉ số cơ thể, mục tiêu, lịch PT, lịch sử thanh toán.
+- Member detail: gán/gia hạn gói, thu nợ, VietQR, tạo/reset/khoá tài khoản portal.
+- Settings: cấu hình VietQR và quản lý tài khoản PT.
+- Reports: biểu đồ vận hành, xuất `.xlsx`, full backup nhiều sheet, đồng bộ Google Sheet qua Apps Script/token.
+- Reminders: copy tin nhắn và mở Zalo cho hết hạn, công nợ, sinh nhật.
+- PT schedule: gán khách PT bằng dropdown/tìm kiếm, chỉ hiển thị khách gói PT phù hợp, khách đã có PT active bị disable.

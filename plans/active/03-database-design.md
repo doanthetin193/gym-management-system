@@ -952,3 +952,31 @@ Thiáº¿t káº¿ nÃ y lÃ  báº£n tá»‘i Æ°u tá»‘i thiá»ƒu nh
 - CÃ³ thá»ƒ triá»ƒn khai MVP theo tá»«ng sprint.
 - CÃ³ Ä‘Æ°á»ng má»Ÿ rá»™ng sang payroll, import Excel vÃ  AI sau nÃ y.
 
+## 19. Cập nhật theo implementation hiện tại
+
+Tài liệu chốt hiện trạng sau nâng cấp UI nằm tại `plans/active/10-current-implementation-alignment.md`.
+
+Các điều chỉnh database/entity so với thiết kế sơ khai:
+
+- Giữ mô hình `users`, `roles`, `user_roles`; role hiện hành chỉ gồm `OWNER`, `PT`, `MEMBER`.
+- Không còn role/table riêng cho `STAFF`.
+- Không dùng bảng `training_programs` và `training_program_weeks` trong scope hiện tại.
+- Không dùng bảng `exercise_media`; mỗi `exercises` lưu trực tiếp thông tin video TikTok cần thiết.
+- Không dùng `member_notes` trong implementation hiện tại; ghi chú chính nằm ở member/membership/payment/session theo từng nghiệp vụ.
+- Không dùng entity `notifications` riêng; nhắc việc hiện tại được tính động từ hạn gói, công nợ và sinh nhật.
+- Không dùng entity `audit_logs` riêng trong scope hiện tại; nếu cần audit đầy đủ sẽ mở lại ở phase hardening.
+- `system_settings` được dùng cho cấu hình VietQR và các cấu hình hệ thống nhỏ.
+- `business_goals` vẫn thuộc scope hiện tại để quản lý mục tiêu tháng.
+- `body_measurements` và `pt_goals` là nguồn dữ liệu cho portal hội viên và theo dõi khách PT.
+
+Danh sách entity hiện tại cần xem là nguồn chính:
+
+- `User`, `Role`.
+- `Member`.
+- `MembershipPlan`, `MemberMembership`.
+- `Payment`, `DebtRecord`, `FinancialCategory`, `FinancialTransaction`.
+- `PtProfile`, `PtAssignment`, `PtSchedule`, `PtSessionPackage`, `PtSessionLog`, `MemberActivityLog`.
+- `BodyMeasurement`, `PtGoal`.
+- `ExerciseCategory`, `Exercise`.
+- `BusinessGoal`, `SystemSetting`.
+
