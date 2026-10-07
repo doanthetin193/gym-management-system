@@ -2,6 +2,7 @@ package com.gymduongdouble.backend.auth.web;
 
 import com.gymduongdouble.backend.auth.service.AuthService;
 import com.gymduongdouble.backend.auth.web.dto.AuthUserResponse;
+import com.gymduongdouble.backend.auth.web.dto.ChangePasswordRequest;
 import com.gymduongdouble.backend.auth.web.dto.LoginRequest;
 import com.gymduongdouble.backend.auth.web.dto.LoginResponse;
 import com.gymduongdouble.backend.common.security.AuthenticatedUser;
@@ -30,5 +31,14 @@ public class AuthController {
     @GetMapping("/me")
     public ApiResponse<AuthUserResponse> me(@AuthenticationPrincipal AuthenticatedUser user) {
         return ApiResponse.ok(AuthUserResponse.from(user));
+    }
+
+    @PostMapping("/change-password")
+    public ApiResponse<Void> changePassword(
+        @AuthenticationPrincipal AuthenticatedUser user,
+        @Valid @RequestBody ChangePasswordRequest request
+    ) {
+        authService.changePassword(user, request);
+        return ApiResponse.ok(null);
     }
 }

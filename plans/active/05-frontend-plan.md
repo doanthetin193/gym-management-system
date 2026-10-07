@@ -8,7 +8,7 @@ Frontend cần phục vụ thao tác thực tế hằng ngày của chủ phòng
 
 - OWNER xem nhanh tình trạng phòng.
 - PT cập nhật nhanh buổi tập/chỉ số trên điện thoại.
-- MEMBER xem thông tin gói và nội dung được phép.
+- MEMBER xem thông tin gói và truy cập thư viện bài tập/video public.
 - Form ngắn, ít bước.
 - Bảng dữ liệu có lọc/tìm kiếm/pagination.
 
@@ -35,7 +35,6 @@ Frontend cần phục vụ thao tác thực tế hằng ngày của chủ phòng
 /owner/finance
 /owner/pt
 /owner/pt/schedules
-/owner/training-programs
 /owner/exercises
 /owner/business-goals
 /owner/notifications
@@ -51,8 +50,9 @@ Frontend cần phục vụ thao tác thực tế hằng ngày của chủ phòng
 /member/dashboard
 /member/profile
 /member/membership
-/member/exercises
-/member/training-content
+
+/exercises
+/exercises/:slug
 ```
 
 ## 4. Layout theo role
@@ -188,10 +188,12 @@ Form expense cần hỗ trợ category linh hoạt để map các khoản từ E
 
 ### Exercise library
 
-- Nhóm bài tập.
-- Danh sách bài tập.
-- Form bài tập.
-- Media YouTube/image.
+- Thư viện bài tập/video TikTok public.
+- Nhóm bài tập/chủ đề.
+- Danh sách bài tập dạng card.
+- Form thêm/sửa bài tập cho OWNER.
+- TikTok URL preview/fallback mở TikTok.
+- Copy link/chia sẻ cho học viên.
 
 ### Business goals
 
@@ -251,15 +253,15 @@ Tabs:
 - Tổng quan.
 - Session logs.
 - Body measurements.
-- Training program.
-- Đánh giá kết thúc gói/chương trình.
+- Goals/progress.
+- Ghi chú/đánh giá kết thúc gói nếu cần.
 - Notes.
 
 Actions:
 
 - Thêm buổi tập.
 - Thêm chỉ số.
-- Cập nhật mục tiêu tuần.
+- Cập nhật mục tiêu tập luyện.
 
 ## 7. MEMBER pages
 
@@ -270,13 +272,15 @@ Hiển thị:
 - Gói hiện tại.
 - Ngày hết hạn.
 - Lịch sử thanh toán cơ bản.
-- Bài tập/chương trình được phép.
+- Link vào thư viện bài tập/video public.
 
-### Exercise/training content
+### Public exercise/video content
 
 - Danh sách bài tập.
 - Filter nhóm cơ.
-- Xem video YouTube embed theo quyền nội dung của gói hiện tại.
+- Xem video TikTok public.
+- Copy link/chia sẻ.
+- Không yêu cầu đăng nhập.
 
 ## 8. Component chính
 
@@ -332,7 +336,7 @@ Validation quan trọng:
 - Start date <= end date.
 - Payment không vượt quá số tiền còn nợ nếu áp dụng.
 - Session date không được rỗng.
-- YouTube URL hợp lệ.
+- TikTok URL hợp lệ.
 
 ## 11. UI states cần có
 
@@ -368,7 +372,6 @@ MEMBER:
 5. Payment/expense.
 6. PT my members.
 7. PT session/body measurement.
-8. Exercise library.
-9. Training program cơ bản.
-10. Business goals.
-11. Production UI polish: loading, empty, error, responsive.
+8. Public TikTok exercise library.
+9. Business goals.
+10. Production UI polish: loading, empty, error, responsive.

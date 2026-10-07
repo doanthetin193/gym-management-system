@@ -1,11 +1,11 @@
 # ==============================================================================
 # GYM DUONG DOUBLE - SPRINT 2 API TEST SCENARIO
 # ==============================================================================
-# Phạm vi:
-# - Cập nhật hội viên
-# - Lọc hội viên đang tập / sắp hết hạn / đã hết hạn
-# - Xem chi tiết hội viên gồm profile, active memberships, history, PT packages, totalDebt
-# - Gia hạn gói: còn hạn thì nối tiếp ngày cũ, hết hạn thì tính từ ngày đăng ký
+# Pháº¡m vi:
+# - Cáº­p nháº­t há»™i viÃªn
+# - Lá»c há»™i viÃªn Ä‘ang táº­p / sáº¯p háº¿t háº¡n / Ä‘Ã£ háº¿t háº¡n
+# - Xem chi tiáº¿t há»™i viÃªn gá»“m profile, active memberships, history, PT packages, totalDebt
+# - Gia háº¡n gÃ³i: cÃ²n háº¡n thÃ¬ ná»‘i tiáº¿p ngÃ y cÅ©, háº¿t háº¡n thÃ¬ tÃ­nh tá»« ngÃ y Ä‘Äƒng kÃ½
 # ==============================================================================
 
 @baseUrl = http://localhost:8080/api
@@ -21,23 +21,23 @@
 @expiredMemberId = PASTE_EXPIRED_MEMBER_ID_HERE
 
 
-### 01. Login OWNER - copy data.accessToken vào biến accessToken
+### 01. Login OWNER - copy data.accessToken vÃ o biáº¿n accessToken
 POST {{baseUrl}}/v1/auth/login
 Content-Type: application/json
 
 {
-  "username": "owner",
-  "password": "change_me"
+  "email": "owner@gymduongdouble.local",
+  "password": "ChangeMe@2026"
 }
 
 
-### 02. Tạo gói tự tập 10 ngày - copy data.id vào selfPlanId
+### 02. Táº¡o gÃ³i tá»± táº­p 10 ngÃ y - copy data.id vÃ o selfPlanId
 POST {{baseUrl}}/v1/membership-plans
 Authorization: Bearer {{accessToken}}
 Content-Type: application/json
 
 {
-  "name": "Sprint 2 tự tập 10 ngày {{uniqueSuffix}}",
+  "name": "Sprint 2 tá»± táº­p 10 ngÃ y {{uniqueSuffix}}",
   "planType": "SELF_TRAINING",
   "durationDays": 10,
   "defaultPrice": 100000,
@@ -46,13 +46,13 @@ Content-Type: application/json
 }
 
 
-### 03. Tạo gói PT 20 buổi - copy data.id vào ptPlanId
+### 03. Táº¡o gÃ³i PT 20 buá»•i - copy data.id vÃ o ptPlanId
 POST {{baseUrl}}/v1/membership-plans
 Authorization: Bearer {{accessToken}}
 Content-Type: application/json
 
 {
-  "name": "Sprint 2 PT chính {{uniqueSuffix}}",
+  "name": "Sprint 2 PT chÃ­nh {{uniqueSuffix}}",
   "planType": "PT",
   "ptLevel": "MAIN",
   "durationDays": 40,
@@ -64,7 +64,7 @@ Content-Type: application/json
 }
 
 
-### 04. Tạo hội viên chính - copy data.id vào memberId
+### 04. Táº¡o há»™i viÃªn chÃ­nh - copy data.id vÃ o memberId
 POST {{baseUrl}}/v1/members
 Authorization: Bearer {{accessToken}}
 Content-Type: application/json
@@ -75,11 +75,11 @@ Content-Type: application/json
   "dateOfBirth": "1999-09-23",
   "gender": "MALE",
   "source": "WALK_IN",
-  "note": "Khách dùng để test Sprint 2"
+  "note": "KhÃ¡ch dÃ¹ng Ä‘á»ƒ test Sprint 2"
 }
 
 
-### 05. Tạo hội viên phụ để test trùng SĐT - copy data.id vào secondMemberId
+### 05. Táº¡o há»™i viÃªn phá»¥ Ä‘á»ƒ test trÃ¹ng SÄT - copy data.id vÃ o secondMemberId
 POST {{baseUrl}}/v1/members
 Authorization: Bearer {{accessToken}}
 Content-Type: application/json
@@ -91,7 +91,7 @@ Content-Type: application/json
 }
 
 
-### 06. Cập nhật hội viên chính - kỳ vọng 200 OK
+### 06. Cáº­p nháº­t há»™i viÃªn chÃ­nh - ká»³ vá»ng 200 OK
 PUT {{baseUrl}}/v1/members/{{memberId}}
 Authorization: Bearer {{accessToken}}
 Content-Type: application/json
@@ -101,15 +101,15 @@ Content-Type: application/json
   "phone": "093{{uniqueSuffix}}",
   "dateOfBirth": "1999-09-23",
   "gender": "MALE",
-  "address": "Quy Nhơn",
+  "address": "Quy NhÆ¡n",
   "zaloPhone": "093{{uniqueSuffix}}",
   "source": "FACEBOOK",
   "status": "ACTIVE",
-  "note": "Đã cập nhật thông tin"
+  "note": "ÄÃ£ cáº­p nháº­t thÃ´ng tin"
 }
 
 
-### 07. Cập nhật hội viên chính sang SĐT của hội viên phụ - kỳ vọng 409 CONFLICT
+### 07. Cáº­p nháº­t há»™i viÃªn chÃ­nh sang SÄT cá»§a há»™i viÃªn phá»¥ - ká»³ vá»ng 409 CONFLICT
 PUT {{baseUrl}}/v1/members/{{memberId}}
 Authorization: Bearer {{accessToken}}
 Content-Type: application/json
@@ -122,7 +122,7 @@ Content-Type: application/json
 }
 
 
-### 08. Đăng ký gói lần đầu - copy data.id vào membershipId
+### 08. ÄÄƒng kÃ½ gÃ³i láº§n Ä‘áº§u - copy data.id vÃ o membershipId
 POST {{baseUrl}}/v1/members/{{memberId}}/memberships
 Authorization: Bearer {{accessToken}}
 Content-Type: application/json
@@ -131,12 +131,12 @@ Content-Type: application/json
   "planId": {{selfPlanId}},
   "startDate": "2026-09-23",
   "discountAmount": 0,
-  "note": "Gói đầu tiên"
+  "note": "GÃ³i Ä‘áº§u tiÃªn"
 }
 
 
-### 09. Gia hạn khi gói cũ còn hạn - copy data.id vào renewalMembershipId
-### Kỳ vọng startDate tự nối tiếp thành 2026-10-03 nếu gói đầu là 10 ngày từ 2026-09-23.
+### 09. Gia háº¡n khi gÃ³i cÅ© cÃ²n háº¡n - copy data.id vÃ o renewalMembershipId
+### Ká»³ vá»ng startDate tá»± ná»‘i tiáº¿p thÃ nh 2026-10-03 náº¿u gÃ³i Ä‘áº§u lÃ  10 ngÃ y tá»« 2026-09-23.
 POST {{baseUrl}}/v1/members/{{memberId}}/memberships
 Authorization: Bearer {{accessToken}}
 Content-Type: application/json
@@ -145,11 +145,11 @@ Content-Type: application/json
   "planId": {{selfPlanId}},
   "startDate": "2026-09-24",
   "discountAmount": 0,
-  "note": "Gia hạn nối tiếp"
+  "note": "Gia háº¡n ná»‘i tiáº¿p"
 }
 
 
-### 10. Đăng ký gói PT để tạo PtSessionPackage
+### 10. ÄÄƒng kÃ½ gÃ³i PT Ä‘á»ƒ táº¡o PtSessionPackage
 POST {{baseUrl}}/v1/members/{{memberId}}/memberships
 Authorization: Bearer {{accessToken}}
 Content-Type: application/json
@@ -160,26 +160,26 @@ Content-Type: application/json
   "ptUserId": 1,
   "startDate": "2026-10-20",
   "discountAmount": 0,
-  "note": "Tạo gói buổi PT"
+  "note": "Táº¡o gÃ³i buá»•i PT"
 }
 
 
-### 11. Xem chi tiết hội viên - kỳ vọng có profile, activeMemberships, membershipHistory, ptSessionPackages, totalDebt
+### 11. Xem chi tiáº¿t há»™i viÃªn - ká»³ vá»ng cÃ³ profile, activeMemberships, membershipHistory, ptSessionPackages, totalDebt
 GET {{baseUrl}}/v1/members/{{memberId}}
 Authorization: Bearer {{accessToken}}
 
 
-### 12. Lọc hội viên đang tập
+### 12. Lá»c há»™i viÃªn Ä‘ang táº­p
 GET {{baseUrl}}/v1/members?filter=ACTIVE
 Authorization: Bearer {{accessToken}}
 
 
-### 13. Lọc hội viên sắp hết hạn trong 7 ngày
+### 13. Lá»c há»™i viÃªn sáº¯p háº¿t háº¡n trong 7 ngÃ y
 GET {{baseUrl}}/v1/members?filter=EXPIRING_SOON
 Authorization: Bearer {{accessToken}}
 
 
-### 14. Tạo hội viên hết hạn - copy data.id vào expiredMemberId
+### 14. Táº¡o há»™i viÃªn háº¿t háº¡n - copy data.id vÃ o expiredMemberId
 POST {{baseUrl}}/v1/members
 Authorization: Bearer {{accessToken}}
 Content-Type: application/json
@@ -191,7 +191,7 @@ Content-Type: application/json
 }
 
 
-### 15. Đăng ký gói đã hết hạn cho hội viên hết hạn
+### 15. ÄÄƒng kÃ½ gÃ³i Ä‘Ã£ háº¿t háº¡n cho há»™i viÃªn háº¿t háº¡n
 POST {{baseUrl}}/v1/members/{{expiredMemberId}}/memberships
 Authorization: Bearer {{accessToken}}
 Content-Type: application/json
@@ -201,16 +201,16 @@ Content-Type: application/json
   "startDate": "2026-01-01",
   "endDate": "2026-01-05",
   "discountAmount": 0,
-  "note": "Gói đã hết hạn"
+  "note": "GÃ³i Ä‘Ã£ háº¿t háº¡n"
 }
 
 
-### 16. Lọc hội viên đã hết hạn
+### 16. Lá»c há»™i viÃªn Ä‘Ã£ háº¿t háº¡n
 GET {{baseUrl}}/v1/members?filter=EXPIRED
 Authorization: Bearer {{accessToken}}
 
 
-### 17. Gia hạn khi gói cũ đã hết hạn - kỳ vọng startDate giữ nguyên ngày đăng ký 2026-09-23
+### 17. Gia háº¡n khi gÃ³i cÅ© Ä‘Ã£ háº¿t háº¡n - ká»³ vá»ng startDate giá»¯ nguyÃªn ngÃ y Ä‘Äƒng kÃ½ 2026-09-23
 POST {{baseUrl}}/v1/members/{{expiredMemberId}}/memberships
 Authorization: Bearer {{accessToken}}
 Content-Type: application/json
@@ -219,5 +219,7 @@ Content-Type: application/json
   "planId": {{selfPlanId}},
   "startDate": "2026-09-23",
   "discountAmount": 0,
-  "note": "Gia hạn sau khi đã hết hạn"
+  "note": "Gia háº¡n sau khi Ä‘Ã£ háº¿t háº¡n"
 }
+
+

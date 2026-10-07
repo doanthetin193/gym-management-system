@@ -6,4 +6,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface BusinessGoalRepository extends JpaRepository<BusinessGoal, Long> {
     List<BusinessGoal> findByYearAndMonth(Integer year, Integer month);
+
+    List<BusinessGoal> findAllByOrderByYearDescMonthDescCategoryAscMetricNameAsc();
 }

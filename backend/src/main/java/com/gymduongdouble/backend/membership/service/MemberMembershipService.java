@@ -10,6 +10,7 @@ import com.gymduongdouble.backend.common.security.SecurityUtils;
 import com.gymduongdouble.backend.finance.domain.DebtRecord;
 import com.gymduongdouble.backend.finance.repository.DebtRecordRepository;
 import com.gymduongdouble.backend.member.domain.Member;
+import com.gymduongdouble.backend.member.service.MemberAccessService;
 import com.gymduongdouble.backend.member.service.MemberService;
 import com.gymduongdouble.backend.membership.domain.MemberMembership;
 import com.gymduongdouble.backend.membership.domain.MembershipPlan;
@@ -38,9 +39,11 @@ public class MemberMembershipService {
     private final DebtRecordRepository debtRecordRepository;
     private final PtSessionPackageRepository ptSessionPackageRepository;
     private final UserRepository userRepository;
+    private final MemberAccessService memberAccessService;
 
     @Transactional
     public MemberMembershipResponse create(Long memberId, CreateMemberMembershipRequest request) {
+        memberAccessService.ensureCanAccessMember(memberId);
         Member member = memberService.findEntity(memberId);
         MembershipPlan plan = membershipPlanRepository.findById(request.planId())
             .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy gói tập."));
@@ -78,6 +81,7 @@ public class MemberMembershipService {
 
     @Transactional(readOnly = true)
     public List<MemberMembershipResponse> listByMember(Long memberId) {
+        memberAccessService.ensureCanAccessMember(memberId);
         return memberMembershipRepository.findByMemberIdOrderByStartDateDesc(memberId).stream()
             .map(MemberMembershipResponse::from)
             .toList();

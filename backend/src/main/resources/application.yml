@@ -45,14 +45,16 @@ app:
       access-token-minutes: ${JWT_ACCESS_TOKEN_MINUTES:120}
   seed:
     owner:
-      username: ${OWNER_USERNAME:owner}
-      password: ${OWNER_PASSWORD:change_me}
-      full-name: ${OWNER_FULL_NAME:Gym Owner}
-      phone: ${OWNER_PHONE:}
-      email: ${OWNER_EMAIL:}
+      email: ${OWNER_EMAIL:owner@gymduongdouble.local}
+      password: ${OWNER_PASSWORD:ChangeMe@2026}
+      full-name: ${OWNER_FULL_NAME:Đoàn Thế Tín}
+      phone: ${OWNER_PHONE:0965193907}
+    demo:
+      enabled: ${DEMO_SEED_ENABLED:true}
   cors:
     allowed-origins:
       - http://localhost:5173
+      - http://localhost:5174
       - http://localhost:3000
 
 logging:

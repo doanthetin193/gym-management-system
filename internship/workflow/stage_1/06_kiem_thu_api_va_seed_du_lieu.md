@@ -10,7 +10,7 @@ Tài liệu này ghi chú chi tiết toàn bộ cơ chế Khởi tạo dữ li�
    - Khi triển khai ứng dụng lên môi trường mới, `DataInitializer` (`ApplicationRunner`) tự động nạp các Role (`OWNER`, `PT`, `MEMBER`), tài khoản Chủ phòng (`owner / change_me`), 17 danh mục tài chính và tham số hệ thống.
    - Cơ chế bất biến (Idempotent): Chạy nhiều lần / khởi động lại server không bao giờ bị lỗi trùng lặp dữ liệu.
 2. **Bảo mật Chống dò tài khoản (Username Enumeration Prevention):**
-   - Cả hai trường hợp (sai username hoặc sai password) đều trả về cùng một mã lỗi: `401 BAD_CREDENTIALS` kèm thông báo: *"Tên đăng nhập hoặc mật khẩu không đúng."*
+   - Cả hai trường hợp (Sai email hoặc sai password) đều trả về cùng một mã lỗi: `401 BAD_CREDENTIALS` kèm thông báo: *"Tên đăng nhập hoặc mật khẩu không đúng."*
 3. **Kiểm thử Toàn diện 36/36 Kịch bản (Smoke & Edge Cases Testing):**
    - Kiểm tra trọn vẹn cả Luồng Thành công (Happy Path) và mọi Luồng Ngoại lệ (Validation 400, Unauthorized 401, Forbidden 403, Not Found 404, Conflict 409).
 
@@ -73,8 +73,8 @@ List<Member> members = StringUtils.hasText(keyword)
 | **Hệ thống** | `GET /v1/health` (Public) | `200 OK` (`{"status": "UP"}`) | ✅ Pass |
 | **Bảo mật** | Gọi API không kèm Token | `401 UNAUTHORIZED` | ✅ Pass |
 | **Bảo mật** | Đăng nhập sai mật khẩu | `401 BAD_CREDENTIALS` | ✅ Pass |
-| **Bảo mật** | Đăng nhập sai username | `401 BAD_CREDENTIALS` | ✅ Pass |
-| **Bảo mật** | Đăng nhập đúng `owner/change_me` | `200 OK` (Nhận Token) | ✅ Pass |
+| **Bảo mật** | Đăng nhập Sai email | `401 BAD_CREDENTIALS` | ✅ Pass |
+| **Bảo mật** | Đăng nhập đúng `owner@gymduongdouble.local/change_me` | `200 OK` (Nhận Token) | ✅ Pass |
 | **Bảo mật** | `GET /v1/auth/me` với Token | `200 OK` (Profile Owner) | ✅ Pass |
 | **Bảo mật** | Gửi Token giả mạo / hết hạn | `401 UNAUTHORIZED` | ✅ Pass |
 | **Gói tập** | Tạo gói hợp lệ (Tự tập, PT, Giáo án) | `201 CREATED` | ✅ Pass |
@@ -102,3 +102,4 @@ List<Member> members = StringUtils.hasText(keyword)
 | **Idempotency** | Thiết kế hàm sao cho dù chạy 1 lần hay 100 lần thì trạng thái CSDL cuối cùng vẫn như nhau, không sinh lỗi trùng lặp. |
 | **Username Enumeration Defense** | Nguyên tắc bảo mật giấu kín sự tồn tại của tài khoản bằng cách trả về thông báo lỗi chung khi đăng nhập thất bại. |
 | **End-to-End Regression Suite** | Bộ kịch bản `.http` lưu trong source code giúp cả team chạy kiểm thử hồi quy toàn diện bất kỳ lúc nào mà không cần phụ thuộc cấu hình ngoài. |
+

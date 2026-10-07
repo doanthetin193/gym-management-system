@@ -25,8 +25,12 @@ public class JwtService {
     private final ObjectMapper objectMapper;
 
     public String generateAccessToken(AuthenticatedUser user) {
+        return generateAccessToken(user, properties.accessTokenMinutes());
+    }
+
+    public String generateAccessToken(AuthenticatedUser user, long expirationMinutes) {
         Instant now = Instant.now();
-        Instant expiresAt = now.plusSeconds(properties.accessTokenMinutes() * 60);
+        Instant expiresAt = now.plusSeconds(expirationMinutes * 60);
 
         Map<String, Object> header = Map.of(
             "alg", "HS256",
@@ -46,7 +50,7 @@ public class JwtService {
         return headerPart + "." + payloadPart + "." + signaturePart;
     }
 
-    public String extractUsername(String token) {
+    public String extractEmail(String token) {
         Map<String, Object> claims = parseAndValidate(token);
         return claims.get("sub").toString();
     }

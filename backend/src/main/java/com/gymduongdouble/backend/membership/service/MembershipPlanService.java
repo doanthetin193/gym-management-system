@@ -2,6 +2,7 @@ package com.gymduongdouble.backend.membership.service;
 
 import com.gymduongdouble.backend.common.enums.ContentAccessLevel;
 import com.gymduongdouble.backend.common.exception.BadRequestException;
+import com.gymduongdouble.backend.common.exception.ResourceNotFoundException;
 import com.gymduongdouble.backend.membership.domain.MembershipPlan;
 import com.gymduongdouble.backend.membership.repository.MembershipPlanRepository;
 import com.gymduongdouble.backend.membership.web.dto.MembershipPlanRequest;
@@ -40,10 +41,25 @@ public class MembershipPlanService {
     }
 
     @Transactional(readOnly = true)
+    public List<MembershipPlanResponse> listAll() {
+        return membershipPlanRepository.findAllByOrderByNameAsc().stream()
+            .map(MembershipPlanResponse::from)
+            .toList();
+    }
+
+    @Transactional(readOnly = true)
     public List<MembershipPlanResponse> listActive() {
         return membershipPlanRepository.findByActiveTrueOrderByNameAsc().stream()
             .map(MembershipPlanResponse::from)
             .toList();
+    }
+
+    @Transactional
+    public MembershipPlanResponse updateActive(Long id, boolean active) {
+        MembershipPlan plan = membershipPlanRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy gói tập."));
+        plan.setActive(active);
+        return MembershipPlanResponse.from(plan);
     }
 
     private void validatePlanShape(MembershipPlanRequest request) {

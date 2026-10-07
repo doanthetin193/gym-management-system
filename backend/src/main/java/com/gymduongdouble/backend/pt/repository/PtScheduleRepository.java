@@ -7,4 +7,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface PtScheduleRepository extends JpaRepository<PtSchedule, Long> {
     List<PtSchedule> findByPtUserIdAndScheduleDateBetween(Long ptUserId, LocalDate startDate, LocalDate endDate);
+    List<PtSchedule> findByScheduleDateBetween(LocalDate startDate, LocalDate endDate);
+    List<PtSchedule> findByMemberIdOrderByScheduleDateDesc(Long memberId);
 }

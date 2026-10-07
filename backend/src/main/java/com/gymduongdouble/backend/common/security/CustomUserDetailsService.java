@@ -16,8 +16,10 @@ public class CustomUserDetailsService implements UserDetailsService {
 
     @Override
     @Transactional(readOnly = true)
-    public UserDetails loadUserByUsername(String username) {
-        return userRepository.findByUsername(username)
+    public UserDetails loadUserByUsername(String identifier) {
+        String cleanIdentifier = identifier == null ? "" : identifier.trim();
+        return userRepository.findByEmail(cleanIdentifier)
+            .or(() -> userRepository.findByPhone(cleanIdentifier))
             .map(AuthenticatedUser::new)
             .orElseThrow(() -> new UsernameNotFoundException("Không tìm thấy tài khoản."));
     }

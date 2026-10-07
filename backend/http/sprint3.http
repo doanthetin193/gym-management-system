@@ -1,0 +1,149 @@
+# ==============================================================================
+# GYM DUONG DOUBLE - SPRINT 3 API TEST SCENARIO
+# ==============================================================================
+# Pháº¡m vi:
+# - Tra cá»©u cÃ´ng ná»£: GET /v1/debts
+# - Láº­p phiáº¿u thu: POST /v1/payments
+# - Tra cá»©u lá»‹ch sá»­ thanh toÃ¡n: GET /v1/payments
+# - Thanh toÃ¡n tá»«ng pháº§n, thanh toÃ¡n toÃ n pháº§n, lá»—i thu vÆ°á»£t sá»‘ tiá»n cÃ²n ná»£
+# ==============================================================================
+
+@baseUrl = http://localhost:8080/api
+@accessToken = PASTE_ACCESS_TOKEN_HERE
+
+@uniqueSuffix = 0928001
+@planId = PASTE_PLAN_ID_HERE
+@memberId = PASTE_MEMBER_ID_HERE
+@membershipId = PASTE_MEMBERSHIP_ID_HERE
+@debtRecordId = PASTE_DEBT_RECORD_ID_HERE
+
+
+### 01. Login OWNER - copy data.accessToken vÃ o biáº¿n accessToken
+POST {{baseUrl}}/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "owner@gymduongdouble.local",
+  "password": "ChangeMe@2026"
+}
+
+
+### 02. Táº¡o gÃ³i test cÃ³ phÃ¡t sinh cÃ´ng ná»£
+POST {{baseUrl}}/v1/membership-plans
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "name": "Sprint 3 gÃ³i tá»± táº­p {{uniqueSuffix}}",
+  "planType": "SELF_TRAINING",
+  "durationDays": 30,
+  "defaultPrice": 900000,
+  "contentAccessLevel": "BASIC",
+  "active": true
+}
+
+
+### 03. Táº¡o há»™i viÃªn test
+POST {{baseUrl}}/v1/members
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "fullName": "Sprint 3 Member {{uniqueSuffix}}",
+  "phone": "097{{uniqueSuffix}}",
+  "source": "WALK_IN"
+}
+
+
+### 04. ÄÄƒng kÃ½ gÃ³i cho há»™i viÃªn - táº¡o DebtRecord 900000
+POST {{baseUrl}}/v1/members/{{memberId}}/memberships
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "planId": {{planId}},
+  "startDate": "2026-09-28",
+  "discountAmount": 0,
+  "note": "GÃ³i test Sprint 3"
+}
+
+
+### 05. Tra cá»©u cÃ´ng ná»£ theo há»™i viÃªn - copy data[0].id vÃ o debtRecordId
+GET {{baseUrl}}/v1/debts?memberId={{memberId}}&status=OPEN
+Authorization: Bearer {{accessToken}}
+
+
+### 06. Thanh toÃ¡n tá»«ng pháº§n 300000 - ká»³ vá»ng DebtRecord cÃ²n 600000
+POST {{baseUrl}}/v1/payments
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "memberId": {{memberId}},
+  "debtRecordId": {{debtRecordId}},
+  "amount": 300000,
+  "paymentMethod": "CASH",
+  "note": "Thu tiá»n máº·t Ä‘á»£t 1"
+}
+
+
+### 07. Kiá»ƒm tra cÃ´ng ná»£ cÃ²n má»Ÿ sau tráº£ gÃ³p
+GET {{baseUrl}}/v1/debts?memberId={{memberId}}&status=OPEN
+Authorization: Bearer {{accessToken}}
+
+
+### 08. Thanh toÃ¡n pháº§n cÃ²n láº¡i 600000 - ká»³ vá»ng DebtRecord chuyá»ƒn PAID
+POST {{baseUrl}}/v1/payments
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "memberId": {{memberId}},
+  "debtRecordId": {{debtRecordId}},
+  "amount": 600000,
+  "paymentMethod": "BANK_TRANSFER",
+  "note": "Chuyá»ƒn khoáº£n pháº§n cÃ²n láº¡i"
+}
+
+
+### 09. Kiá»ƒm tra cÃ´ng ná»£ Ä‘Ã£ thanh toÃ¡n
+GET {{baseUrl}}/v1/debts?memberId={{memberId}}&status=PAID
+Authorization: Bearer {{accessToken}}
+
+
+### 10. Tra cá»©u lá»‹ch sá»­ thanh toÃ¡n theo há»™i viÃªn
+GET {{baseUrl}}/v1/payments?memberId={{memberId}}
+Authorization: Bearer {{accessToken}}
+
+
+### 11. Tra cá»©u lá»‹ch sá»­ thanh toÃ¡n theo ngÃ y vÃ  phÆ°Æ¡ng thá»©c
+GET {{baseUrl}}/v1/payments?fromDate=2026-09-01&toDate=2026-09-30&paymentMethod=BANK_TRANSFER
+Authorization: Bearer {{accessToken}}
+
+
+### 12. Lá»—i: thanh toÃ¡n vÆ°á»£t sá»‘ tiá»n cÃ²n ná»£ - ká»³ vá»ng 400 BAD_REQUEST
+POST {{baseUrl}}/v1/payments
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "memberId": {{memberId}},
+  "debtRecordId": {{debtRecordId}},
+  "amount": 100000,
+  "paymentMethod": "CASH",
+  "note": "KhÃ´ng Ä‘Æ°á»£c thu thÃªm khi ná»£ Ä‘Ã£ táº¥t toÃ¡n"
+}
+
+
+### 13. Lá»—i: thiáº¿u phÆ°Æ¡ng thá»©c thanh toÃ¡n - ká»³ vá»ng 400 VALIDATION_ERROR
+POST {{baseUrl}}/v1/payments
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "memberId": {{memberId}},
+  "debtRecordId": {{debtRecordId}},
+  "amount": 100000
+}
+
+

@@ -71,17 +71,19 @@ export function MembershipPlanFormModal({ submitting, error, onClose, onSubmit }
   }
 
   return (
-    <div className="fixed inset-0 z-40 grid place-items-center bg-black/45 px-4 py-6">
-      <div className="w-full max-w-3xl rounded-[8px] border border-[var(--line)] bg-[var(--surface)] shadow-2xl">
-        <div className="flex items-center justify-between border-b border-[var(--line)] px-5 py-4">
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-2xl rounded-2xl border border-[var(--line)] bg-[var(--surface)] shadow-2xl">
+        <div className="flex items-center justify-between border-b border-[var(--line)] px-6 py-4">
           <div>
-            <p className="text-xs font-bold uppercase text-[var(--text-muted)]">Bảng giá</p>
-            <h2 className="mt-1 text-lg font-black text-[var(--text-strong)]">Thêm gói tập</h2>
+            <span className="text-[11px] font-black uppercase tracking-wider text-amber-500">
+              Biểu Phí Niêm Yết
+            </span>
+            <h2 className="text-xl font-black text-[var(--text-strong)]">Thêm gói tập mới</h2>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="inline-flex size-9 items-center justify-center rounded-[8px] border border-[var(--line)] text-[var(--text-muted)] transition hover:text-[var(--text-strong)]"
+            className="grid size-9 place-items-center rounded-xl border border-[var(--line)] text-[var(--text-muted)] transition hover:border-[var(--brand-yellow)] hover:text-[var(--text-strong)]"
             aria-label="Đóng"
             title="Đóng"
           >
@@ -89,33 +91,34 @@ export function MembershipPlanFormModal({ submitting, error, onClose, onSubmit }
           </button>
         </div>
 
-        <form className="space-y-4 p-5" onSubmit={handleSubmit}>
+        <form className="space-y-4 p-6" onSubmit={handleSubmit}>
           {error ? (
-            <div className="rounded-[8px] border border-[var(--danger-line)] bg-[var(--danger-soft)] px-3 py-2 text-sm font-semibold text-[var(--danger-text)]">
+            <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3.5 text-xs font-semibold text-red-400">
               {error}
             </div>
           ) : null}
 
-          <div className="grid gap-4 md:grid-cols-2">
-            <label className="block">
-              <span className="text-sm font-bold text-[var(--text-strong)]">Tên gói</span>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="block sm:col-span-2">
+              <span className="text-xs font-bold text-[var(--text-strong)]">Tên gói tập *</span>
               <input
                 value={form.name}
                 onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
-                className="mt-2 h-10 w-full rounded-[8px] border border-[var(--line)] bg-[var(--input-bg)] px-3 text-sm font-semibold outline-none focus:border-[var(--brand-blue)]"
+                placeholder="VD: Tự Tập - Full 1 Tháng, Tăng Cơ Giảm Mỡ (PT Chuẩn)..."
+                className="mt-1.5 h-10 w-full rounded-xl border border-[var(--line)] bg-[var(--input-bg)] px-3 text-xs font-semibold text-[var(--text-strong)] outline-none transition focus:border-amber-500 focus:ring-1 focus:ring-amber-500/40"
                 required
               />
             </label>
 
             <label className="block">
-              <span className="text-sm font-bold text-[var(--text-strong)]">Loại gói</span>
+              <span className="text-xs font-bold text-[var(--text-strong)]">Loại chương trình *</span>
               <select
                 value={form.planType}
                 onChange={(event) => setForm((current) => ({ ...current, planType: event.target.value as PlanType }))}
-                className="mt-2 h-10 w-full rounded-[8px] border border-[var(--line)] bg-[var(--input-bg)] px-3 text-sm font-semibold outline-none focus:border-[var(--brand-blue)]"
+                className="mt-1.5 h-10 w-full rounded-xl border border-[var(--line)] bg-[var(--surface-muted)] px-3 text-xs font-semibold text-[var(--text-strong)] outline-none transition focus:border-amber-500"
               >
                 {planTypeOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
+                  <option key={option.value} value={option.value} className="bg-[var(--surface)] text-[var(--text-strong)]">
                     {option.label}
                   </option>
                 ))}
@@ -123,136 +126,134 @@ export function MembershipPlanFormModal({ submitting, error, onClose, onSubmit }
             </label>
 
             <label className="block">
-              <span className="text-sm font-bold text-[var(--text-strong)]">Thời hạn ngày</span>
+              <span className="text-xs font-bold text-[var(--text-strong)]">Thời hạn sử dụng (ngày) *</span>
               <input
                 type="number"
                 min={1}
                 value={form.durationDays}
                 onChange={(event) => setForm((current) => ({ ...current, durationDays: event.target.value }))}
-                className="mt-2 h-10 w-full rounded-[8px] border border-[var(--line)] bg-[var(--input-bg)] px-3 text-sm font-semibold outline-none focus:border-[var(--brand-blue)]"
+                className="mt-1.5 h-10 w-full rounded-xl border border-[var(--line)] bg-[var(--input-bg)] px-3 text-xs font-semibold text-[var(--text-strong)] outline-none transition focus:border-amber-500"
+                required
               />
             </label>
 
             <label className="block">
-              <span className="text-sm font-bold text-[var(--text-strong)]">Giá mặc định</span>
+              <span className="text-xs font-bold text-[var(--text-strong)]">Đơn giá niêm yết (VNĐ) *</span>
               <input
                 type="number"
                 min={0}
+                step={10000}
                 value={form.defaultPrice}
                 onChange={(event) => setForm((current) => ({ ...current, defaultPrice: event.target.value }))}
-                className="mt-2 h-10 w-full rounded-[8px] border border-[var(--line)] bg-[var(--input-bg)] px-3 text-sm font-semibold outline-none focus:border-[var(--brand-blue)]"
+                placeholder="VD: 300000, 6000000..."
+                className="mt-1.5 h-10 w-full rounded-xl border border-[var(--line)] bg-[var(--input-bg)] px-3 text-xs font-semibold text-[var(--text-strong)] outline-none transition focus:border-amber-500"
+                required
               />
+            </label>
+
+            <label className="block">
+              <span className="text-xs font-bold text-[var(--text-strong)]">Quyền truy cập nội dung</span>
+              <select
+                value={form.contentAccessLevel}
+                onChange={(event) => setForm((current) => ({ ...current, contentAccessLevel: event.target.value as ContentAccessLevel }))}
+                className="mt-1.5 h-10 w-full rounded-xl border border-[var(--line)] bg-[var(--surface-muted)] px-3 text-xs font-semibold text-[var(--text-strong)] outline-none transition focus:border-amber-500"
+              >
+                <option value="NONE" className="bg-[var(--surface)] text-[var(--text-strong)]">Tiêu chuẩn (NONE)</option>
+                <option value="BASIC" className="bg-[var(--surface)] text-[var(--text-strong)]">Cơ bản (Sổ tập/Tài liệu)</option>
+                <option value="PREMIUM" className="bg-[var(--surface)] text-[var(--text-strong)]">VIP Premium</option>
+              </select>
             </label>
 
             {form.planType === 'PT' ? (
               <>
                 <label className="block">
-                  <span className="text-sm font-bold text-[var(--text-strong)]">Cấp PT</span>
+                  <span className="text-xs font-bold text-[var(--text-strong)]">Phân cấp HLV</span>
                   <select
                     value={form.ptLevel}
                     onChange={(event) => setForm((current) => ({ ...current, ptLevel: event.target.value as '' | PtLevel }))}
-                    className="mt-2 h-10 w-full rounded-[8px] border border-[var(--line)] bg-[var(--input-bg)] px-3 text-sm font-semibold outline-none focus:border-[var(--brand-blue)]"
+                    className="mt-1.5 h-10 w-full rounded-xl border border-[var(--line)] bg-[var(--surface-muted)] px-3 text-xs font-semibold text-[var(--text-strong)] outline-none transition focus:border-amber-500"
                   >
-                    <option value="">Chọn cấp PT</option>
-                    <option value="MAIN">PT chính</option>
-                    <option value="NEW">PT mới</option>
+                    <option value="" className="bg-[var(--surface)] text-[var(--text-strong)]">Chọn cấp HLV</option>
+                    <option value="MAIN" className="bg-[var(--surface)] text-[var(--text-strong)]">PT Chuẩn (&gt;3 năm/VĐV)</option>
+                    <option value="NEW" className="bg-[var(--surface)] text-[var(--text-strong)]">PT Mới ra nghề (Junior)</option>
                   </select>
                 </label>
+
                 <label className="block">
-                  <span className="text-sm font-bold text-[var(--text-strong)]">Số buổi PT</span>
+                  <span className="text-xs font-bold text-[var(--text-strong)]">Số buổi kèm 1-1 (PT)</span>
                   <input
                     type="number"
                     min={1}
                     value={form.ptSessionCount}
                     onChange={(event) => setForm((current) => ({ ...current, ptSessionCount: event.target.value }))}
-                    className="mt-2 h-10 w-full rounded-[8px] border border-[var(--line)] bg-[var(--input-bg)] px-3 text-sm font-semibold outline-none focus:border-[var(--brand-blue)]"
+                    placeholder="VD: 12, 20, 40, 60"
+                    className="mt-1.5 h-10 w-full rounded-xl border border-[var(--line)] bg-[var(--input-bg)] px-3 text-xs font-semibold text-[var(--text-strong)] outline-none transition focus:border-amber-500"
                   />
                 </label>
+
                 <label className="block">
-                  <span className="text-sm font-bold text-[var(--text-strong)]">Số buổi ôn tập</span>
+                  <span className="text-xs font-bold text-[var(--text-strong)]">Số buổi hướng dẫn / ôn tập</span>
                   <input
                     type="number"
                     min={0}
                     value={form.practiceSessionCount}
                     onChange={(event) => setForm((current) => ({ ...current, practiceSessionCount: event.target.value }))}
-                    className="mt-2 h-10 w-full rounded-[8px] border border-[var(--line)] bg-[var(--input-bg)] px-3 text-sm font-semibold outline-none focus:border-[var(--brand-blue)]"
+                    placeholder="VD: 12, 20, 40, 60"
+                    className="mt-1.5 h-10 w-full rounded-xl border border-[var(--line)] bg-[var(--input-bg)] px-3 text-xs font-semibold text-[var(--text-strong)] outline-none transition focus:border-amber-500"
                   />
                 </label>
               </>
             ) : null}
 
             {form.planType === 'GUIDANCE' ? (
-              <label className="block">
-                <span className="text-sm font-bold text-[var(--text-strong)]">Số buổi giáo án</span>
+              <label className="block sm:col-span-2">
+                <span className="text-xs font-bold text-[var(--text-strong)]">Số buổi trị liệu / hướng dẫn</span>
                 <input
                   type="number"
                   min={1}
                   value={form.guidanceSessionCount}
                   onChange={(event) => setForm((current) => ({ ...current, guidanceSessionCount: event.target.value }))}
-                  className="mt-2 h-10 w-full rounded-[8px] border border-[var(--line)] bg-[var(--input-bg)] px-3 text-sm font-semibold outline-none focus:border-[var(--brand-blue)]"
+                  placeholder="VD: 4 (1 trị liệu + 3 hướng dẫn)..."
+                  className="mt-1.5 h-10 w-full rounded-xl border border-[var(--line)] bg-[var(--input-bg)] px-3 text-xs font-semibold text-[var(--text-strong)] outline-none transition focus:border-amber-500"
                 />
               </label>
             ) : null}
-
-            <label className="block">
-              <span className="text-sm font-bold text-[var(--text-strong)]">Quyền nội dung</span>
-              <select
-                value={form.contentAccessLevel}
-                onChange={(event) => setForm((current) => ({ ...current, contentAccessLevel: event.target.value as ContentAccessLevel }))}
-                className="mt-2 h-10 w-full rounded-[8px] border border-[var(--line)] bg-[var(--input-bg)] px-3 text-sm font-semibold outline-none focus:border-[var(--brand-blue)]"
-              >
-                <option value="NONE">Không</option>
-                <option value="BASIC">Cơ bản</option>
-                <option value="PREMIUM">Premium</option>
-              </select>
-            </label>
-
-            <label className="block">
-              <span className="text-sm font-bold text-[var(--text-strong)]">Tỉ lệ giá</span>
-              <input
-                type="number"
-                min={0}
-                step="0.01"
-                value={form.priceRatio}
-                onChange={(event) => setForm((current) => ({ ...current, priceRatio: event.target.value }))}
-                className="mt-2 h-10 w-full rounded-[8px] border border-[var(--line)] bg-[var(--input-bg)] px-3 text-sm font-semibold outline-none focus:border-[var(--brand-blue)]"
-              />
-            </label>
           </div>
 
           <label className="block">
-            <span className="text-sm font-bold text-[var(--text-strong)]">Mô tả</span>
+            <span className="text-xs font-bold text-[var(--text-strong)]">Mô tả quyền lợi & đặc trưng gói</span>
             <textarea
               value={form.description}
               onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))}
-              className="mt-2 min-h-24 w-full resize-y rounded-[8px] border border-[var(--line)] bg-[var(--input-bg)] px-3 py-2 text-sm font-semibold outline-none focus:border-[var(--brand-blue)]"
+              placeholder="Quyền lợi chính của gói tập..."
+              className="mt-1.5 min-h-20 w-full resize-y rounded-xl border border-[var(--line)] bg-[var(--input-bg)] px-3 py-2 text-xs font-semibold text-[var(--text-strong)] outline-none transition focus:border-amber-500"
             />
           </label>
 
-          <label className="flex items-center gap-3 rounded-[8px] bg-[var(--surface-muted)] px-3 py-2 text-sm font-bold text-[var(--text)]">
+          <label className="flex items-center gap-2.5 rounded-xl border border-[var(--line)] bg-[var(--surface-muted)] px-3.5 py-2.5 text-xs font-bold text-[var(--text)]">
             <input
               type="checkbox"
               checked={form.active}
               onChange={(event) => setForm((current) => ({ ...current, active: event.target.checked }))}
-              className="size-4"
+              className="size-4 accent-amber-500"
             />
-            Đang bán gói này
+            Đang niêm yết bán gói này (Hội viên có thể đăng ký)
           </label>
 
-          <div className="flex justify-end gap-2 border-t border-[var(--line)] pt-4">
+          <div className="flex justify-end gap-2.5 border-t border-[var(--line)] pt-4">
             <button
               type="button"
               onClick={onClose}
-              className="h-10 rounded-[8px] border border-[var(--line)] px-4 text-sm font-bold text-[var(--text)]"
+              className="h-10 rounded-xl border border-[var(--line)] px-4 text-xs font-bold text-[var(--text)] transition hover:bg-[var(--surface-muted)]"
             >
               Hủy
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="h-10 rounded-[8px] bg-[var(--brand-yellow)] px-4 text-sm font-black text-black transition hover:brightness-95 disabled:opacity-70"
+              className="h-10 rounded-xl bg-gradient-to-r from-red-600 to-amber-600 px-5 text-xs font-black text-white shadow-md transition hover:brightness-105 disabled:opacity-60"
             >
-              {submitting ? 'Đang lưu...' : 'Thêm gói'}
+              {submitting ? 'Đang lưu...' : 'Thêm gói tập'}
             </button>
           </div>
         </form>

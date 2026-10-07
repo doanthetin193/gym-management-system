@@ -1,4 +1,4 @@
-﻿# 📦 CHẶNG 1: CHUẨN HÓA DỮ LIỆU PHẢN HỒI & XỬ LÝ NGOẠI LỆ TOÀN CỤC
+# 📦 CHẶNG 1: CHUẨN HÓA DỮ LIỆU PHẢN HỒI & XỬ LÝ NGOẠI LỆ TOÀN CỤC
 
 Tài liệu này tổng hợp toàn bộ kiến trúc chuẩn hóa API Response và cơ chế xử lý ngoại lệ tập trung (Global Exception Handling) của dự án **Gym Dương Double**.
 
@@ -140,9 +140,9 @@ Sử dụng `@RestControllerAdvice` để tự động chặn mọi Exception ph
 | `MethodArgumentNotValidException` | Vi phạm `@Valid` trên Request DTO | `400 Bad Request` | `VALIDATION_FAILED` |
 | `BadRequestException` | Nghiệp vụ không hợp lệ (ví dụ: gói PT nhưng không nhập số buổi) | `400 Bad Request` | `BAD_REQUEST` |
 | `ResourceNotFoundException` | Không tìm thấy ID trong DB (Hội viên, Gói tập...) | `404 Not Found` | `NOT_FOUND` |
-| `ConflictException` | Dữ liệu trùng lặp (ví dụ: trùng username, số điện thoại) | `409 Conflict` | `CONFLICT` |
-| `BadCredentialsException` | Sai username hoặc mật khẩu khi đăng nhập | `401 Unauthorized` | `UNAUTHORIZED` |
-| `AccessDeniedException` | Không đủ quyền hạn truy cập API (ví dụ: STAFF gọi API của OWNER) | `403 Forbidden` | `FORBIDDEN` |
+| `ConflictException` | Dữ liệu trùng lặp (ví dụ: trùng email, số điện thoại) | `409 Conflict` | `CONFLICT` |
+| `BadCredentialsException` | Sai email hoặc mật khẩu khi đăng nhập | `401 Unauthorized` | `UNAUTHORIZED` |
+| `AccessDeniedException` | Không đủ quyền hạn truy cập API (ví dụ: PT gọi API chỉ dành cho OWNER) | `403 Forbidden` | `FORBIDDEN` |
 | `Exception` (Mọi lỗi khác) | Lỗi hệ thống bất ngờ (NPE, SQL error...) | `500 Internal Error` | `INTERNAL_SERVER_ERROR` |
 
 ---
@@ -152,3 +152,4 @@ Sử dụng `@RestControllerAdvice` để tự động chặn mọi Exception ph
 1. **Không bao giờ trả về trực tiếp Entity:** Luôn chuyển sang DTO và bọc trong `ApiResponse<T>`.
 2. **Không nuốt lỗi (Don't swallow exceptions):** Thay vì viết `try { ... } catch (Exception e) { return null; }`, hãy để Service tự nhiên quăng Custom Exception (`ResourceNotFoundException`, `BadRequestException`), `GlobalExceptionHandler` sẽ lo phần còn lại.
 3. **Immutability (Tính bất biến):** Sử dụng Java `record` giúp mã nguồn ngắn gọn, an toàn trên môi trường đa luồng (Multi-threading).
+

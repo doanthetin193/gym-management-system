@@ -28,7 +28,7 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 @Setter
 @NoArgsConstructor
 @Entity
-@Table(name = "payments")
+@Table(name = "payment_transactions")
 @EntityListeners(AuditingEntityListener.class)
 public class Payment extends BaseEntity {
 
@@ -39,6 +39,10 @@ public class Payment extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "membership_id")
     private MemberMembership membership;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "debt_record_id")
+    private DebtRecord debtRecord;
 
     @Column(name = "payment_date", nullable = false)
     private LocalDate paymentDate;

@@ -1,22 +1,22 @@
-# CHẶNG 09: QUẢN LÝ PHIÊN ĐĂNG NHẬP & AUTH CONTEXT
+﻿# CHáº¶NG 09: QUáº¢N LÃ PHIÃŠN ÄÄ‚NG NHáº¬P & AUTH CONTEXT
 
-Tài liệu này ghi chú cách frontend quản lý phiên đăng nhập sau khi đã có tầng API client bằng axios interceptor.
+TÃ i liá»‡u nÃ y ghi chÃº cÃ¡ch frontend quáº£n lÃ½ phiÃªn Ä‘Äƒng nháº­p sau khi Ä‘Ã£ cÃ³ táº§ng API client báº±ng axios interceptor.
 
 ---
 
-## 1. Mục tiêu
+## 1. Má»¥c tiÃªu
 
-1. Lưu thông tin user hiện tại ở cấp toàn cục.
-2. Cho component bất kỳ lấy được `user`, `token`, `login()`, `logout()`.
-3. Khi refresh trang, tự kiểm tra token còn hợp lệ bằng `/v1/auth/me`.
-4. Tránh nháy màn hình login trong lúc đang kiểm tra phiên.
-5. Không truyền token thủ công vào từng API nữa, vì request interceptor đã tự gắn token.
+1. LÆ°u thÃ´ng tin user hiá»‡n táº¡i á»Ÿ cáº¥p toÃ n cá»¥c.
+2. Cho component báº¥t ká»³ láº¥y Ä‘Æ°á»£c `user`, `token`, `login()`, `logout()`.
+3. Khi refresh trang, tá»± kiá»ƒm tra token cÃ²n há»£p lá»‡ báº±ng `/v1/auth/me`.
+4. TrÃ¡nh nhÃ¡y mÃ n hÃ¬nh login trong lÃºc Ä‘ang kiá»ƒm tra phiÃªn.
+5. KhÃ´ng truyá»n token thá»§ cÃ´ng vÃ o tá»«ng API ná»¯a, vÃ¬ request interceptor Ä‘Ã£ tá»± gáº¯n token.
 
 ---
 
 ## 2. AuthContext
 
-File chính: [authContext.ts](file:///d:/gym-management-system/frontend/src/features/auth/context/authContext.ts)
+File chÃ­nh: [authContext.ts](file:///d:/gym-management-system/frontend/src/features/auth/context/authContext.ts)
 
 ```ts
 export type AuthContextValue = {
@@ -28,15 +28,15 @@ export type AuthContextValue = {
 }
 ```
 
-Ý nghĩa:
+Ã nghÄ©a:
 
-| Field | Vai trò |
+| Field | Vai trÃ² |
 | :--- | :--- |
-| `user` | Thông tin người dùng hiện tại. |
-| `token` | JWT token hiện đang lưu trong frontend state. |
-| `bootstrapping` | Cờ cho biết app đang kiểm tra phiên đăng nhập. |
-| `login()` | Gọi API login, lưu token và user. |
-| `logout()` | Xóa token, xóa user, đưa app về trạng thái chưa đăng nhập. |
+| `user` | ThÃ´ng tin ngÆ°á»i dÃ¹ng hiá»‡n táº¡i. |
+| `token` | JWT token hiá»‡n Ä‘ang lÆ°u trong frontend state. |
+| `bootstrapping` | Cá» cho biáº¿t app Ä‘ang kiá»ƒm tra phiÃªn Ä‘Äƒng nháº­p. |
+| `login()` | Gá»i API login, lÆ°u token vÃ  user. |
+| `logout()` | XÃ³a token, xÃ³a user, Ä‘Æ°a app vá» tráº¡ng thÃ¡i chÆ°a Ä‘Äƒng nháº­p. |
 
 Custom hook:
 
@@ -50,15 +50,15 @@ export function useAuth(): AuthContextValue {
 }
 ```
 
-Nhờ `useAuth()`, component không cần truyền props nhiều tầng.
+Nhá» `useAuth()`, component khÃ´ng cáº§n truyá»n props nhiá»u táº§ng.
 
 ---
 
 ## 3. AuthProvider
 
-File chính: [AuthProvider.tsx](file:///d:/gym-management-system/frontend/src/features/auth/context/AuthProvider.tsx)
+File chÃ­nh: [AuthProvider.tsx](file:///d:/gym-management-system/frontend/src/features/auth/context/AuthProvider.tsx)
 
-State chính:
+State chÃ­nh:
 
 ```ts
 const [token, setToken] = useState<string | null>(() => readAccessToken())
@@ -66,19 +66,19 @@ const [user, setUser] = useState<AuthUser | null>(null)
 const [bootstrapping, setBootstrapping] = useState(true)
 ```
 
-Điểm đáng chú ý:
+Äiá»ƒm Ä‘Ã¡ng chÃº Ã½:
 
 ```ts
 useState<string | null>(() => readAccessToken())
 ```
 
-Đây là lazy initializer. Hàm `readAccessToken()` chỉ chạy một lần khi component được tạo, không chạy lại mỗi lần render.
+ÄÃ¢y lÃ  lazy initializer. HÃ m `readAccessToken()` chá»‰ cháº¡y má»™t láº§n khi component Ä‘Æ°á»£c táº¡o, khÃ´ng cháº¡y láº¡i má»—i láº§n render.
 
 ---
 
-## 4. Bootstrap phiên đăng nhập
+## 4. Bootstrap phiÃªn Ä‘Äƒng nháº­p
 
-Khi app mở lần đầu hoặc refresh:
+Khi app má»Ÿ láº§n Ä‘áº§u hoáº·c refresh:
 
 ```ts
 useEffect(() => {
@@ -116,44 +116,44 @@ useEffect(() => {
 }, [token])
 ```
 
-Điểm mới sau khi dùng axios:
+Äiá»ƒm má»›i sau khi dÃ¹ng axios:
 
 ```ts
 const currentUser = await getCurrentUser()
 ```
 
-Không còn:
+KhÃ´ng cÃ²n:
 
 ```ts
 getCurrentUser(token)
 ```
 
-Lý do: request interceptor trong `apiClient.ts` đã tự đọc token từ `authStorage` và gắn header `Authorization`.
+LÃ½ do: request interceptor trong `apiClient.ts` Ä‘Ã£ tá»± Ä‘á»c token tá»« `authStorage` vÃ  gáº¯n header `Authorization`.
 
 ---
 
-## 5. Luồng login
+## 5. Luá»“ng login
 
 ```ts
 login: async (username, password) => {
-  const response = await loginRequest(username, password)
+  const response = await loginRequest(email, password)
   saveAccessToken(response.accessToken)
   setToken(response.accessToken)
   setUser(response.user)
 }
 ```
 
-Luồng xử lý:
+Luá»“ng xá»­ lÃ½:
 
-1. Gọi `POST /v1/auth/login`.
+1. Gá»i `POST /v1/auth/login`.
 2. Response interceptor unbox `ApiResponse<LoginResponse>`.
-3. `loginRequest()` trả về trực tiếp `LoginResponse`.
-4. Lưu `accessToken` vào `localStorage`.
-5. Cập nhật `token` và `user` trong React state.
+3. `loginRequest()` tráº£ vá» trá»±c tiáº¿p `LoginResponse`.
+4. LÆ°u `accessToken` vÃ o `localStorage`.
+5. Cáº­p nháº­t `token` vÃ  `user` trong React state.
 
 ---
 
-## 6. Luồng logout
+## 6. Luá»“ng logout
 
 ```ts
 logout: () => {
@@ -165,31 +165,32 @@ logout: () => {
 
 Sau khi logout:
 
-1. Token bị xóa khỏi `localStorage`.
-2. User trong context bị xóa.
-3. `ProtectedRoute` thấy không có user nên redirect về `/login`.
+1. Token bá»‹ xÃ³a khá»i `localStorage`.
+2. User trong context bá»‹ xÃ³a.
+3. `ProtectedRoute` tháº¥y khÃ´ng cÃ³ user nÃªn redirect vá» `/login`.
 
 ---
 
-## 7. Vai trò của lỗi 401
+## 7. Vai trÃ² cá»§a lá»—i 401
 
-Nếu một request trả về `401 Unauthorized`, response interceptor trong `apiClient.ts` sẽ gọi:
+Náº¿u má»™t request tráº£ vá» `401 Unauthorized`, response interceptor trong `apiClient.ts` sáº½ gá»i:
 
 ```ts
 clearAccessToken()
 ```
 
-Điều này giúp tránh giữ token hết hạn trong trình duyệt. Với các luồng quan trọng, `AuthProvider` hoặc component gọi API sẽ bắt lỗi và cập nhật UI tương ứng.
+Äiá»u nÃ y giÃºp trÃ¡nh giá»¯ token háº¿t háº¡n trong trÃ¬nh duyá»‡t. Vá»›i cÃ¡c luá»“ng quan trá»ng, `AuthProvider` hoáº·c component gá»i API sáº½ báº¯t lá»—i vÃ  cáº­p nháº­t UI tÆ°Æ¡ng á»©ng.
 
 ---
 
-## 8. Ghi nhớ nhanh
+## 8. Ghi nhá»› nhanh
 
-| Khái niệm | Ý nghĩa |
+| KhÃ¡i niá»‡m | Ã nghÄ©a |
 | :--- | :--- |
-| `AuthProvider` | Nơi giữ trạng thái đăng nhập toàn cục. |
-| `useAuth()` | Hook để component lấy user hoặc gọi login/logout. |
-| `bootstrapping` | Chống nháy màn hình khi app đang kiểm tra token. |
-| `getCurrentUser()` | Không cần truyền token vì axios interceptor đã tự gắn. |
-| `cancelled = true` | Tránh setState sau khi component đã unmount. |
-| `useMemo` | Giữ object context ổn định hơn, giảm render không cần thiết. |
+| `AuthProvider` | NÆ¡i giá»¯ tráº¡ng thÃ¡i Ä‘Äƒng nháº­p toÃ n cá»¥c. |
+| `useAuth()` | Hook Ä‘á»ƒ component láº¥y user hoáº·c gá»i login/logout. |
+| `bootstrapping` | Chá»‘ng nhÃ¡y mÃ n hÃ¬nh khi app Ä‘ang kiá»ƒm tra token. |
+| `getCurrentUser()` | KhÃ´ng cáº§n truyá»n token vÃ¬ axios interceptor Ä‘Ã£ tá»± gáº¯n. |
+| `cancelled = true` | TrÃ¡nh setState sau khi component Ä‘Ã£ unmount. |
+| `useMemo` | Giá»¯ object context á»•n Ä‘á»‹nh hÆ¡n, giáº£m render khÃ´ng cáº§n thiáº¿t. |
+

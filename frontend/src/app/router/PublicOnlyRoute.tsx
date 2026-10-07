@@ -1,4 +1,5 @@
 import { Navigate, Outlet } from 'react-router-dom'
+import { defaultPathForUser } from '../access'
 import { useAuth } from '../../features/auth/context/authContext'
 
 export function PublicOnlyRoute() {
@@ -9,7 +10,7 @@ export function PublicOnlyRoute() {
   }
 
   if (user) {
-    return <Navigate to="/" replace />
+    return <Navigate to={defaultPathForUser(user)} replace />
   }
 
   return <Outlet />

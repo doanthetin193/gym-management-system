@@ -1,27 +1,28 @@
-# 📚 TỔNG QUAN GIAI ĐOẠN 1: NỀN TẢNG KIẾN TRÚC & BẢO MẬT BACKEND
+﻿# ðŸ“š Tá»”NG QUAN GIAI ÄOáº N 1: Ná»€N Táº¢NG KIáº¾N TRÃšC & Báº¢O Máº¬T BACKEND
 
-Thư mục này chứa toàn bộ ghi chú học tập, phân tích kiến trúc chuyên sâu và sơ đồ luồng dữ liệu (workflow) của **Giai đoạn 1** thuộc dự án **Gym Dương Double**.
+ThÆ° má»¥c nÃ y chá»©a toÃ n bá»™ ghi chÃº há»c táº­p, phÃ¢n tÃ­ch kiáº¿n trÃºc chuyÃªn sÃ¢u vÃ  sÆ¡ Ä‘á»“ luá»“ng dá»¯ liá»‡u (workflow) cá»§a **Giai Ä‘oáº¡n 1** thuá»™c dá»± Ã¡n **Gym DÆ°Æ¡ng Double**.
 
 ---
 
-## 📑 Danh mục Tài liệu Học tập & Review
+## ðŸ“‘ Danh má»¥c TÃ i liá»‡u Há»c táº­p & Review
 
-| Thứ tự | Chủ đề / Chặng | File tài liệu | Trạng thái | Nội dung chính |
+| Thá»© tá»± | Chá»§ Ä‘á» / Cháº·ng | File tÃ i liá»‡u | Tráº¡ng thÃ¡i | Ná»™i dung chÃ­nh |
 | :---: | :--- | :--- | :---: | :--- |
-| **01** | **Chuẩn hóa Response & Xử lý Ngoại lệ** | [01_chuan_hoa_response_va_xu_ly_ngoai_le.md](./01_chuan_hoa_response_va_xu_ly_ngoai_le.md) | ✅ Hoàn thành | Cấu trúc `ApiResponse<T>`, `ApiError`, `PageResponse<T>`, `@RestControllerAdvice` và cơ chế gom lỗi tự động |
-| **02** | **Bảo mật, Stateless JWT & Phân quyền** | [02_kien_truc_bao_mat_jwt_va_xac_thuc.md](./02_kien_truc_bao_mat_jwt_va_xac_thuc.md) | ✅ Hoàn thành | Thuật toán HMAC-SHA256, Constant-Time compare, `AuthenticatedUser`, `JwtAuthenticationFilter`, `SecurityContextHolder` |
-| **03** | **Quản lý Gói tập (Membership Plans)** | [03_quan_ly_goi_tap_membership_plans.md](./03_quan_ly_goi_tap_membership_plans.md) | ✅ Hoàn thành | Nghiệp vụ `MembershipPlan`, Shape validation, `@Transactional(readOnly = true)`, `BigDecimal.ZERO`, `@PreAuthorize` |
-| **04** | **Quản lý Hội viên (Member Management)** | [04_quan_ly_hoi_vien_member_management.md](./04_quan_ly_hoi_vien_member_management.md) | ✅ Hoàn thành | Nghiệp vụ `Member`, Unique Phone (`ConflictException`), `ChronoUnit.DAYS.between`, Data Composition, `hasRole` convention |
-| **05** | **Đăng ký Gói & Tài chính Thanh toán** | [05_dang_ky_goi_va_dong_bo_tai_chinh.md](./05_dang_ky_goi_va_dong_bo_tai_chinh.md) | ✅ Hoàn thành | Nghiệp vụ `MemberMembership`, tự sinh `DebtRecord`, tự sinh `PtSessionPackage`, gạch nợ `syncMembershipDebt`, sổ cái `FinancialTransaction(INCOME)` |
-| **06** | **Khởi tạo Dữ liệu & Kiểm thử 36/36 API** | [06_kiem_thu_api_va_seed_du_lieu.md](./06_kiem_thu_api_va_seed_du_lieu.md) | ✅ Hoàn thành | Seeding tự động (`DataInitializer`), mã hóa mật khẩu `owner/change_me`, chống lộ username, kiểm thử hồi quy 36/36 kịch bản (`sprint1.http`) |
-| **07** | **Khởi tạo Frontend, Design System & Theme** | [07_khoi_tao_frontend_design_system_va_theme.md](./07_khoi_tao_frontend_design_system_va_theme.md) | ✅ Hoàn thành | Vite + React 19, Tailwind CSS v4, CSS Custom Properties bảng màu thương hiệu Dương Double, Theme Dark/Light tự động |
-| **08** | **Chuẩn hóa Types & API Client Axios** | [08_chuan_hoa_types_va_lop_api_client.md](./08_chuan_hoa_types_va_lop_api_client.md) | ✅ Hoàn thành | Type-safe DTOs, `axios instance`, request interceptor gắn Bearer token, response interceptor unbox `payload.data`, gom lỗi `ApiClientError` |
-| **09** | **Quản lý Phiên Đăng nhập & Auth Context** | [09_quan_ly_phien_dang_nhap_va_auth_context.md](./09_quan_ly_phien_dang_nhap_va_auth_context.md) | ✅ Hoàn thành | React Context API, Custom Hook `useAuth`, `bootstrapping` state chống nhấp nháy màn hình, chống Race Condition `cancelled = true` |
-| **10** | **Định tuyến Router, Route Guards & AppShell** | [10_dinh_tuyen_router_route_guards_va_app_shell.md](./10_dinh_tuyen_router_route_guards_va_app_shell.md) | ✅ Hoàn thành | React Router v7 lồng nhau (`<Outlet />`), `ProtectedRoute`, `PublicOnlyRoute`, Navigation config, Responsive Sidebar & Mobile Drawer |
+| **01** | **Chuáº©n hÃ³a Response & Xá»­ lÃ½ Ngoáº¡i lá»‡** | [01_chuan_hoa_response_va_xu_ly_ngoai_le.md](./01_chuan_hoa_response_va_xu_ly_ngoai_le.md) | âœ… HoÃ n thÃ nh | Cáº¥u trÃºc `ApiResponse<T>`, `ApiError`, `PageResponse<T>`, `@RestControllerAdvice` vÃ  cÆ¡ cháº¿ gom lá»—i tá»± Ä‘á»™ng |
+| **02** | **Báº£o máº­t, Stateless JWT & PhÃ¢n quyá»n** | [02_kien_truc_bao_mat_jwt_va_xac_thuc.md](./02_kien_truc_bao_mat_jwt_va_xac_thuc.md) | âœ… HoÃ n thÃ nh | Thuáº­t toÃ¡n HMAC-SHA256, Constant-Time compare, `AuthenticatedUser`, `JwtAuthenticationFilter`, `SecurityContextHolder` |
+| **03** | **Quáº£n lÃ½ GÃ³i táº­p (Membership Plans)** | [03_quan_ly_goi_tap_membership_plans.md](./03_quan_ly_goi_tap_membership_plans.md) | âœ… HoÃ n thÃ nh | Nghiá»‡p vá»¥ `MembershipPlan`, Shape validation, `@Transactional(readOnly = true)`, `BigDecimal.ZERO`, `@PreAuthorize` |
+| **04** | **Quáº£n lÃ½ Há»™i viÃªn (Member Management)** | [04_quan_ly_hoi_vien_member_management.md](./04_quan_ly_hoi_vien_member_management.md) | âœ… HoÃ n thÃ nh | Nghiá»‡p vá»¥ `Member`, Unique Phone (`ConflictException`), `ChronoUnit.DAYS.between`, Data Composition, `hasRole` convention |
+| **05** | **ÄÄƒng kÃ½ GÃ³i & TÃ i chÃ­nh Thanh toÃ¡n** | [05_dang_ky_goi_va_dong_bo_tai_chinh.md](./05_dang_ky_goi_va_dong_bo_tai_chinh.md) | âœ… HoÃ n thÃ nh | Nghiá»‡p vá»¥ `MemberMembership`, tá»± sinh `DebtRecord`, tá»± sinh `PtSessionPackage`, gáº¡ch ná»£ `syncMembershipDebt`, sá»• cÃ¡i `FinancialTransaction(INCOME)` |
+| **06** | **Khá»Ÿi táº¡o Dá»¯ liá»‡u & Kiá»ƒm thá»­ 36/36 API** | [06_kiem_thu_api_va_seed_du_lieu.md](./06_kiem_thu_api_va_seed_du_lieu.md) | âœ… HoÃ n thÃ nh | Seeding tá»± Ä‘á»™ng (`DataInitializer`), mÃ£ hÃ³a máº­t kháº©u `owner@gymduongdouble.local/change_me`, chá»‘ng lá»™ username, kiá»ƒm thá»­ há»“i quy 36/36 ká»‹ch báº£n (`sprint1.http`) |
+| **07** | **Khá»Ÿi táº¡o Frontend, Design System & Theme** | [07_khoi_tao_frontend_design_system_va_theme.md](./07_khoi_tao_frontend_design_system_va_theme.md) | âœ… HoÃ n thÃ nh | Vite + React 19, Tailwind CSS v4, CSS Custom Properties báº£ng mÃ u thÆ°Æ¡ng hiá»‡u DÆ°Æ¡ng Double, Theme Dark/Light tá»± Ä‘á»™ng |
+| **08** | **Chuáº©n hÃ³a Types & API Client Axios** | [08_chuan_hoa_types_va_lop_api_client.md](./08_chuan_hoa_types_va_lop_api_client.md) | âœ… HoÃ n thÃ nh | Type-safe DTOs, `axios instance`, request interceptor gáº¯n Bearer token, response interceptor unbox `payload.data`, gom lá»—i `ApiClientError` |
+| **09** | **Quáº£n lÃ½ PhiÃªn ÄÄƒng nháº­p & Auth Context** | [09_quan_ly_phien_dang_nhap_va_auth_context.md](./09_quan_ly_phien_dang_nhap_va_auth_context.md) | âœ… HoÃ n thÃ nh | React Context API, Custom Hook `useAuth`, `bootstrapping` state chá»‘ng nháº¥p nhÃ¡y mÃ n hÃ¬nh, chá»‘ng Race Condition `cancelled = true` |
+| **10** | **Äá»‹nh tuyáº¿n Router, Route Guards & AppShell** | [10_dinh_tuyen_router_route_guards_va_app_shell.md](./10_dinh_tuyen_router_route_guards_va_app_shell.md) | âœ… HoÃ n thÃ nh | React Router v7 lá»“ng nhau (`<Outlet />`), `ProtectedRoute`, `PublicOnlyRoute`, Navigation config, Responsive Sidebar & Mobile Drawer |
 
 ---
 
-## 🌟 Nguyên tắc Ghi chép Tài liệu
-1. **Chỉ ghi nhận kiến thức đã hiểu sâu:** Chỉ khi phân tích và thông suốt toàn bộ nghiệp vụ của một chặng thì mới đưa vào tài liệu này.
-2. **Mô hình hóa trực quan:** Mọi chặng đều có sơ đồ luồng (Mermaid Flowchart / Sequence Diagram) và bảng tổng kết câu hỏi cốt lõi để dễ ôn tập và chuẩn bị báo cáo thực tập.
-3. **Liên kết mã nguồn thực tế:** Mọi thành phần đều trỏ trực tiếp đến class và dòng code tương ứng trong project.
+## ðŸŒŸ NguyÃªn táº¯c Ghi chÃ©p TÃ i liá»‡u
+1. **Chá»‰ ghi nháº­n kiáº¿n thá»©c Ä‘Ã£ hiá»ƒu sÃ¢u:** Chá»‰ khi phÃ¢n tÃ­ch vÃ  thÃ´ng suá»‘t toÃ n bá»™ nghiá»‡p vá»¥ cá»§a má»™t cháº·ng thÃ¬ má»›i Ä‘Æ°a vÃ o tÃ i liá»‡u nÃ y.
+2. **MÃ´ hÃ¬nh hÃ³a trá»±c quan:** Má»i cháº·ng Ä‘á»u cÃ³ sÆ¡ Ä‘á»“ luá»“ng (Mermaid Flowchart / Sequence Diagram) vÃ  báº£ng tá»•ng káº¿t cÃ¢u há»i cá»‘t lÃµi Ä‘á»ƒ dá»… Ã´n táº­p vÃ  chuáº©n bá»‹ bÃ¡o cÃ¡o thá»±c táº­p.
+3. **LiÃªn káº¿t mÃ£ nguá»“n thá»±c táº¿:** Má»i thÃ nh pháº§n Ä‘á»u trá» trá»±c tiáº¿p Ä‘áº¿n class vÃ  dÃ²ng code tÆ°Æ¡ng á»©ng trong project.
+

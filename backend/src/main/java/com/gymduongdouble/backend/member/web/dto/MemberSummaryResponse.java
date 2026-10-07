@@ -2,6 +2,7 @@ package com.gymduongdouble.backend.member.web.dto;
 
 import com.gymduongdouble.backend.common.enums.MembershipStatus;
 import com.gymduongdouble.backend.common.enums.MemberStatus;
+import com.gymduongdouble.backend.common.enums.PlanType;
 import com.gymduongdouble.backend.member.domain.Member;
 import com.gymduongdouble.backend.membership.domain.MemberMembership;
 import java.time.LocalDate;
@@ -15,6 +16,7 @@ public record MemberSummaryResponse(
     MemberStatus status,
     Long currentMembershipId,
     String currentPlanName,
+    PlanType currentPlanType,
     MembershipStatus currentMembershipStatus,
     LocalDate endDate,
     Long daysUntilExpiration
@@ -33,6 +35,7 @@ public record MemberSummaryResponse(
             member.getStatus(),
             membership == null ? null : membership.getId(),
             membership == null ? null : membership.getPlan().getName(),
+            membership == null ? null : membership.getPlan().getPlanType(),
             membership == null ? null : membership.getStatus(),
             membership == null ? null : membership.getEndDate(),
             daysUntilExpiration

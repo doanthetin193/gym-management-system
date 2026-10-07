@@ -1,16 +1,25 @@
-import { Eye, Pencil, Plus, RefreshCcw, Search, Users } from 'lucide-react'
+import {
+  AlertCircle,
+  ArrowRight,
+  Calendar,
+  CalendarClock,
+  ChevronLeft,
+  ChevronRight,
+  Pencil,
+  Phone,
+  Plus,
+  RefreshCcw,
+  Search,
+  UserCheck,
+  Users,
+  X,
+} from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { ApiClientError } from '../../../shared/api/apiClient'
 import { createMember, getMemberDetail, listMembers, updateMember } from '../api/memberApi'
 import { MemberFormModal } from '../components/MemberFormModal'
-import type { MemberDetail, MemberListFilter, MemberPayload, MemberProfile, MemberSummary } from '../types/member'
-
-const filterOptions: Array<{ value: MemberListFilter; label: string }> = [
-  { value: 'ALL', label: 'Tất cả' },
-  { value: 'ACTIVE', label: 'Đang tập' },
-  { value: 'EXPIRING_SOON', label: 'Sắp hết hạn' },
-  { value: 'EXPIRED', label: 'Hết hạn' },
-]
+import type { MemberListFilter, MemberPayload, MemberProfile, MemberSummary } from '../types/member'
 
 function formatDate(value: string | null) {
   if (!value) {
@@ -19,21 +28,60 @@ function formatDate(value: string | null) {
   return new Intl.DateTimeFormat('vi-VN').format(new Date(`${value}T00:00:00`))
 }
 
-function formatMoney(value: number | null | undefined) {
-  return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(value ?? 0)
+function getInitials(name: string) {
+  const parts = name.trim().split(/\s+/)
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+  return (parts[parts.length - 2][0] + parts[parts.length - 1][0]).toUpperCase()
 }
 
-function expiryLabel(member: MemberSummary) {
+const AVATAR_GRADIENTS = [
+  'from-blue-600 to-indigo-600',
+  'from-emerald-600 to-teal-600',
+  'from-amber-500 to-orange-600',
+  'from-rose-500 to-pink-600',
+  'from-purple-600 to-violet-600',
+  'from-cyan-600 to-blue-600',
+]
+
+function getAvatarGradient(name: string) {
+  let hash = 0
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash)
+  }
+  return AVATAR_GRADIENTS[Math.abs(hash) % AVATAR_GRADIENTS.length]
+}
+
+function getMemberStatusBadge(member: MemberSummary) {
   if (member.daysUntilExpiration === null) {
-    return { label: 'Chưa có gói', className: 'bg-[var(--surface-muted)] text-[var(--text-muted)]' }
+    return {
+      label: 'Chưa có gói',
+      badgeClass:
+        'border-slate-200 bg-slate-100 text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-gray-400',
+      dotClass: 'bg-slate-400',
+    }
   }
   if (member.daysUntilExpiration < 0) {
-    return { label: 'Đã hết hạn', className: 'bg-[var(--danger-soft)] text-[var(--danger-text)]' }
+    return {
+      label: 'Đã hết hạn',
+      badgeClass:
+        'border-red-500/30 bg-red-50 text-[#df271b] dark:border-red-500/30 dark:bg-red-500/15 dark:text-red-300',
+      dotClass: 'bg-[#df271b]',
+    }
   }
   if (member.daysUntilExpiration <= 7) {
-    return { label: `Còn ${member.daysUntilExpiration} ngày`, className: 'bg-metric-yellow' }
+    return {
+      label: member.daysUntilExpiration === 0 ? 'Hết hôm nay' : `Còn ${member.daysUntilExpiration} ngày`,
+      badgeClass:
+        'border-amber-500/30 bg-amber-50 text-amber-700 dark:border-[#ffcc08]/30 dark:bg-[#ffcc08]/15 dark:text-[#ffcc08]',
+      dotClass: 'bg-[#ffcc08] animate-pulse',
+    }
   }
-  return { label: 'Đang tập', className: 'bg-metric-green' }
+  return {
+    label: 'Đang tập',
+    badgeClass:
+      'border-emerald-500/30 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/15 dark:text-emerald-300',
+    dotClass: 'bg-emerald-500 animate-pulse',
+  }
 }
 
 function errorMessage(error: unknown) {
@@ -44,25 +92,87 @@ function errorMessage(error: unknown) {
 }
 
 export function MembersPage() {
+  const navigate = useNavigate()
   const [members, setMembers] = useState<MemberSummary[]>([])
+  const [allMembers, setAllMembers] = useState<MemberSummary[]>([])
   const [keyword, setKeyword] = useState('')
   const [filter, setFilter] = useState<MemberListFilter>('ALL')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(6)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [detail, setDetail] = useState<MemberDetail | null>(null)
-  const [detailLoading, setDetailLoading] = useState(false)
   const [formMode, setFormMode] = useState<'create' | 'edit' | null>(null)
   const [editingMember, setEditingMember] = useState<MemberProfile | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
+  // Reset to page 1 whenever filter or keyword changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [keyword, filter])
+
+  // Full global stats (independent of current active filter)
   const stats = useMemo(() => {
+    const list = allMembers.length > 0 ? allMembers : members
     return {
-      total: members.length,
-      expiring: members.filter((member) => member.daysUntilExpiration !== null && member.daysUntilExpiration >= 0 && member.daysUntilExpiration <= 7).length,
-      expired: members.filter((member) => member.daysUntilExpiration !== null && member.daysUntilExpiration < 0).length,
+      total: list.length,
+      active: list.filter(
+        (member) => member.daysUntilExpiration !== null && member.daysUntilExpiration > 7,
+      ).length,
+      expiring: list.filter(
+        (member) =>
+          member.daysUntilExpiration !== null &&
+          member.daysUntilExpiration >= 0 &&
+          member.daysUntilExpiration <= 7,
+      ).length,
+      expired: list.filter(
+        (member) => member.daysUntilExpiration !== null && member.daysUntilExpiration < 0,
+      ).length,
     }
-  }, [members])
+  }, [allMembers, members])
+
+  const totalPages = Math.max(1, Math.ceil(members.length / pageSize))
+  const activePage = Math.min(currentPage, totalPages)
+
+  const paginatedMembers = useMemo(() => {
+    const start = (activePage - 1) * pageSize
+    return members.slice(start, start + pageSize)
+  }, [activePage, members, pageSize])
+
+  const fromIndex = members.length === 0 ? 0 : (activePage - 1) * pageSize + 1
+  const toIndex = Math.min(activePage * pageSize, members.length)
+
+  const paginationPages = useMemo(() => {
+    if (totalPages <= 5) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1)
+    }
+    if (activePage <= 3) {
+      return [1, 2, 3, 4, '...', totalPages]
+    }
+    if (activePage >= totalPages - 2) {
+      return [1, '...', totalPages - 3, totalPages - 2, totalPages - 1, totalPages]
+    }
+    return [1, '...', activePage - 1, activePage, activePage + 1, '...', totalPages]
+  }, [activePage, totalPages])
+
+  const filterOptions = useMemo<Array<{ value: MemberListFilter; label: string; count: number }>>(
+    () => [
+      { value: 'ALL', label: 'Tất cả', count: stats.total },
+      { value: 'ACTIVE', label: 'Đang tập', count: stats.active },
+      { value: 'EXPIRING_SOON', label: 'Sắp hết hạn', count: stats.expiring },
+      { value: 'EXPIRED', label: 'Hết hạn', count: stats.expired },
+    ],
+    [stats],
+  )
+
+  const loadAllMembers = useCallback(async () => {
+    try {
+      const allData = await listMembers({ keyword: '', filter: 'ALL' })
+      setAllMembers(allData)
+    } catch {
+      // ignore silently for background telemetry
+    }
+  }, [])
 
   const loadMembers = useCallback(async () => {
     setLoading(true)
@@ -77,17 +187,9 @@ export function MembersPage() {
     }
   }, [filter, keyword])
 
-  async function loadDetail(memberId: number) {
-    setDetailLoading(true)
-    try {
-      const data = await getMemberDetail(memberId)
-      setDetail(data)
-    } catch (caughtError) {
-      setError(errorMessage(caughtError))
-    } finally {
-      setDetailLoading(false)
-    }
-  }
+  useEffect(() => {
+    void loadAllMembers()
+  }, [loadAllMembers])
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -102,17 +204,15 @@ export function MembersPage() {
     setFormError(null)
     try {
       if (formMode === 'edit' && editingMember) {
-        const updated = await updateMember(editingMember.id, payload)
-        if (detail?.profile.id === updated.id) {
-          await loadDetail(updated.id)
-        }
+        await updateMember(editingMember.id, payload)
+        await Promise.all([loadMembers(), loadAllMembers()])
       } else {
         const created = await createMember(payload)
-        await loadDetail(created.id)
+        await loadAllMembers()
+        navigate(`/members/${created.id}`)
       }
       setFormMode(null)
       setEditingMember(null)
-      await loadMembers()
     } catch (caughtError) {
       setFormError(errorMessage(caughtError))
     } finally {
@@ -128,161 +228,313 @@ export function MembersPage() {
 
   async function openEditModal(member: MemberSummary) {
     setFormError(null)
-    setFormMode('edit')
-    const loadedDetail = detail?.profile.id === member.id ? detail : await getMemberDetail(member.id)
-    setDetail(loadedDetail)
-    setEditingMember(loadedDetail.profile)
+    try {
+      setEditingMember((await getMemberDetail(member.id)).profile)
+      setFormMode('edit')
+    } catch (caughtError) {
+      setError(errorMessage(caughtError))
+    }
   }
 
   return (
-    <div className="mx-auto max-w-7xl space-y-5">
-      <section className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+    <div className="mx-auto max-w-7xl space-y-5 pb-8">
+      {/* Sleek Top Action Bar */}
+      <section className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200/80 pb-4 dark:border-white/[0.08]">
         <div>
-          <p className="text-xs font-bold uppercase text-[var(--text-muted)]">Sprint 2</p>
-          <h2 className="mt-1 text-2xl font-black text-[var(--text-strong)]">Quản lý khách hàng</h2>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--text-muted)]">
-            Theo dõi thông tin hội viên, hạn gói tập, công nợ và lịch sử đăng ký để thay cho bảng Excel thủ công.
+          <div className="flex items-center gap-2">
+            <span className="size-2 rounded-full bg-[#087ec1] animate-pulse" />
+            <h1 className="text-xl md:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+              Quản Lý Hội Viên
+            </h1>
+            <span className="rounded-full border border-slate-200/80 bg-slate-100/80 px-2.5 py-0.5 text-xs font-bold text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-gray-300">
+              {stats.total} hồ sơ
+            </span>
+          </div>
+          <p className="mt-1 text-xs md:text-sm text-slate-500 dark:text-gray-400">
+            Theo dõi thời hạn gói tập, lịch sử đăng ký và tình trạng hội viên toàn phòng gym.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={openCreateModal}
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-[var(--brand-yellow)] px-4 text-sm font-black text-black transition hover:brightness-95"
-        >
-          <Plus size={18} />
-          Tạo hội viên
-        </button>
-      </section>
 
-      <section className="grid gap-3 md:grid-cols-3">
-        <div className="rounded-[8px] border border-[var(--line)] bg-[var(--surface)] p-4">
-          <p className="text-sm font-bold text-[var(--text-muted)]">Tổng khách trong bộ lọc</p>
-          <p className="mt-2 text-2xl font-black text-[var(--text-strong)]">{stats.total}</p>
-        </div>
-        <div className="rounded-[8px] border border-[var(--line)] bg-[var(--surface)] p-4">
-          <p className="text-sm font-bold text-[var(--text-muted)]">Sắp hết hạn</p>
-          <p className="mt-2 text-2xl font-black text-[var(--brand-yellow)]">{stats.expiring}</p>
-        </div>
-        <div className="rounded-[8px] border border-[var(--line)] bg-[var(--surface)] p-4">
-          <p className="text-sm font-bold text-[var(--text-muted)]">Đã hết hạn</p>
-          <p className="mt-2 text-2xl font-black text-[var(--danger)]">{stats.expired}</p>
+        <div className="flex items-center gap-2.5">
+          <button
+            type="button"
+            onClick={openCreateModal}
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#df271b] to-[#b91c1c] px-4 text-xs md:text-sm font-extrabold text-white shadow-sm hover:brightness-110 active:scale-[0.99] transition"
+          >
+            <Plus size={16} />
+            <span>Tạo hội viên mới</span>
+          </button>
         </div>
       </section>
 
-      <section className="rounded-[8px] border border-[var(--line)] bg-[var(--surface)]">
-        <div className="flex flex-col gap-3 border-b border-[var(--line)] p-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex min-w-0 flex-1 items-center gap-2 rounded-[8px] border border-[var(--line)] bg-[var(--input-bg)] px-3">
-            <Search size={18} className="shrink-0 text-[var(--text-muted)]" />
+      {/* 4 Luxury Telemetry Metric Cards */}
+      <section className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 md:gap-4">
+        <StatCard
+          label="Tổng hội viên"
+          value={stats.total}
+          subtext="Toàn hệ thống"
+          icon={Users}
+          tone="blue"
+        />
+        <StatCard
+          label="Đang tập an toàn"
+          value={stats.active}
+          subtext="Hạn > 7 ngày"
+          icon={UserCheck}
+          tone="green"
+        />
+        <StatCard
+          label="Sắp hết hạn"
+          value={stats.expiring}
+          subtext="Cần gọi nhắc"
+          icon={CalendarClock}
+          tone="yellow"
+        />
+        <StatCard
+          label="Đã hết hạn"
+          value={stats.expired}
+          subtext="Ưu tiên gia hạn"
+          icon={AlertCircle}
+          tone="red"
+        />
+      </section>
+
+      {/* Main Table Container */}
+      <section className="rounded-2xl border border-slate-200/80 bg-white shadow-sm transition-colors duration-300 dark:border-white/[0.08] dark:bg-[#0c1017] overflow-hidden">
+        {/* Filter and Search Bar */}
+        <div className="flex flex-col gap-3.5 border-b border-slate-100 p-4 dark:border-white/[0.06] lg:flex-row lg:items-center lg:justify-between">
+          {/* Search Box */}
+          <div className="relative flex min-w-0 flex-1 items-center rounded-xl border border-slate-200/80 bg-slate-50/70 px-3 transition focus-within:border-[#087ec1] focus-within:bg-white focus-within:ring-2 focus-within:ring-[#087ec1]/15 dark:border-white/10 dark:bg-white/5 dark:focus-within:border-[#ffcc08] dark:focus-within:bg-[#0c1017]">
+            <Search size={16} className="shrink-0 text-slate-400 dark:text-gray-400" />
             <input
               value={keyword}
               onChange={(event) => setKeyword(event.target.value)}
-              placeholder="Tìm theo tên hoặc số điện thoại"
-              className="h-10 min-w-0 flex-1 bg-transparent text-sm font-semibold outline-none"
+              placeholder="Tìm theo tên hội viên, số điện thoại..."
+              className="h-10 min-w-0 flex-1 bg-transparent px-2.5 text-xs md:text-sm font-semibold text-slate-900 placeholder:text-slate-400 outline-none dark:text-white dark:placeholder:text-gray-400"
             />
+            {keyword && (
+              <button
+                type="button"
+                onClick={() => setKeyword('')}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-white"
+                title="Xóa tìm kiếm"
+              >
+                <X size={15} />
+              </button>
+            )}
           </div>
 
-          <div className="flex flex-wrap gap-2">
-            {filterOptions.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => setFilter(option.value)}
-                className={[
-                  'h-10 rounded-[8px] border px-3 text-sm font-bold transition',
-                  filter === option.value
-                    ? 'border-[var(--brand-blue)] bg-metric-blue'
-                    : 'border-[var(--line)] text-[var(--text-muted)] hover:text-[var(--text-strong)]',
-                ].join(' ')}
-              >
-                {option.label}
-              </button>
-            ))}
+          {/* Filter Pills & Reload */}
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 no-scrollbar">
+              {filterOptions.map((option) => {
+                const isActive = filter === option.value
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setFilter(option.value)}
+                    className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold transition ${
+                      isActive
+                        ? 'bg-[#087ec1] text-white shadow-sm dark:bg-[#ffcc08] dark:text-slate-900'
+                        : 'border border-slate-200/80 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-gray-300 dark:hover:bg-white/10 dark:hover:text-white'
+                    }`}
+                  >
+                    <span>{option.label}</span>
+                    <span
+                      className={`rounded-full px-1.5 py-0.2 text-[10px] font-black ${
+                        isActive
+                          ? 'bg-white/20 text-white dark:bg-black/10 dark:text-slate-900'
+                          : 'bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-gray-300'
+                      }`}
+                    >
+                      {option.count}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+
             <button
               type="button"
-              onClick={() => void loadMembers()}
-              className="inline-flex size-10 items-center justify-center rounded-[8px] border border-[var(--line)] text-[var(--text-muted)] transition hover:text-[var(--text-strong)]"
-              title="Tải lại"
-              aria-label="Tải lại"
+              onClick={() => {
+                void loadMembers()
+                void loadAllMembers()
+              }}
+              className="inline-flex size-9 items-center justify-center rounded-xl border border-slate-200/80 bg-white text-slate-500 shadow-sm hover:border-[#087ec1] hover:text-[#087ec1] dark:border-white/10 dark:bg-white/5 dark:text-gray-400 dark:hover:border-white/20 dark:hover:text-white transition"
+              title="Tải lại danh sách"
+              aria-label="Tải lại danh sách"
             >
-              <RefreshCcw size={17} />
+              <RefreshCcw size={15} />
             </button>
           </div>
         </div>
 
-        {error ? (
-          <div className="m-4 rounded-[8px] border border-[var(--danger-line)] bg-[var(--danger-soft)] px-3 py-2 text-sm font-semibold text-[var(--danger-text)]">
-            {error}
+        {/* Error Alert */}
+        {error && (
+          <div className="m-4 flex items-center gap-2 rounded-xl border border-red-300 bg-red-50 p-3 text-xs md:text-sm font-semibold text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300">
+            <AlertCircle size={16} className="shrink-0 text-red-500" />
+            <span>{error}</span>
           </div>
-        ) : null}
+        )}
 
+        {/* Table View */}
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[860px] border-collapse text-left">
+          <table className="w-full min-w-[880px] border-collapse text-left">
             <thead>
-              <tr className="border-b border-[var(--line)] text-xs uppercase text-[var(--text-muted)]">
-                <th className="px-4 py-3">Khách hàng</th>
-                <th className="px-4 py-3">Số điện thoại</th>
-                <th className="px-4 py-3">Gói hiện tại</th>
-                <th className="px-4 py-3">Hết hạn</th>
-                <th className="px-4 py-3">Trạng thái</th>
-                <th className="px-4 py-3 text-right">Thao tác</th>
+              <tr className="border-b border-slate-100 bg-slate-50/50 text-[11px] font-extrabold uppercase tracking-wider text-slate-400 dark:border-white/[0.06] dark:bg-white/[0.02] dark:text-gray-400">
+                <th className="px-5 py-3.5">Hội viên</th>
+                <th className="px-4 py-3.5">Số điện thoại</th>
+                <th className="px-4 py-3.5">Gói tập hiện tại</th>
+                <th className="px-4 py-3.5">Thời hạn thẻ</th>
+                <th className="px-4 py-3.5">Trạng thái</th>
+                <th className="px-5 py-3.5 text-right">Thao tác</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-slate-100 dark:divide-white/[0.05]">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-sm font-semibold text-[var(--text-muted)]">
-                    Đang tải danh sách khách hàng...
+                  <td colSpan={6} className="px-5 py-12 text-center text-sm font-semibold text-slate-400 dark:text-gray-400">
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <RefreshCcw size={20} className="animate-spin text-[#087ec1] dark:text-[#ffcc08]" />
+                      <span>Đang tải danh sách hội viên...</span>
+                    </div>
                   </td>
                 </tr>
               ) : members.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-sm font-semibold text-[var(--text-muted)]">
-                    Chưa có khách hàng phù hợp.
+                  <td colSpan={6} className="px-5 py-12 text-center text-sm font-semibold text-slate-400 dark:text-gray-400">
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <Users size={32} className="text-slate-300 dark:text-white/20" />
+                      <p className="text-slate-700 dark:text-gray-300 font-bold">Không tìm thấy hội viên phù hợp</p>
+                      <p className="text-xs text-slate-400">Thử thay đổi từ khóa tìm kiếm hoặc đặt lại bộ lọc.</p>
+                    </div>
                   </td>
                 </tr>
               ) : (
-                members.map((member) => {
-                  const badge = expiryLabel(member)
+                paginatedMembers.map((member) => {
+                  const statusBadge = getMemberStatusBadge(member)
                   return (
-                    <tr key={member.id} className="border-b border-[var(--line)] last:border-0">
-                      <td className="px-4 py-3">
+                    <tr
+                      key={member.id}
+                      onClick={() => navigate(`/members/${member.id}`)}
+                      className="group cursor-pointer transition-colors hover:bg-slate-50/80 dark:hover:bg-white/[0.03]"
+                    >
+                      {/* Member column with initial avatar */}
+                      <td className="px-5 py-3.5">
                         <div className="flex items-center gap-3">
-                          <span className="grid size-9 shrink-0 place-items-center rounded-[8px] bg-[var(--nav-active)] text-sm font-black text-[var(--text-strong)]">
-                            <Users size={17} />
-                          </span>
-                          <div>
-                            <p className="font-bold text-[var(--text-strong)]">{member.fullName}</p>
-                            <p className="mt-0.5 text-xs text-[var(--text-muted)]">Sinh nhật: {formatDate(member.dateOfBirth)}</p>
+                          <div className="relative">
+                            <div
+                              className={`flex size-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${getAvatarGradient(
+                                member.fullName,
+                              )} text-xs font-black text-white shadow-sm`}
+                            >
+                              {getInitials(member.fullName)}
+                            </div>
+                            <span
+                              className={`absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full border-2 border-white dark:border-[#0c1017] ${statusBadge.dotClass}`}
+                            />
+                          </div>
+
+                          <div className="min-w-0">
+                            <p className="font-extrabold text-sm text-slate-900 group-hover:text-[#087ec1] dark:text-white dark:group-hover:text-[#ffcc08] transition truncate">
+                              {member.fullName}
+                            </p>
+                            <div className="mt-0.5 flex items-center gap-2 text-xs text-slate-500 dark:text-gray-400">
+                              {member.dateOfBirth && (
+                                <span className="flex items-center gap-1">
+                                  <Calendar size={11} className="text-slate-400" />
+                                  <span>{formatDate(member.dateOfBirth)}</span>
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-sm font-semibold text-[var(--text)]">{member.phone}</td>
-                      <td className="px-4 py-3 text-sm font-semibold text-[var(--text)]">{member.currentPlanName ?? '-'}</td>
-                      <td className="px-4 py-3 text-sm font-semibold text-[var(--text)]">{formatDate(member.endDate)}</td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-black ${badge.className}`}>
-                          {badge.label}
+
+                      {/* Phone */}
+                      <td className="px-4 py-3.5">
+                        <div className="flex items-center gap-1.5 text-xs md:text-sm font-bold text-slate-700 dark:text-gray-300">
+                          <Phone size={13} className="text-slate-400 shrink-0" />
+                          <span>{member.phone}</span>
+                        </div>
+                      </td>
+
+                      {/* Plan Name */}
+                      <td className="px-4 py-3.5">
+                        {member.currentPlanName ? (
+                          <span className="inline-flex max-w-[240px] items-center gap-1.5 truncate rounded-lg border border-slate-200/80 bg-slate-50 px-2.5 py-1 text-xs font-bold text-slate-800 dark:border-white/10 dark:bg-white/5 dark:text-gray-200">
+                            <span className="size-1.5 rounded-full bg-[#087ec1] shrink-0" />
+                            <span className="truncate">{member.currentPlanName}</span>
+                          </span>
+                        ) : (
+                          <span className="text-xs italic text-slate-400 dark:text-gray-400">Chưa đăng ký gói</span>
+                        )}
+                      </td>
+
+                      {/* Expiry Date */}
+                      <td className="px-4 py-3.5">
+                        {member.endDate ? (
+                          <div>
+                            <p className="text-xs md:text-sm font-bold text-slate-800 dark:text-gray-200">
+                              {formatDate(member.endDate)}
+                            </p>
+                            {member.daysUntilExpiration !== null && (
+                              <span
+                                className={`mt-0.5 inline-block text-[11px] font-semibold ${
+                                  member.daysUntilExpiration < 0
+                                    ? 'text-red-500 dark:text-red-400'
+                                    : member.daysUntilExpiration <= 7
+                                      ? 'text-amber-600 dark:text-[#ffcc08]'
+                                      : 'text-emerald-600 dark:text-emerald-400'
+                                }`}
+                              >
+                                {member.daysUntilExpiration < 0
+                                  ? `Hết hạn ${Math.abs(member.daysUntilExpiration)} ngày trước`
+                                  : member.daysUntilExpiration === 0
+                                    ? 'Hết hạn hôm nay'
+                                    : `Còn ${member.daysUntilExpiration} ngày`}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-slate-400">-</span>
+                        )}
+                      </td>
+
+                      {/* Status Badge */}
+                      <td className="px-4 py-3.5">
+                        <span
+                          className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-black ${statusBadge.badgeClass}`}
+                        >
+                          <span className={`size-1.5 rounded-full ${statusBadge.dotClass}`} />
+                          {statusBadge.label}
                         </span>
                       </td>
-                      <td className="px-4 py-3">
-                        <div className="flex justify-end gap-2">
-                          <button
-                            type="button"
-                            onClick={() => void loadDetail(member.id)}
-                            className="inline-flex size-9 items-center justify-center rounded-[8px] border border-[var(--line)] text-[var(--text-muted)] hover:text-[var(--text-strong)]"
-                            title="Xem chi tiết"
-                            aria-label="Xem chi tiết"
-                          >
-                            <Eye size={17} />
-                          </button>
+
+                      {/* Actions */}
+                      <td className="px-5 py-3.5 text-right">
+                        <div
+                          className="flex items-center justify-end gap-1.5"
+                          onClick={(event) => event.stopPropagation()}
+                        >
                           <button
                             type="button"
                             onClick={() => void openEditModal(member)}
-                            className="inline-flex size-9 items-center justify-center rounded-[8px] border border-[var(--line)] text-[var(--text-muted)] hover:text-[var(--text-strong)]"
-                            title="Sửa"
-                            aria-label="Sửa"
+                            className="inline-flex size-8 items-center justify-center rounded-lg border border-slate-200/80 bg-white text-slate-500 hover:border-[#087ec1] hover:text-[#087ec1] dark:border-white/10 dark:bg-white/5 dark:text-gray-400 dark:hover:border-white/20 dark:hover:text-white transition shadow-sm"
+                            title="Sửa hồ sơ"
+                            aria-label="Sửa hồ sơ"
                           >
-                            <Pencil size={17} />
+                            <Pencil size={13} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => navigate(`/members/${member.id}`)}
+                            className="inline-flex size-8 items-center justify-center rounded-lg border border-slate-200/80 bg-white text-slate-500 hover:border-[#087ec1] hover:text-[#087ec1] dark:border-white/10 dark:bg-white/5 dark:text-gray-400 dark:hover:border-white/20 dark:hover:text-white transition shadow-sm"
+                            title="Xem chi tiết"
+                            aria-label="Xem chi tiết"
+                          >
+                            <ArrowRight size={13} />
                           </button>
                         </div>
                       </td>
@@ -293,77 +545,102 @@ export function MembersPage() {
             </tbody>
           </table>
         </div>
-      </section>
 
-      <section className="rounded-[8px] border border-[var(--line)] bg-[var(--surface)] p-4">
-        {detailLoading ? (
-          <p className="text-sm font-semibold text-[var(--text-muted)]">Đang tải chi tiết khách hàng...</p>
-        ) : detail ? (
-          <div className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
-            <div>
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-xs font-bold uppercase text-[var(--text-muted)]">Chi tiết hội viên</p>
-                  <h3 className="mt-1 text-xl font-black text-[var(--text-strong)]">{detail.profile.fullName}</h3>
-                  <p className="mt-1 text-sm font-semibold text-[var(--text-muted)]">{detail.profile.phone}</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditingMember(detail.profile)
-                    setFormMode('edit')
-                  }}
-                  className="inline-flex h-9 items-center gap-2 rounded-[8px] border border-[var(--line)] px-3 text-sm font-bold text-[var(--text)]"
-                >
-                  <Pencil size={16} />
-                  Sửa
-                </button>
-              </div>
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                <Info label="Ngày sinh" value={formatDate(detail.profile.dateOfBirth)} />
-                <Info label="Zalo" value={detail.profile.zaloPhone ?? detail.profile.phone} />
-                <Info label="Nguồn" value={detail.profile.source ?? '-'} />
-                <Info label="Tổng dư nợ" value={formatMoney(detail.totalDebt)} strong />
-              </div>
-              {detail.profile.note ? (
-                <p className="mt-4 rounded-[8px] bg-[var(--surface-muted)] p-3 text-sm font-semibold leading-6 text-[var(--text)]">
-                  {detail.profile.note}
-                </p>
-              ) : null}
-            </div>
+        {/* Table Footer with Luxury Pagination */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-t border-slate-100 p-4 text-xs font-semibold text-slate-500 dark:border-white/[0.06] dark:text-gray-400">
+          {/* Left Info: Range & Page Size Selector */}
+          <div className="flex flex-wrap items-center gap-3">
+            <span>
+              Hiển thị <strong className="text-slate-900 dark:text-white">{fromIndex}</strong> -{' '}
+              <strong className="text-slate-900 dark:text-white">{toIndex}</strong> trên{' '}
+              <strong className="text-slate-900 dark:text-white">{members.length}</strong> hội viên
+            </span>
 
-            <div className="space-y-4">
-              <MembershipList title="Gói đang active" memberships={detail.activeMemberships} />
-              <MembershipList title="Lịch sử gói cũ" memberships={detail.membershipHistory} />
-              <div>
-                <h4 className="text-sm font-black text-[var(--text-strong)]">Gói buổi PT</h4>
-                <div className="mt-2 space-y-2">
-                  {detail.ptSessionPackages.length === 0 ? (
-                    <p className="rounded-[8px] bg-[var(--surface-muted)] px-3 py-2 text-sm font-semibold text-[var(--text-muted)]">
-                      Chưa có gói buổi PT.
-                    </p>
-                  ) : (
-                    detail.ptSessionPackages.map((item) => (
-                      <div key={item.id} className="rounded-[8px] bg-[var(--surface-muted)] px-3 py-2 text-sm">
-                        <p className="font-bold text-[var(--text-strong)]">
-                          PT còn {item.remainingPtSessions}/{item.totalPtSessions} buổi, ôn tập còn {item.remainingPracticeSessions}/{item.totalPracticeSessions}
-                        </p>
-                        <p className="mt-1 text-xs font-semibold text-[var(--text-muted)]">
-                          {formatDate(item.startDate)} - {formatDate(item.endDate)} · {item.status}
-                        </p>
-                      </div>
-                    ))
-                  )}
-                </div>
+            <div className="flex items-center gap-1.5 pl-2 border-l border-slate-200 dark:border-white/10">
+              <span className="text-[11px] text-slate-400">Số dòng:</span>
+              <div className="flex items-center gap-1">
+                {[6, 10, 20].map((size) => {
+                  const isSelected = pageSize === size
+                  return (
+                    <button
+                      key={size}
+                      type="button"
+                      onClick={() => {
+                        setPageSize(size)
+                        setCurrentPage(1)
+                      }}
+                      className={`h-6 rounded-lg px-2 text-[11px] font-extrabold transition ${
+                        isSelected
+                          ? 'bg-[#087ec1] text-white shadow-sm dark:bg-[#ffcc08] dark:text-slate-900'
+                          : 'border border-slate-200/80 bg-slate-50 text-slate-600 hover:bg-slate-100 dark:border-white/10 dark:bg-white/5 dark:text-gray-400 dark:hover:bg-white/10 dark:hover:text-white'
+                      }`}
+                    >
+                      {size}
+                    </button>
+                  )
+                })}
               </div>
             </div>
           </div>
-        ) : (
-          <p className="text-sm font-semibold text-[var(--text-muted)]">Chọn một khách hàng để xem hồ sơ, lịch sử gói và công nợ.</p>
-        )}
+
+          {/* Right: Modern Pagination Buttons */}
+          <div className="flex items-center gap-1.5 self-end sm:self-auto">
+            {/* Previous Page Button */}
+            <button
+              type="button"
+              disabled={activePage <= 1}
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              className="inline-flex h-8 items-center gap-1 rounded-xl border border-slate-200/80 bg-white px-2.5 text-xs font-bold text-slate-600 shadow-sm transition hover:border-[#087ec1] hover:text-[#087ec1] disabled:opacity-40 disabled:pointer-events-none dark:border-white/10 dark:bg-white/5 dark:text-gray-300 dark:hover:border-white/20 dark:hover:text-white"
+            >
+              <ChevronLeft size={14} />
+              <span className="hidden sm:inline">Trước</span>
+            </button>
+
+            {/* Page Number Buttons */}
+            <div className="flex items-center gap-1">
+              {paginationPages.map((page, idx) => {
+                if (typeof page === 'string') {
+                  return (
+                    <span key={`ellipsis-${idx}`} className="px-1 text-slate-400">
+                      ...
+                    </span>
+                  )
+                }
+
+                const isCurrent = activePage === page
+                return (
+                  <button
+                    key={page}
+                    type="button"
+                    onClick={() => setCurrentPage(page)}
+                    className={`inline-flex size-8 items-center justify-center rounded-xl text-xs font-extrabold transition ${
+                      isCurrent
+                        ? 'bg-[#087ec1] text-white shadow-sm dark:bg-[#ffcc08] dark:text-slate-900'
+                        : 'border border-slate-200/80 bg-white text-slate-600 hover:border-[#087ec1] hover:text-[#087ec1] dark:border-white/10 dark:bg-white/5 dark:text-gray-300 dark:hover:border-white/20 dark:hover:text-white'
+                    }`}
+                  >
+                    {page}
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* Next Page Button */}
+            <button
+              type="button"
+              disabled={activePage >= totalPages}
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              className="inline-flex h-8 items-center gap-1 rounded-xl border border-slate-200/80 bg-white px-2.5 text-xs font-bold text-slate-600 shadow-sm transition hover:border-[#087ec1] hover:text-[#087ec1] disabled:opacity-40 disabled:pointer-events-none dark:border-white/10 dark:bg-white/5 dark:text-gray-300 dark:hover:border-white/20 dark:hover:text-white"
+            >
+              <span className="hidden sm:inline">Sau</span>
+              <ChevronRight size={14} />
+            </button>
+          </div>
+        </div>
       </section>
 
-      {formMode ? (
+      {/* Member Form Modal */}
+      {formMode && (
         <MemberFormModal
           mode={formMode}
           member={editingMember}
@@ -375,45 +652,77 @@ export function MembersPage() {
           }}
           onSubmit={handleSubmit}
         />
-      ) : null}
+      )}
     </div>
   )
 }
 
-function Info({ label, value, strong = false }: { label: string; value: string; strong?: boolean }) {
-  return (
-    <div className="rounded-[8px] bg-[var(--surface-muted)] p-3">
-      <p className="text-xs font-bold uppercase text-[var(--text-muted)]">{label}</p>
-      <p className={['mt-1 text-sm', strong ? 'font-black text-[var(--brand-red)]' : 'font-semibold text-[var(--text)]'].join(' ')}>
-        {value}
-      </p>
-    </div>
-  )
-}
+function StatCard({
+  label,
+  value,
+  subtext,
+  icon: Icon,
+  tone = 'blue',
+}: {
+  label: string
+  value: string | number
+  subtext: string
+  icon: typeof Users
+  tone?: 'blue' | 'green' | 'yellow' | 'red'
+}) {
+  const toneClasses = {
+    blue: {
+      glow: 'bg-[#087ec1]/10',
+      iconBg: 'bg-blue-50 text-[#087ec1] dark:bg-[#087ec1]/15',
+      borderHover: 'hover:border-[#087ec1]/50',
+      subtextBadge: 'text-[#087ec1]',
+    },
+    green: {
+      glow: 'bg-emerald-500/10',
+      iconBg: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400',
+      borderHover: 'hover:border-emerald-500/50',
+      subtextBadge: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
+    },
+    yellow: {
+      glow: 'bg-[#ffcc08]/10',
+      iconBg: 'bg-amber-50 text-[#d97706] dark:bg-[#ffcc08]/15 dark:text-[#ffcc08]',
+      borderHover: 'hover:border-[#ffcc08]/50',
+      subtextBadge: 'bg-amber-50 text-amber-700 dark:bg-[#ffcc08]/15 dark:text-[#ffcc08]',
+    },
+    red: {
+      glow: 'bg-[#df271b]/10',
+      iconBg: 'bg-red-50 text-[#df271b] dark:bg-[#df271b]/15 dark:text-red-400',
+      borderHover: 'hover:border-[#df271b]/50',
+      subtextBadge: 'bg-red-50 text-red-700 dark:bg-red-500/15 dark:text-red-300',
+    },
+  }[tone]
 
-function MembershipList({ title, memberships }: { title: string; memberships: MemberDetail['activeMemberships'] }) {
   return (
-    <div>
-      <h4 className="text-sm font-black text-[var(--text-strong)]">{title}</h4>
-      <div className="mt-2 space-y-2">
-        {memberships.length === 0 ? (
-          <p className="rounded-[8px] bg-[var(--surface-muted)] px-3 py-2 text-sm font-semibold text-[var(--text-muted)]">
-            Chưa có dữ liệu.
-          </p>
-        ) : (
-          memberships.map((membership) => (
-            <div key={membership.id} className="rounded-[8px] bg-[var(--surface-muted)] px-3 py-2 text-sm">
-              <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-                <p className="font-bold text-[var(--text-strong)]">{membership.planName}</p>
-                <p className="font-black text-[var(--brand-red)]">{formatMoney(membership.debtAmount)}</p>
-              </div>
-              <p className="mt-1 text-xs font-semibold text-[var(--text-muted)]">
-                {formatDate(membership.startDate)} - {formatDate(membership.endDate)} · {membership.status}
-              </p>
-            </div>
-          ))
-        )}
+    <div
+      className={`group relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm transition-all hover:shadow-md dark:border-white/[0.08] dark:bg-[#0c1017] ${toneClasses.borderHover}`}
+    >
+      <div
+        className={`pointer-events-none absolute right-0 top-0 size-24 rounded-full blur-xl transition group-hover:scale-125 ${toneClasses.glow}`}
+      />
+
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-gray-400">
+          {label}
+        </span>
+        <div className={`flex size-8 shrink-0 items-center justify-center rounded-lg ${toneClasses.iconBg}`}>
+          <Icon size={16} />
+        </div>
+      </div>
+
+      <div className="mt-2.5 flex items-baseline justify-between">
+        <p className="text-2xl md:text-3xl font-black tracking-tight text-slate-900 dark:text-white">
+          {value}
+        </p>
+        <span className={`rounded-md px-1.5 py-0.5 text-[11px] font-black ${toneClasses.subtextBadge}`}>
+          {subtext}
+        </span>
       </div>
     </div>
   )
 }
+

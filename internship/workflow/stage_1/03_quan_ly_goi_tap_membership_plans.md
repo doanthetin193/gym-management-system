@@ -1,4 +1,4 @@
-﻿# 🏋️ CHẶNG 3: QUẢN LÝ GÓI TẬP (MEMBERSHIP PLANS)
+# 🏋️ CHẶNG 3: QUẢN LÝ GÓI TẬP (MEMBERSHIP PLANS)
 
 Tài liệu này tổng hợp toàn bộ kiến trúc và logic nghiệp vụ của phân hệ **Quản lý Gói tập (Membership Plans)** trong hệ thống **Gym Dương Double**.
 
@@ -7,7 +7,7 @@ Tài liệu này tổng hợp toàn bộ kiến trúc và logic nghiệp vụ c�
 ## 🎯 1. Mục tiêu Nghiệp vụ
 - **Hạt nhân kinh doanh:** Gói tập định nghĩa bảng giá và các quyền lợi dịch vụ của phòng gym (`SELF_TRAINING` - Tự tập, `PT` - Kèm 1-1, `GUIDANCE` - Giáo án, `COMBO`...).
 - **Toàn vẹn dữ liệu (Business Shape Validation):** Kiểm tra chặt chẽ các ràng buộc đặc thù theo từng loại gói (ví dụ: gói PT bắt buộc phải có cấp PT và số buổi tập > 0).
-- **Phân quyền bảo mật cao cấp:** Chỉ duy nhất vai trò `OWNER` (Chủ phòng gym) mới có quyền tạo bảng giá (`@PreAuthorize("hasRole('OWNER')")`), trong khi toàn bộ nhân viên (`STAFF`, `PT`) đều được xem bảng giá để bán hàng.
+- **Phân quyền bảo mật cao cấp:** Chỉ duy nhất vai trò `OWNER` (Chủ phòng gym) mới có quyền tạo bảng giá (`@PreAuthorize("hasRole('OWNER')")`), trong khi toàn bộ nhân viên (`PT`) đều được xem bảng giá để bán hàng.
 - **Tiền tệ chuẩn xác:** Sử dụng `BigDecimal` để tính toán tài chính, tuyệt đối tránh lỗi làm tròn của `double`/`float`.
 
 ---

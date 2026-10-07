@@ -28,6 +28,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import com.gymduongdouble.backend.common.enums.UserStatus;
+import com.gymduongdouble.backend.common.exception.BadRequestException;
+import com.gymduongdouble.backend.user.domain.Role;
+import com.gymduongdouble.backend.user.domain.User;
+import com.gymduongdouble.backend.user.repository.RoleRepository;
+import com.gymduongdouble.backend.user.repository.UserRepository;
+import org.springframework.security.crypto.password.PasswordEncoder;
+
 @Service
 @RequiredArgsConstructor
 public class MemberService {
@@ -38,6 +46,10 @@ public class MemberService {
     private final MemberMembershipRepository memberMembershipRepository;
     private final DebtRecordRepository debtRecordRepository;
     private final PtSessionPackageRepository ptSessionPackageRepository;
+    private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final MemberAccessService memberAccessService;
 
     @Transactional
     public MemberResponse create(MemberCreateRequest request) {
@@ -61,6 +73,7 @@ public class MemberService {
 
     @Transactional(readOnly = true)
     public MemberDetailResponse getDetail(Long id) {
+        memberAccessService.ensureCanAccessMember(id);
         Member member = findEntity(id);
         LocalDate today = LocalDate.now();
         List<MemberMembership> memberships = memberMembershipRepository.findByMemberIdOrderByStartDateDesc(id);
@@ -90,6 +103,7 @@ public class MemberService {
 
     @Transactional
     public MemberResponse update(Long id, MemberUpdateRequest request) {
+        memberAccessService.ensureCanAccessMember(id);
         Member member = findEntity(id);
         String normalizedPhone = request.phone().trim();
 
@@ -120,6 +134,7 @@ public class MemberService {
         MemberListFilter resolvedFilter = filter == null ? MemberListFilter.ALL : filter;
 
         return members.stream()
+            .filter(member -> memberAccessService.canAccessMember(member.getId()))
             .sorted(Comparator.comparing(Member::getCreatedAt).reversed())
             .map(member -> MemberSummaryResponse.from(member, latestMembership(member.getId())))
             .filter(summary -> matchesFilter(summary, resolvedFilter, today))
@@ -163,5 +178,91 @@ public class MemberService {
         return debtRecordRepository.findByMemberIdOrderByCreatedAtDesc(memberId).stream()
             .map(DebtRecord::getRemainingAmount)
             .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    @Transactional
+    public MemberDetailResponse createPortalAccount(Long memberId, String initialPassword) {
+        memberAccessService.ensureCanAccessMember(memberId);
+        Member member = findEntity(memberId);
+        if (member.getUser() != null) {
+            throw new ConflictException("Hội viên này đã có tài khoản Portal.");
+        }
+
+        String cleanPhone = member.getPhone().trim();
+        String phoneDigits = cleanPhone.replaceAll("\\D", "");
+        String defaultEmail = "member." + (phoneDigits.isEmpty() ? member.getId() : phoneDigits) + "@gymduongdouble.local";
+
+        User user = userRepository.findByPhone(cleanPhone)
+            .or(() -> userRepository.findByEmail(defaultEmail))
+            .orElseGet(() -> {
+                Role role = roleRepository.findByCode("MEMBER")
+                    .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy vai trò MEMBER"));
+                User newUser = new User();
+                newUser.setEmail(defaultEmail);
+                newUser.setPhone(cleanPhone);
+                newUser.setFullName(member.getFullName());
+                newUser.getRoles().add(role);
+                return newUser;
+            });
+
+        String pass = requirePortalPassword(initialPassword);
+        user.setPasswordHash(passwordEncoder.encode(pass));
+        user.setStatus(UserStatus.ACTIVE);
+        User savedUser = userRepository.save(user);
+
+        member.setUser(savedUser);
+        memberRepository.save(member);
+        return getDetail(memberId);
+    }
+
+    @Transactional
+    public MemberDetailResponse updatePortalAccountStatus(Long memberId, UserStatus status) {
+        memberAccessService.ensureCanAccessMember(memberId);
+        Member member = findEntity(memberId);
+        if (member.getUser() == null) {
+            throw new BadRequestException("Hội viên chưa có tài khoản Portal.");
+        }
+
+        member.getUser().setStatus(status);
+        userRepository.save(member.getUser());
+        return getDetail(memberId);
+    }
+
+    @Transactional
+    public MemberDetailResponse resetPortalAccountPassword(Long memberId, String newPassword) {
+        memberAccessService.ensureCanAccessMember(memberId);
+        Member member = findEntity(memberId);
+        if (member.getUser() == null) {
+            throw new BadRequestException("Hội viên chưa có tài khoản Portal.");
+        }
+
+        String pass = requirePortalPassword(newPassword);
+        member.getUser().setPasswordHash(passwordEncoder.encode(pass));
+        userRepository.save(member.getUser());
+        return getDetail(memberId);
+    }
+
+    @Transactional
+    public MemberDetailResponse deletePortalAccount(Long memberId) {
+        memberAccessService.ensureCanAccessMember(memberId);
+        Member member = findEntity(memberId);
+        if (member.getUser() != null) {
+            User user = member.getUser();
+            member.setUser(null);
+            memberRepository.save(member);
+            userRepository.delete(user);
+        }
+        return getDetail(memberId);
+    }
+
+    private String requirePortalPassword(String password) {
+        if (!StringUtils.hasText(password)) {
+            throw new BadRequestException("Mật khẩu portal là bắt buộc.");
+        }
+        String cleanPassword = password.trim();
+        if (cleanPassword.length() < 6) {
+            throw new BadRequestException("Mật khẩu portal tối thiểu 6 ký tự.");
+        }
+        return cleanPassword;
     }
 }

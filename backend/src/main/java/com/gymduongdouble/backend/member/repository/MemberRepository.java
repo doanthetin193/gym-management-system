@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface MemberRepository extends JpaRepository<Member, Long> {
     Optional<Member> findByPhone(String phone);
+    Optional<Member> findByUserId(Long userId);
     boolean existsByPhoneAndIdNot(String phone, Long id);
     List<Member> findByFullNameContainingIgnoreCaseOrPhoneContaining(String fullName, String phone);
 }

@@ -144,37 +144,39 @@ Done khi:
 - PT thêm session/body measurement.
 - Số buổi còn lại cập nhật đúng.
 
-## 6. Sprint 5 - Training Program và Exercise Library
+## 6. Sprint 5 - Public TikTok Exercise Library
 
 Mục tiêu:
 
-- Số hóa chương trình theo mục tiêu và thư viện bài tập.
+- Xây dựng thư viện video bài tập public bằng TikTok để khách, người xem bên ngoài và học viên đều xem/chia sẻ được.
+- Tập trung tăng giá trị hướng dẫn kỹ thuật và kéo tương tác về kênh TikTok của phòng gym.
+- Không làm Training Program theo tuần, không làm khóa học/LMS, không phân quyền VIP/premium ở sprint này.
 
 Backend:
 
-- training_programs.
-- training_program_weeks.
 - exercise_categories.
 - exercises.
-- exercise_media.
-- YouTube media URL.
+- TikTok video URL/video id.
+- Public read API cho thư viện.
+- Owner/admin write API để thêm/sửa/xuất bản video.
+- View count cơ bản nếu cần thống kê mức độ quan tâm.
 
 Frontend:
 
-- Training program page.
-- Weekly target vs actual.
-- Final evaluation form/result khi kết thúc chương trình.
-- Exercise category page.
-- Exercise list/detail.
-- YouTube embed preview.
+- Public exercise library page.
+- Filter theo nhóm cơ/chủ đề, cấp độ, từ khóa.
+- Exercise/video detail page.
+- TikTok embed hoặc nút mở TikTok nếu embed không khả dụng.
+- Nút copy link/chia sẻ để gửi cho học viên qua Zalo/Facebook.
+- Owner/admin exercise management page.
 
 Done khi:
 
-- Tạo chương trình theo tuần được.
-- Cập nhật target/actual từng tuần.
-- Cập nhật được đánh giá kết thúc chương trình/gói PT.
-- Tạo bài tập có video YouTube.
-- Member xem được nội dung được phép.
+- Người dùng không cần đăng nhập vẫn xem được thư viện bài tập public.
+- Owner thêm/sửa/xuất bản được bài tập bằng link TikTok.
+- Hệ thống tự nhận diện/lưu thông tin TikTok cần thiết từ URL.
+- Xem được preview/video TikTok hoặc fallback mở TikTok trong tab mới.
+- Copy/chia sẻ link từng bài tập được.
 
 ## 7. Sprint 6 - Business Goals và báo cáo vận hành
 
@@ -300,5 +302,5 @@ MVP đạt khi:
 - OWNER nhập được thu/chi.
 - Dashboard có số liệu chính.
 - PT cập nhật được buổi tập/chỉ số.
-- Exercise library có YouTube embed.
+- Public TikTok exercise library xem/chia sẻ được.
 - App deploy được trên VPS.

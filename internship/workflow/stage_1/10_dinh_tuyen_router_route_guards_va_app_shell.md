@@ -1,23 +1,23 @@
-# CHẶNG 10: ROUTER, ROUTE GUARDS & APP SHELL
+﻿# CHáº¶NG 10: ROUTER, ROUTE GUARDS & APP SHELL
 
-Tài liệu này ghi chú cách tổ chức routing và layout chính của frontend sau khi đã có `AuthProvider` và axios API client.
-
----
-
-## 1. Mục tiêu
-
-1. Dùng `react-router-dom` để quản lý URL.
-2. Tách route công khai và route cần đăng nhập.
-3. Dùng `ProtectedRoute` để bảo vệ dashboard và các màn hình nghiệp vụ.
-4. Dùng `PublicOnlyRoute` để chặn người đã đăng nhập quay lại `/login`.
-5. Dùng `AppShell` làm layout chung sau khi đăng nhập.
-6. Dựng sẵn các route nghiệp vụ để Sprint sau chỉ cần thay placeholder bằng màn hình thật.
+TÃ i liá»‡u nÃ y ghi chÃº cÃ¡ch tá»• chá»©c routing vÃ  layout chÃ­nh cá»§a frontend sau khi Ä‘Ã£ cÃ³ `AuthProvider` vÃ  axios API client.
 
 ---
 
-## 2. Cây route hiện tại
+## 1. Má»¥c tiÃªu
 
-File chính: [App.tsx](file:///d:/gym-management-system/frontend/src/app/App.tsx)
+1. DÃ¹ng `react-router-dom` Ä‘á»ƒ quáº£n lÃ½ URL.
+2. TÃ¡ch route cÃ´ng khai vÃ  route cáº§n Ä‘Äƒng nháº­p.
+3. DÃ¹ng `ProtectedRoute` Ä‘á»ƒ báº£o vá»‡ dashboard vÃ  cÃ¡c mÃ n hÃ¬nh nghiá»‡p vá»¥.
+4. DÃ¹ng `PublicOnlyRoute` Ä‘á»ƒ cháº·n ngÆ°á»i Ä‘Ã£ Ä‘Äƒng nháº­p quay láº¡i `/login`.
+5. DÃ¹ng `AppShell` lÃ m layout chung sau khi Ä‘Äƒng nháº­p.
+6. Dá»±ng sáºµn cÃ¡c route nghiá»‡p vá»¥ Ä‘á»ƒ Sprint sau chá»‰ cáº§n thay placeholder báº±ng mÃ n hÃ¬nh tháº­t.
+
+---
+
+## 2. CÃ¢y route hiá»‡n táº¡i
+
+File chÃ­nh: [App.tsx](file:///d:/gym-management-system/frontend/src/app/App.tsx)
 
 ```tsx
 <Routes>
@@ -38,23 +38,23 @@ File chính: [App.tsx](file:///d:/gym-management-system/frontend/src/app/App.tsx
 </Routes>
 ```
 
-Các route:
+CÃ¡c route:
 
-| URL | Vai trò |
+| URL | Vai trÃ² |
 | :--- | :--- |
-| `/login` | Màn hình đăng nhập. |
-| `/` | Dashboard sau khi đăng nhập. |
-| `/members` | Module khách hàng. |
-| `/membership-plans` | Module gói tập. |
-| `/payments` | Module thanh toán/công nợ. |
-| `/pt-schedule` | Module lịch PT/check-in sau này. |
-| `/goals` | Module mục tiêu tháng/năm. |
+| `/login` | MÃ n hÃ¬nh Ä‘Äƒng nháº­p. |
+| `/` | Dashboard sau khi Ä‘Äƒng nháº­p. |
+| `/members` | Module khÃ¡ch hÃ ng. |
+| `/membership-plans` | Module gÃ³i táº­p. |
+| `/payments` | Module thanh toÃ¡n/cÃ´ng ná»£. |
+| `/pt-schedule` | Module lá»‹ch PT/check-in sau nÃ y. |
+| `/goals` | Module má»¥c tiÃªu thÃ¡ng/nÄƒm. |
 
 ---
 
 ## 3. ProtectedRoute
 
-File chính: [ProtectedRoute.tsx](file:///d:/gym-management-system/frontend/src/app/router/ProtectedRoute.tsx)
+File chÃ­nh: [ProtectedRoute.tsx](file:///d:/gym-management-system/frontend/src/app/router/ProtectedRoute.tsx)
 
 ```tsx
 export function ProtectedRoute() {
@@ -72,19 +72,19 @@ export function ProtectedRoute() {
 }
 ```
 
-Ý nghĩa:
+Ã nghÄ©a:
 
-1. Nếu app đang kiểm tra phiên, hiển thị trạng thái loading.
-2. Nếu kiểm tra xong mà chưa có user, chuyển về `/login`.
-3. Nếu có user, render `AppShell`.
+1. Náº¿u app Ä‘ang kiá»ƒm tra phiÃªn, hiá»ƒn thá»‹ tráº¡ng thÃ¡i loading.
+2. Náº¿u kiá»ƒm tra xong mÃ  chÆ°a cÃ³ user, chuyá»ƒn vá» `/login`.
+3. Náº¿u cÃ³ user, render `AppShell`.
 
-`ProtectedRoute` không tự gọi API. Nó chỉ đọc trạng thái từ `AuthProvider`. Việc xác minh token đã được xử lý trước đó bằng `/v1/auth/me`.
+`ProtectedRoute` khÃ´ng tá»± gá»i API. NÃ³ chá»‰ Ä‘á»c tráº¡ng thÃ¡i tá»« `AuthProvider`. Viá»‡c xÃ¡c minh token Ä‘Ã£ Ä‘Æ°á»£c xá»­ lÃ½ trÆ°á»›c Ä‘Ã³ báº±ng `/v1/auth/me`.
 
 ---
 
 ## 4. PublicOnlyRoute
 
-File chính: [PublicOnlyRoute.tsx](file:///d:/gym-management-system/frontend/src/app/router/PublicOnlyRoute.tsx)
+File chÃ­nh: [PublicOnlyRoute.tsx](file:///d:/gym-management-system/frontend/src/app/router/PublicOnlyRoute.tsx)
 
 ```tsx
 export function PublicOnlyRoute() {
@@ -102,28 +102,28 @@ export function PublicOnlyRoute() {
 }
 ```
 
-Ý nghĩa:
+Ã nghÄ©a:
 
-1. Khi đang bootstrap, chưa render gì để tránh nháy màn hình.
-2. Nếu đã đăng nhập, không cho vào `/login`.
-3. Nếu chưa đăng nhập, render `LoginPage` qua `<Outlet />`.
+1. Khi Ä‘ang bootstrap, chÆ°a render gÃ¬ Ä‘á»ƒ trÃ¡nh nhÃ¡y mÃ n hÃ¬nh.
+2. Náº¿u Ä‘Ã£ Ä‘Äƒng nháº­p, khÃ´ng cho vÃ o `/login`.
+3. Náº¿u chÆ°a Ä‘Äƒng nháº­p, render `LoginPage` qua `<Outlet />`.
 
 ---
 
 ## 5. AppShell
 
-File chính: [AppShell.tsx](file:///d:/gym-management-system/frontend/src/layouts/AppShell.tsx)
+File chÃ­nh: [AppShell.tsx](file:///d:/gym-management-system/frontend/src/layouts/AppShell.tsx)
 
-`AppShell` là khung giao diện sau đăng nhập, gồm:
+`AppShell` lÃ  khung giao diá»‡n sau Ä‘Äƒng nháº­p, gá»“m:
 
 1. Sidebar desktop.
 2. Topbar.
 3. Mobile drawer.
-4. Nút đổi theme.
-5. Nút đăng xuất.
-6. Khu vực `<Outlet />` để render page con.
+4. NÃºt Ä‘á»•i theme.
+5. NÃºt Ä‘Äƒng xuáº¥t.
+6. Khu vá»±c `<Outlet />` Ä‘á»ƒ render page con.
 
-Điểm quan trọng:
+Äiá»ƒm quan trá»ng:
 
 ```tsx
 <main className="px-4 py-6 md:px-6">
@@ -131,13 +131,13 @@ File chính: [AppShell.tsx](file:///d:/gym-management-system/frontend/src/layout
 </main>
 ```
 
-`Outlet` là vị trí mà React Router nhúng `DashboardPage`, `MembersPage`, `PaymentsPage`,... tùy theo URL hiện tại.
+`Outlet` lÃ  vá»‹ trÃ­ mÃ  React Router nhÃºng `DashboardPage`, `MembersPage`, `PaymentsPage`,... tÃ¹y theo URL hiá»‡n táº¡i.
 
 ---
 
 ## 6. Navigation config
 
-File chính: [navigation.ts](file:///d:/gym-management-system/frontend/src/app/navigation.ts)
+File chÃ­nh: [navigation.ts](file:///d:/gym-management-system/frontend/src/app/navigation.ts)
 
 ```ts
 export type AppNavItem = {
@@ -148,25 +148,25 @@ export type AppNavItem = {
 }
 ```
 
-Sidebar không hard-code từng item trực tiếp trong JSX. Thay vào đó, menu được sinh từ `appNavItems`. Cách này giúp:
+Sidebar khÃ´ng hard-code tá»«ng item trá»±c tiáº¿p trong JSX. Thay vÃ o Ä‘Ã³, menu Ä‘Æ°á»£c sinh tá»« `appNavItems`. CÃ¡ch nÃ y giÃºp:
 
-1. Dễ thêm route mới.
-2. Dễ đổi label/icon.
-3. Dễ đánh dấu module nào đã sẵn sàng, module nào là Sprint sau.
+1. Dá»… thÃªm route má»›i.
+2. Dá»… Ä‘á»•i label/icon.
+3. Dá»… Ä‘Ã¡nh dáº¥u module nÃ o Ä‘Ã£ sáºµn sÃ ng, module nÃ o lÃ  Sprint sau.
 
 ---
 
-## 7. LoginPage và lỗi API
+## 7. LoginPage vÃ  lá»—i API
 
-File chính: [LoginPage.tsx](file:///d:/gym-management-system/frontend/src/features/auth/pages/LoginPage.tsx)
+File chÃ­nh: [LoginPage.tsx](file:///d:/gym-management-system/frontend/src/features/auth/pages/LoginPage.tsx)
 
-Login page gọi:
+Login page gá»i:
 
 ```ts
-await login(username, password)
+await login(email, password)
 ```
 
-Nếu backend trả lỗi, tầng axios interceptor sẽ ném `ApiClientError`. UI chỉ cần bắt lỗi và hiển thị:
+Náº¿u backend tráº£ lá»—i, táº§ng axios interceptor sáº½ nÃ©m `ApiClientError`. UI chá»‰ cáº§n báº¯t lá»—i vÃ  hiá»ƒn thá»‹:
 
 ```ts
 if (caughtError instanceof ApiClientError) {
@@ -174,31 +174,32 @@ if (caughtError instanceof ApiClientError) {
 }
 ```
 
-Nhờ vậy `LoginPage` không cần biết backend trả envelope `{ success, data, error }` như thế nào.
+Nhá» váº­y `LoginPage` khÃ´ng cáº§n biáº¿t backend tráº£ envelope `{ success, data, error }` nhÆ° tháº¿ nÃ o.
 
 ---
 
-## 8. Các route nghiệp vụ hiện tại
+## 8. CÃ¡c route nghiá»‡p vá»¥ hiá»‡n táº¡i
 
-Các page như `MembersPage`, `MembershipPlansPage`, `PaymentsPage`, `PtSchedulePage`, `GoalsPage` hiện đang dùng `ComingSoonPage`.
+CÃ¡c page nhÆ° `MembersPage`, `MembershipPlansPage`, `PaymentsPage`, `PtSchedulePage`, `GoalsPage` hiá»‡n Ä‘ang dÃ¹ng `ComingSoonPage`.
 
-Đây không phải code thừa. Mục đích là:
+ÄÃ¢y khÃ´ng pháº£i code thá»«a. Má»¥c Ä‘Ã­ch lÃ :
 
-1. Chốt sẵn route và layout.
-2. Cho sidebar điều hướng được thật.
-3. Giúp Sprint sau thay dần placeholder bằng màn hình nghiệp vụ.
-4. Tránh phát triển frontend thiếu định hướng.
+1. Chá»‘t sáºµn route vÃ  layout.
+2. Cho sidebar Ä‘iá»u hÆ°á»›ng Ä‘Æ°á»£c tháº­t.
+3. GiÃºp Sprint sau thay dáº§n placeholder báº±ng mÃ n hÃ¬nh nghiá»‡p vá»¥.
+4. TrÃ¡nh phÃ¡t triá»ƒn frontend thiáº¿u Ä‘á»‹nh hÆ°á»›ng.
 
 ---
 
-## 9. Ghi nhớ nhanh
+## 9. Ghi nhá»› nhanh
 
-| Khái niệm | Ý nghĩa |
+| KhÃ¡i niá»‡m | Ã nghÄ©a |
 | :--- | :--- |
-| `BrowserRouter` | Bật routing phía frontend. |
-| `Routes` / `Route` | Khai báo cây URL. |
-| `ProtectedRoute` | Chặn route cần đăng nhập. |
-| `PublicOnlyRoute` | Chặn user đã đăng nhập vào lại trang login. |
-| `Navigate replace` | Redirect mà không tạo lịch sử dư trong browser. |
-| `Outlet` | Vị trí render route con trong layout cha. |
-| `AppShell` | Layout chung cho toàn bộ màn hình sau đăng nhập. |
+| `BrowserRouter` | Báº­t routing phÃ­a frontend. |
+| `Routes` / `Route` | Khai bÃ¡o cÃ¢y URL. |
+| `ProtectedRoute` | Cháº·n route cáº§n Ä‘Äƒng nháº­p. |
+| `PublicOnlyRoute` | Cháº·n user Ä‘Ã£ Ä‘Äƒng nháº­p vÃ o láº¡i trang login. |
+| `Navigate replace` | Redirect mÃ  khÃ´ng táº¡o lá»‹ch sá»­ dÆ° trong browser. |
+| `Outlet` | Vá»‹ trÃ­ render route con trong layout cha. |
+| `AppShell` | Layout chung cho toÃ n bá»™ mÃ n hÃ¬nh sau Ä‘Äƒng nháº­p. |
+

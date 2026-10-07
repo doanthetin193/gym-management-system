@@ -14,7 +14,7 @@ public class AuthenticatedUser implements UserDetails {
 
     private final Long id;
     private final String fullName;
-    private final String username;
+    private final String email;
     private final String password;
     private final UserStatus status;
     private final List<GrantedAuthority> authorities;
@@ -22,7 +22,7 @@ public class AuthenticatedUser implements UserDetails {
     public AuthenticatedUser(User user) {
         this.id = user.getId();
         this.fullName = user.getFullName();
-        this.username = user.getUsername();
+        this.email = user.getEmail();
         this.password = user.getPasswordHash();
         this.status = user.getStatus();
         this.authorities = user.getRoles().stream()
@@ -34,6 +34,11 @@ public class AuthenticatedUser implements UserDetails {
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return authorities;
+    }
+
+    @Override
+    public String getUsername() {
+        return email;
     }
 
     @Override

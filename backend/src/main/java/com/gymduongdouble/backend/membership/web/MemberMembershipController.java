@@ -23,7 +23,7 @@ public class MemberMembershipController {
     private final MemberMembershipService memberMembershipService;
 
     @PostMapping
-    @PreAuthorize("hasRole('OWNER')")
+    @PreAuthorize("hasAnyRole('OWNER', 'PT')")
     public ApiResponse<MemberMembershipResponse> create(
         @PathVariable Long memberId,
         @Valid @RequestBody CreateMemberMembershipRequest request
@@ -32,6 +32,7 @@ public class MemberMembershipController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('OWNER', 'PT')")
     public ApiResponse<List<MemberMembershipResponse>> listByMember(@PathVariable Long memberId) {
         return ApiResponse.ok(memberMembershipService.listByMember(memberId));
     }

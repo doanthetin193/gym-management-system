@@ -41,6 +41,9 @@ public class BusinessGoal extends AuditableEntity {
     @Column(name = "target_value", nullable = false, precision = 15, scale = 2)
     private BigDecimal targetValue = BigDecimal.ZERO;
 
+    @Column(name = "actual_value_override", precision = 15, scale = 2)
+    private BigDecimal actualValueOverride;
+
     @Column(length = 30)
     private String unit;
 

@@ -2,7 +2,6 @@ package com.gymduongdouble.backend.exercise.domain;
 
 import com.gymduongdouble.backend.common.domain.AuditableEntity;
 import com.gymduongdouble.backend.common.enums.ExerciseDifficulty;
-import com.gymduongdouble.backend.common.enums.ExerciseVisibility;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -51,9 +50,26 @@ public class Exercise extends AuditableEntity {
     @Column(length = 120)
     private String equipment;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 30)
-    private ExerciseVisibility visibility = ExerciseVisibility.PUBLIC;
+    @Column(name = "tiktok_url", columnDefinition = "text")
+    private String tiktokUrl;
+
+    @Column(name = "tiktok_video_id", length = 120)
+    private String tiktokVideoId;
+
+    @Column(name = "thumbnail_url", columnDefinition = "text")
+    private String thumbnailUrl;
+
+    @Column(name = "author_name", length = 120)
+    private String authorName = "DUONG DOUBLE";
+
+    @Column(name = "author_tiktok_url", columnDefinition = "text")
+    private String authorTiktokUrl = "https://www.tiktok.com/@duong.double";
+
+    @Column(nullable = false)
+    private boolean featured = false;
+
+    @Column(name = "view_count", nullable = false)
+    private Long viewCount = 0L;
 
     @Column(nullable = false)
     private boolean active = true;

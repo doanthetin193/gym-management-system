@@ -8,4 +8,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface PtSessionLogRepository extends JpaRepository<PtSessionLog, Long> {
     List<PtSessionLog> findByMemberIdOrderBySessionDateDesc(Long memberId);
     List<PtSessionLog> findByPtUserIdAndSessionDateBetween(Long ptUserId, LocalDate startDate, LocalDate endDate);
+    boolean existsByScheduleId(Long scheduleId);
 }

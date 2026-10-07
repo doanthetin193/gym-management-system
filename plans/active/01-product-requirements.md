@@ -10,7 +10,7 @@ Mục tiêu cốt lõi:
 - Lưu lịch sử đăng ký/gia hạn gói.
 - Ghi nhận thu, chi, công nợ và tự động tổng hợp tài chính.
 - Quản lý khách PT/chương trình: số buổi, check-in, chỉ số cơ thể, mục tiêu và tiến độ.
-- Quản lý bài tập, ảnh và video YouTube.
+- Quản lý thư viện bài tập/video TikTok public để học viên xem và chia sẻ.
 - Tạo nền tảng dữ liệu sạch cho báo cáo, payroll và AI sau này.
 
 ## 2. Bối cảnh thực tế
@@ -68,7 +68,7 @@ Khách hàng:
 
 - Xem thông tin cá nhân.
 - Xem gói hiện tại/ngày hết hạn.
-- Xem bài tập/chương trình được phép.
+- Xem thư viện bài tập/video public.
 
 ## 4. Phạm vi MVP
 
@@ -89,7 +89,7 @@ Khách hàng:
 - PT session/check-in.
 - Body measurement.
 - Mục tiêu tập luyện cơ bản.
-- Exercise library với YouTube embed.
+- Public TikTok exercise library.
 - Audit log thao tác quan trọng.
 - Lịch dạy PT cơ bản dạng list/tuần.
 - Nhắc việc cơ bản trong hệ thống/dashboard: sắp hết hạn, sinh nhật, công nợ, khách PT còn ít buổi.
@@ -260,20 +260,18 @@ Acceptance:
 
 ### 5.6 Training Program
 
-Chức năng:
+Trạng thái:
 
-- Lưu mục tiêu ban đầu.
-- Tạo chương trình theo số tuần.
-- Lưu mục tiêu từng tuần.
-- Lưu thực tế từng tuần.
-- Lưu kết quả và ghi chú.
+- Không triển khai trong Sprint 5.
+- Không biến hệ thống thành LMS/khóa học theo tuần vì không sát nhu cầu hiện tại của chủ phòng.
+- Tiến độ PT hiện xử lý bằng `pt_session_logs`, `member_activity_logs`, `body_measurements` và `pt_goals`.
+- Nếu sau này chủ phòng thật sự cần giáo án cá nhân hóa theo tuần cho từng khách PT thì mới mở phase riêng.
 
 Acceptance:
 
-- PT tạo được chương trình cho khách.
-- PT cập nhật actual sessions/result từng tuần.
-- OWNER xem được khách đang đạt/chậm mục tiêu.
-- Khi kết thúc gói/chương trình, OWNER/PT xem được so sánh mục tiêu ban đầu và kết quả đạt được.
+- Sprint 5 không tạo màn Training Program theo tuần.
+- Không có weekly target/actual trong Sprint 5.
+- Không có khóa nội dung theo VIP/premium trong Sprint 5.
 
 ### 5.7 Business Goals
 
@@ -293,22 +291,26 @@ Acceptance:
 - Hệ thống tính được actual từ dữ liệu nguồn nếu có.
 - Các nhóm `Khách Hướng Dẫn/Giáo án`, `Khách PT mới`, `Khách PT chính` được cấu hình rõ để hệ thống tính actual đúng.
 
-### 5.8 Exercise Library
+### 5.8 Public TikTok Exercise Library
 
 Chức năng:
 
-- Quản lý nhóm bài tập.
-- Quản lý bài tập.
-- Lưu hướng dẫn.
-- Lưu lỗi sai thường gặp.
-- Gắn ảnh/video.
-- Video embed YouTube.
-- Hỗ trợ nội dung premium/VIP theo quyền của gói tập.
+- Quản lý nhóm bài tập/chủ đề như Ngực, Lưng - Xô, Chân - Mông, Vai - Tay, Bụng - Core, Cardio, Phục hồi.
+- Quản lý bài tập/video hướng dẫn dạng public.
+- Lưu mô tả ngắn, lưu ý kỹ thuật, lỗi sai thường gặp nếu có.
+- Gắn link TikTok của chủ phòng, ưu tiên kênh `@duong.double`.
+- Không hỗ trợ provider video khác trong Sprint 5.
+- Không upload/stream video bằng VPS.
+- Không phân quyền member/VIP/premium; ai có link hoặc vào web đều xem được.
+- Hỗ trợ copy link/chia sẻ để gửi cho học viên và kéo tương tác mạng xã hội.
 
 Acceptance:
 
-- Không upload video lên VPS.
-- Member chỉ xem nội dung được phép.
+- Người dùng vãng lai không cần đăng nhập vẫn xem được thư viện.
+- Owner thêm/sửa/xuất bản được bài tập bằng link TikTok.
+- Trang chi tiết bài tập hiển thị được TikTok embed hoặc fallback nút mở TikTok.
+- Có filter/tìm kiếm cơ bản theo nhóm cơ/chủ đề và từ khóa.
+- Có nút copy link/chia sẻ.
 
 ## 6. Dashboard cần có
 
@@ -379,5 +381,5 @@ MVP hoàn thành khi:
 - OWNER xem được khách hết hạn/sắp hết hạn.
 - OWNER nhập được thu/chi và xem lợi nhuận cơ bản.
 - PT nhập được buổi tập và chỉ số.
-- Exercise library có YouTube embed.
+- Public TikTok exercise library xem/chia sẻ được.
 - Hệ thống deploy được trên VPS.

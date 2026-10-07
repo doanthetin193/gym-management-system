@@ -170,18 +170,19 @@ Trách nhiệm:
 Trách nhiệm:
 
 - Goal.
-- Training program.
-- Weekly target vs actual.
-- Báo cáo tiến độ.
+- Body measurement/progress support.
+- Không triển khai Training Program theo tuần trong Sprint 5.
+- Nếu sau này cần giáo án cá nhân hóa theo tuần thì mở phase riêng.
 
 ### `exercise`
 
 Trách nhiệm:
 
 - Nhóm bài tập.
-- Bài tập.
-- Media.
-- YouTube embed URL.
+- Bài tập/video hướng dẫn public.
+- TikTok video URL/video id.
+- Hỗ trợ chia sẻ link để kéo tương tác TikTok/phễu marketing.
+- Không upload/stream video bằng VPS.
 
 ### `dashboard`
 
@@ -267,7 +268,7 @@ Báo cáo ưu tiên tính từ dữ liệu nguồn:
 - Tổng chi: từ `financial_transactions`.
 - Lợi nhuận: tổng thu - tổng chi.
 - Khách sắp hết hạn: từ `member_memberships.end_date`.
-- Tiến độ PT: từ `pt_session_logs`, `body_measurements`, `training_program_weeks`.
+- Tiến độ PT: từ `pt_session_logs`, `member_activity_logs`, `body_measurements`, `pt_goals`.
 
 Quy tắc tài chính:
 
@@ -290,8 +291,9 @@ Spring Scheduler dùng cho:
 
 Video:
 
-- Embed YouTube.
-- Database lưu URL, provider, thumbnail.
+- Sprint 5 chỉ dùng TikTok URL/video id.
+- Database lưu URL, video id/thumbnail nếu có.
+- Frontend ưu tiên TikTok embed; nếu embed không khả dụng thì hiển thị nút mở TikTok.
 - Không stream video bằng VPS.
 
 Ảnh:

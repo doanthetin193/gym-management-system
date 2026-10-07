@@ -19,7 +19,7 @@ export class ApiClientError extends Error {
   }
 }
 
-type UnboxedAxiosInstance = Omit<AxiosInstance, 'get' | 'post' | 'put'> & {
+type UnboxedAxiosInstance = Omit<AxiosInstance, 'get' | 'post' | 'put' | 'patch' | 'delete'> & {
   get<T>(url: string, config?: AxiosRequestConfig): Promise<T>
   post<T, TBody = unknown>(
     url: string,
@@ -31,6 +31,12 @@ type UnboxedAxiosInstance = Omit<AxiosInstance, 'get' | 'post' | 'put'> & {
     data?: TBody,
     config?: AxiosRequestConfig<TBody>,
   ): Promise<T>
+  patch<T, TBody = unknown>(
+    url: string,
+    data?: TBody,
+    config?: AxiosRequestConfig<TBody>,
+  ): Promise<T>
+  delete<T>(url: string, config?: AxiosRequestConfig): Promise<T>
 }
 
 function unboxApiResponse(response: AxiosResponse<ApiResponse<unknown>>) {
@@ -58,6 +64,12 @@ function normalizeApiError(error: AxiosError<ApiResponse<unknown>>) {
 
   if (status === 401) {
     clearAccessToken()
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('auth:unauthorized', { detail: payload?.error?.message }))
+      if (!window.location.pathname.startsWith('/login')) {
+        window.location.replace('/login')
+      }
+    }
   }
 
   throw new ApiClientError(
@@ -111,4 +123,16 @@ export function apiPut<T, TBody = unknown>(
   config?: AxiosRequestConfig<TBody>,
 ): Promise<T> {
   return apiClient.put<T, TBody>(url, data, config)
+}
+
+export function apiPatch<T, TBody = unknown>(
+  url: string,
+  data?: TBody,
+  config?: AxiosRequestConfig<TBody>,
+): Promise<T> {
+  return apiClient.patch<T, TBody>(url, data, config)
+}
+
+export function apiDelete<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
+  return apiClient.delete<T>(url, config)
 }

@@ -24,6 +24,12 @@ public class ExerciseCategory extends AuditableEntity {
     @Column(columnDefinition = "text")
     private String description;
 
+    @Column(name = "icon_name", length = 80)
+    private String iconName;
+
+    @Column(name = "sort_order", nullable = false)
+    private Integer sortOrder = 0;
+
     @Column(nullable = false)
     private boolean active = true;
 }

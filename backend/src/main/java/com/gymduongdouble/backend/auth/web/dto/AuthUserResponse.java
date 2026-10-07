@@ -6,7 +6,7 @@ import org.springframework.security.core.GrantedAuthority;
 
 public record AuthUserResponse(
     Long id,
-    String username,
+    String email,
     String fullName,
     List<String> roles
 ) {

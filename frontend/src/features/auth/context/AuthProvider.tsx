@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
-import { clearAccessToken, readAccessToken, saveAccessToken } from '../../../shared/lib/authStorage'
+import { clearAccessToken, readAccessToken, saveAccessToken, saveRememberedEmail, saveRememberMePreference } from '../../../shared/lib/authStorage'
 import { getCurrentUser, login as loginRequest } from '../api/authApi'
 import type { AuthUser } from '../types/auth'
 import { AuthContext } from './authContext'
@@ -10,6 +10,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(() => readAccessToken())
   const [user, setUser] = useState<AuthUser | null>(null)
   const [bootstrapping, setBootstrapping] = useState(true)
+
+  useEffect(() => {
+    function handleUnauthorized() {
+      clearAccessToken()
+      setToken(null)
+      setUser(null)
+      if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+        window.location.replace('/login')
+      }
+    }
+
+    window.addEventListener('auth:unauthorized', handleUnauthorized)
+    return () => {
+      window.removeEventListener('auth:unauthorized', handleUnauthorized)
+    }
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -40,8 +56,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     bootstrap()
 
+    async function checkLiveness() {
+      if (!readAccessToken()) return
+      try {
+        await getCurrentUser()
+      } catch {
+        clearAccessToken()
+        if (!cancelled) {
+          setToken(null)
+          setUser(null)
+        }
+        if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+          window.location.replace('/login')
+        }
+      }
+    }
+
+    window.addEventListener('focus', checkLiveness)
+    const interval = setInterval(checkLiveness, 20000)
+
     return () => {
       cancelled = true
+      window.removeEventListener('focus', checkLiveness)
+      clearInterval(interval)
     }
   }, [token])
 
@@ -50,9 +87,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       token,
       bootstrapping,
-      login: async (username, password) => {
-        const response = await loginRequest(username, password)
-        saveAccessToken(response.accessToken)
+      login: async (email, password, rememberMe = true) => {
+        const response = await loginRequest(email, password, rememberMe)
+        saveAccessToken(response.accessToken, rememberMe)
+        saveRememberMePreference(rememberMe)
+        saveRememberedEmail(email, rememberMe)
         setToken(response.accessToken)
         setUser(response.user)
       },

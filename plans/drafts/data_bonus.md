@@ -672,7 +672,7 @@ Category gợi ý:
 - WASTE.
 - INTERNET.
 - DRINKING_WATER.
-- STAFF.
+- PT.
 - PT_SALARY.
 - BONUS.
 - OTHER_EXPENSE.

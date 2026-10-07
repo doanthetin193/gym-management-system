@@ -10,12 +10,13 @@ public record PaymentResponse(
     Long id,
     Long memberId,
     String memberName,
+    Long debtRecordId,
     Long membershipId,
     LocalDate paymentDate,
     BigDecimal amount,
     PaymentMethod paymentMethod,
     RevenueCategory revenueCategory,
-    String description
+    String note
 ) {
 
     public static PaymentResponse from(Payment payment) {
@@ -23,6 +24,7 @@ public record PaymentResponse(
             payment.getId(),
             payment.getMember().getId(),
             payment.getMember().getFullName(),
+            payment.getDebtRecord() == null ? null : payment.getDebtRecord().getId(),
             payment.getMembership() == null ? null : payment.getMembership().getId(),
             payment.getPaymentDate(),
             payment.getAmount(),

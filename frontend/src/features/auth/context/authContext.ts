@@ -5,7 +5,7 @@ export type AuthContextValue = {
   user: AuthUser | null
   token: string | null
   bootstrapping: boolean
-  login: (username: string, password: string) => Promise<void>
+  login: (email: string, password: string, rememberMe?: boolean) => Promise<void>
   logout: () => void
 }
 

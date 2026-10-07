@@ -1,18 +1,18 @@
-# 🔌 CHẶNG 08: CHUẨN HÓA KIỂU DỮ LIỆU TYPE-SAFE & LỚP AXIOS CLIENT (INTERCEPTORS)
+﻿# ðŸ”Œ CHáº¶NG 08: CHUáº¨N HÃ“A KIá»‚U Dá»® LIá»†U TYPE-SAFE & Lá»šP AXIOS CLIENT (INTERCEPTORS)
 
-Tài liệu này ghi chú chi tiết về cơ chế **Đồng bộ Kiểu dữ liệu Type-Safe (TypeScript ↔ Spring Boot DTOs)**, **Lớp Axios Client Tự động Gắn Token (Request/Response Interceptors)**, và **Kỹ thuật Mở hộp Kiểu Dữ Liệu (`UnboxedAxiosInstance`)**.
-
----
-
-## 🎯 1. Mục tiêu & Tại sao Chuyển sang Axios?
-
-1. **Tự động gắn Bearer Token:** Nhờ `Request Interceptor`, mọi request gửi đi đều tự động đọc token từ `authStorage` và đính kèm vào Header `Authorization`, các hàm gọi API không còn phải nhận tham số `token` thủ công.
-2. **Tự động Unboxing dữ liệu & Bắt lỗi 401:** Nhờ `Response Interceptor`, tầng UI nhận thẳng dữ liệu thực `data` sạch sẽ, đồng thời nếu gặp lỗi 401 (token hết hạn) thì tự động dọn sạch `localStorage`.
-3. **Type-Safe Tuyệt đối (`UnboxedAxiosInstance`):** Dạy cho TypeScript hiểu rằng Axios sau khi qua Interceptor sẽ trả về `Promise<T>` thay vì `Promise<AxiosResponse<T>>`.
+TÃ i liá»‡u nÃ y ghi chÃº chi tiáº¿t vá» cÆ¡ cháº¿ **Äá»“ng bá»™ Kiá»ƒu dá»¯ liá»‡u Type-Safe (TypeScript â†” Spring Boot DTOs)**, **Lá»›p Axios Client Tá»± Ä‘á»™ng Gáº¯n Token (Request/Response Interceptors)**, vÃ  **Ká»¹ thuáº­t Má»Ÿ há»™p Kiá»ƒu Dá»¯ Liá»‡u (`UnboxedAxiosInstance`)**.
 
 ---
 
-## 🗺️ 2. Sơ đồ Luồng Hoạt động của Axios Interceptors
+## ðŸŽ¯ 1. Má»¥c tiÃªu & Táº¡i sao Chuyá»ƒn sang Axios?
+
+1. **Tá»± Ä‘á»™ng gáº¯n Bearer Token:** Nhá» `Request Interceptor`, má»i request gá»­i Ä‘i Ä‘á»u tá»± Ä‘á»™ng Ä‘á»c token tá»« `authStorage` vÃ  Ä‘Ã­nh kÃ¨m vÃ o Header `Authorization`, cÃ¡c hÃ m gá»i API khÃ´ng cÃ²n pháº£i nháº­n tham sá»‘ `token` thá»§ cÃ´ng.
+2. **Tá»± Ä‘á»™ng Unboxing dá»¯ liá»‡u & Báº¯t lá»—i 401:** Nhá» `Response Interceptor`, táº§ng UI nháº­n tháº³ng dá»¯ liá»‡u thá»±c `data` sáº¡ch sáº½, Ä‘á»“ng thá»i náº¿u gáº·p lá»—i 401 (token háº¿t háº¡n) thÃ¬ tá»± Ä‘á»™ng dá»n sáº¡ch `localStorage`.
+3. **Type-Safe Tuyá»‡t Ä‘á»‘i (`UnboxedAxiosInstance`):** Dáº¡y cho TypeScript hiá»ƒu ráº±ng Axios sau khi qua Interceptor sáº½ tráº£ vá» `Promise<T>` thay vÃ¬ `Promise<AxiosResponse<T>>`.
+
+---
+
+## ðŸ—ºï¸ 2. SÆ¡ Ä‘á»“ Luá»“ng Hoáº¡t Ä‘á»™ng cá»§a Axios Interceptors
 
 ```mermaid
 sequenceDiagram
@@ -24,42 +24,42 @@ sequenceDiagram
     participant BE as Spring Boot Controller
     participant ResInt as Response Interceptor
 
-    UI->>Axios: Gọi apiGet<AuthUser>('/v1/auth/me') (Không cần truyền token)
-    Axios->>ReqInt: Chặn trước khi gửi request
+    UI->>Axios: Gá»i apiGet<AuthUser>('/v1/auth/me') (KhÃ´ng cáº§n truyá»n token)
+    Axios->>ReqInt: Cháº·n trÆ°á»›c khi gá»­i request
     ReqInt->>Storage: readAccessToken()
-    Storage-->>ReqInt: Trả về token JWT
-    ReqInt->>Axios: Tự gắn Header: Authorization: Bearer <token>
-    Axios->>BE: Gửi HTTP Request tới Backend
-    BE-->>Axios: Phản hồi JSON ApiResponse { success, data, error }
+    Storage-->>ReqInt: Tráº£ vá» token JWT
+    ReqInt->>Axios: Tá»± gáº¯n Header: Authorization: Bearer <token>
+    Axios->>BE: Gá»­i HTTP Request tá»›i Backend
+    BE-->>Axios: Pháº£n há»“i JSON ApiResponse { success, data, error }
 
-    alt Thành công (HTTP 200 OK)
-        Axios->>ResInt: Đi qua unboxApiResponse
-        ResInt->>ResInt: Trích xuất lấy payload.data
-        ResInt-->>UI: Trả về dữ liệu sạch kiểu AuthUser
-    else Thất bại (HTTP 401 Hết hạn hoặc Lỗi 400/409)
-        Axios->>ResInt: Đi qua normalizeApiError
-        opt Nếu mã lỗi là 401
-            ResInt->>Storage: clearAccessToken() (Tự dọn dẹp)
+    alt ThÃ nh cÃ´ng (HTTP 200 OK)
+        Axios->>ResInt: Äi qua unboxApiResponse
+        ResInt->>ResInt: TrÃ­ch xuáº¥t láº¥y payload.data
+        ResInt-->>UI: Tráº£ vá» dá»¯ liá»‡u sáº¡ch kiá»ƒu AuthUser
+    else Tháº¥t báº¡i (HTTP 401 Háº¿t háº¡n hoáº·c Lá»—i 400/409)
+        Axios->>ResInt: Äi qua normalizeApiError
+        opt Náº¿u mÃ£ lá»—i lÃ  401
+            ResInt->>Storage: clearAccessToken() (Tá»± dá»n dáº¹p)
         end
-        ResInt-->>UI: Ném ngoại lệ ApiClientError(message, status, code, fields)
+        ResInt-->>UI: NÃ©m ngoáº¡i lá»‡ ApiClientError(message, status, code, fields)
     end
 ```
 
 ---
 
-## 🔍 3. Chi tiết Các Thành phần Kỹ thuật
+## ðŸ” 3. Chi tiáº¿t CÃ¡c ThÃ nh pháº§n Ká»¹ thuáº­t
 
-### 3.1. Đồng bộ Kiểu Dữ liệu Type-Safe ([shared/types/api.ts](file:///d:/gym-management-system/frontend/src/shared/types/api.ts))
+### 3.1. Äá»“ng bá»™ Kiá»ƒu Dá»¯ liá»‡u Type-Safe ([shared/types/api.ts](file:///d:/gym-management-system/frontend/src/shared/types/api.ts))
 
 ```typescript
-// Khớp với ApiError.java của Spring Boot
+// Khá»›p vá»›i ApiError.java cá»§a Spring Boot
 export type ApiError = {
   code: string
   message: string
-  fields: Record<string, string> // Ví dụ: { phone: "Số điện thoại đã tồn tại" }
+  fields: Record<string, string> // VÃ­ dá»¥: { phone: "Sá»‘ Ä‘iá»‡n thoáº¡i Ä‘Ã£ tá»“n táº¡i" }
 }
 
-// Khớp với ApiResponse.java của Spring Boot
+// Khá»›p vá»›i ApiResponse.java cá»§a Spring Boot
 export type ApiResponse<T> = {
   success: boolean
   message: string
@@ -71,7 +71,7 @@ export type ApiResponse<T> = {
 
 ---
 
-### 3.2. Cấu hình Axios Instance & Interceptors ([shared/api/apiClient.ts](file:///d:/gym-management-system/frontend/src/shared/api/apiClient.ts))
+### 3.2. Cáº¥u hÃ¬nh Axios Instance & Interceptors ([shared/api/apiClient.ts](file:///d:/gym-management-system/frontend/src/shared/api/apiClient.ts))
 
 ```typescript
 import axios from 'axios'
@@ -79,7 +79,7 @@ import type { AxiosError, AxiosInstance, AxiosRequestConfig, AxiosResponse } fro
 import { clearAccessToken, readAccessToken } from '../lib/authStorage'
 import type { ApiResponse } from '../types/api'
 
-// 1. Tạo instance với URL gốc từ .env
+// 1. Táº¡o instance vá»›i URL gá»‘c tá»« .env
 const axiosInstance = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080/api',
   headers: {
@@ -88,7 +88,7 @@ const axiosInstance = axios.create({
   },
 })
 
-// 2. REQUEST INTERCEPTOR: Tự động gắn Token vào mọi Request
+// 2. REQUEST INTERCEPTOR: Tá»± Ä‘á»™ng gáº¯n Token vÃ o má»i Request
 axiosInstance.interceptors.request.use((config) => {
   const token = readAccessToken()
   if (token) {
@@ -97,25 +97,25 @@ axiosInstance.interceptors.request.use((config) => {
   return config
 })
 
-// 3. RESPONSE INTERCEPTOR: Mở hộp (Unbox) và Bắt lỗi tập trung
+// 3. RESPONSE INTERCEPTOR: Má»Ÿ há»™p (Unbox) vÃ  Báº¯t lá»—i táº­p trung
 function unboxApiResponse(response: AxiosResponse<ApiResponse<unknown>>) {
   const payload = response.data
   if (!payload || typeof payload.success !== 'boolean') {
-    throw new ApiClientError('Phản hồi từ máy chủ không hợp lệ.', response.status)
+    throw new ApiClientError('Pháº£n há»“i tá»« mÃ¡y chá»§ khÃ´ng há»£p lá»‡.', response.status)
   }
   if (!payload.success) {
-    throw new ApiClientError(payload.error?.message ?? 'Yêu cầu không thành công.', response.status, payload.error?.code, payload.error?.fields)
+    throw new ApiClientError(payload.error?.message ?? 'YÃªu cáº§u khÃ´ng thÃ nh cÃ´ng.', response.status, payload.error?.code, payload.error?.fields)
   }
-  return payload.data // 👉 Trả về thẳng data bên trong
+  return payload.data // ðŸ‘‰ Tráº£ vá» tháº³ng data bÃªn trong
 }
 
 function normalizeApiError(error: AxiosError<ApiResponse<unknown>>) {
   const status = error.response?.status ?? 0
   const payload = error.response?.data
   if (status === 401) {
-    clearAccessToken() // 👉 Tự xóa token khi hết hạn
+    clearAccessToken() // ðŸ‘‰ Tá»± xÃ³a token khi háº¿t háº¡n
   }
-  throw new ApiClientError(payload?.error?.message ?? 'Không thể kết nối đến máy chủ.', status, payload?.error?.code, payload?.error?.fields)
+  throw new ApiClientError(payload?.error?.message ?? 'KhÃ´ng thá»ƒ káº¿t ná»‘i Ä‘áº¿n mÃ¡y chá»§.', status, payload?.error?.code, payload?.error?.fields)
 }
 
 axiosInstance.interceptors.response.use(
@@ -126,8 +126,8 @@ axiosInstance.interceptors.response.use(
 
 ---
 
-### 3.3. Bí quyết TypeScript: `UnboxedAxiosInstance`
-Trong Axios mặc định, hàm `get<T>()` trả về `Promise<AxiosResponse<T>>`. Nhưng vì Response Interceptor đã bóc vỏ để trả về thẳng `T`, Codex đã định nghĩa kiểu `UnboxedAxiosInstance` để trình biên dịch TypeScript không bắt ta phải gõ `res.data` thêm một lần nữa:
+### 3.3. BÃ­ quyáº¿t TypeScript: `UnboxedAxiosInstance`
+Trong Axios máº·c Ä‘á»‹nh, hÃ m `get<T>()` tráº£ vá» `Promise<AxiosResponse<T>>`. NhÆ°ng vÃ¬ Response Interceptor Ä‘Ã£ bÃ³c vá» Ä‘á»ƒ tráº£ vá» tháº³ng `T`, Codex Ä‘Ã£ Ä‘á»‹nh nghÄ©a kiá»ƒu `UnboxedAxiosInstance` Ä‘á»ƒ trÃ¬nh biÃªn dá»‹ch TypeScript khÃ´ng báº¯t ta pháº£i gÃµ `res.data` thÃªm má»™t láº§n ná»¯a:
 
 ```typescript
 type UnboxedAxiosInstance = Omit<AxiosInstance, 'get' | 'post'> & {
@@ -148,30 +148,31 @@ export function apiPost<T, TBody = unknown>(url: string, data?: TBody, config?: 
 
 ---
 
-### 3.4. Gọi API Siêu Tinh Gọn ([features/auth/api/authApi.ts](file:///d:/gym-management-system/frontend/src/features/auth/api/authApi.ts))
-Nhìn sự khác biệt khi dùng Axios Interceptors:
+### 3.4. Gá»i API SiÃªu Tinh Gá»n ([features/auth/api/authApi.ts](file:///d:/gym-management-system/frontend/src/features/auth/api/authApi.ts))
+NhÃ¬n sá»± khÃ¡c biá»‡t khi dÃ¹ng Axios Interceptors:
 
 ```typescript
-// Trước đây (fetch): Phải truyền token thủ công
+// TrÆ°á»›c Ä‘Ã¢y (fetch): Pháº£i truyá»n token thá»§ cÃ´ng
 // export function getCurrentUser(token: string) { ... }
 
-// Hiện tại (Axios Interceptor): Hoàn toàn không cần truyền token!
-export function login(username: string, password: string) {
-  return apiPost<LoginResponse>('/v1/auth/login', { username, password })
+// Hiá»‡n táº¡i (Axios Interceptor): HoÃ n toÃ n khÃ´ng cáº§n truyá»n token!
+export function login(email: string, password: string) {
+  return apiPost<LoginResponse>('/v1/auth/login', { email, password })
 }
 
 export function getCurrentUser() {
-  return apiGet<AuthUser>('/v1/auth/me') // 👉 Interceptor tự động gắn token ngầm
+  return apiGet<AuthUser>('/v1/auth/me') // ðŸ‘‰ Interceptor tá»± Ä‘á»™ng gáº¯n token ngáº§m
 }
 ```
 
 ---
 
-## 🧠 4. Bảng Ghi nhớ Kiến thức Cốt lõi (Key Takeaways)
+## ðŸ§  4. Báº£ng Ghi nhá»› Kiáº¿n thá»©c Cá»‘t lÃµi (Key Takeaways)
 
-| Khái niệm / Kỹ thuật | Bản chất & Ý nghĩa |
+| KhÃ¡i niá»‡m / Ká»¹ thuáº­t | Báº£n cháº¥t & Ã nghÄ©a |
 | :--- | :--- |
-| **Request Interceptor** | "Trạm gác" trước khi request bay đi: Tự động lấy token trong `localStorage` gắn vào Header `Authorization`. |
-| **Response Interceptor** | "Trạm kiểm soát" khi server phản hồi: Tự động unbox lấy `payload.data`, nếu gặp mã 401 thì tự động xóa token cũ. |
-| **`UnboxedAxiosInstance`** | Ép kiểu TypeScript để hàm `apiGet<T>()` trả về đúng kiểu dữ liệu `Promise<T>` sạch sẽ, chuẩn Type-safe. |
-| **Zero Parameter API Call** | Các hàm gọi dữ liệu cá nhân như `getCurrentUser()` không cần tham số `token`, giúp code UI cực kỳ gọn gàng. |
+| **Request Interceptor** | "Tráº¡m gÃ¡c" trÆ°á»›c khi request bay Ä‘i: Tá»± Ä‘á»™ng láº¥y token trong `localStorage` gáº¯n vÃ o Header `Authorization`. |
+| **Response Interceptor** | "Tráº¡m kiá»ƒm soÃ¡t" khi server pháº£n há»“i: Tá»± Ä‘á»™ng unbox láº¥y `payload.data`, náº¿u gáº·p mÃ£ 401 thÃ¬ tá»± Ä‘á»™ng xÃ³a token cÅ©. |
+| **`UnboxedAxiosInstance`** | Ã‰p kiá»ƒu TypeScript Ä‘á»ƒ hÃ m `apiGet<T>()` tráº£ vá» Ä‘Ãºng kiá»ƒu dá»¯ liá»‡u `Promise<T>` sáº¡ch sáº½, chuáº©n Type-safe. |
+| **Zero Parameter API Call** | CÃ¡c hÃ m gá»i dá»¯ liá»‡u cÃ¡ nhÃ¢n nhÆ° `getCurrentUser()` khÃ´ng cáº§n tham sá»‘ `token`, giÃºp code UI cá»±c ká»³ gá»n gÃ ng. |
+

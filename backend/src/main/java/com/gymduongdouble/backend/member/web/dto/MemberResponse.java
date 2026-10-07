@@ -3,6 +3,7 @@ package com.gymduongdouble.backend.member.web.dto;
 import com.gymduongdouble.backend.common.enums.Gender;
 import com.gymduongdouble.backend.common.enums.MemberSource;
 import com.gymduongdouble.backend.common.enums.MemberStatus;
+import com.gymduongdouble.backend.common.enums.UserStatus;
 import com.gymduongdouble.backend.member.domain.Member;
 import java.time.LocalDate;
 
@@ -16,7 +17,10 @@ public record MemberResponse(
     String zaloPhone,
     MemberSource source,
     MemberStatus status,
-    String note
+    String note,
+    Long userId,
+    String userEmail,
+    UserStatus userStatus
 ) {
 
     public static MemberResponse from(Member member) {
@@ -30,7 +34,10 @@ public record MemberResponse(
             member.getZaloPhone(),
             member.getSource(),
             member.getStatus(),
-            member.getNote()
+            member.getNote(),
+            member.getUser() != null ? member.getUser().getId() : null,
+            member.getUser() != null ? member.getUser().getEmail() : null,
+            member.getUser() != null ? member.getUser().getStatus() : null
         );
     }
 }

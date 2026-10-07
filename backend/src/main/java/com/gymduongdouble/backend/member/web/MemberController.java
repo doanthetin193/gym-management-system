@@ -12,6 +12,7 @@ import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -29,27 +30,67 @@ public class MemberController {
     private final MemberService memberService;
 
     @PostMapping
-    @PreAuthorize("hasRole('OWNER')")
+    @PreAuthorize("hasAnyRole('OWNER', 'PT')")
     public ApiResponse<MemberResponse> create(@Valid @RequestBody MemberCreateRequest request) {
         return ApiResponse.created(memberService.create(request));
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('OWNER', 'PT')")
     public ApiResponse<MemberDetailResponse> get(@PathVariable Long id) {
         return ApiResponse.ok(memberService.getDetail(id));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('OWNER')")
+    @PreAuthorize("hasAnyRole('OWNER', 'PT')")
     public ApiResponse<MemberResponse> update(@PathVariable Long id, @Valid @RequestBody MemberUpdateRequest request) {
         return ApiResponse.ok(memberService.update(id, request));
     }
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('OWNER', 'PT')")
     public ApiResponse<List<MemberSummaryResponse>> list(
         @RequestParam(required = false) String keyword,
         @RequestParam(defaultValue = "ALL") MemberListFilter filter
     ) {
         return ApiResponse.ok(memberService.list(keyword, filter));
+    }
+
+    @PostMapping("/{id}/portal-account")
+    @PreAuthorize("hasAnyRole('OWNER', 'PT')")
+    public ApiResponse<MemberDetailResponse> createPortalAccount(
+        @PathVariable Long id,
+        @RequestBody(required = false) java.util.Map<String, String> payload
+    ) {
+        String password = payload != null ? payload.get("password") : null;
+        return ApiResponse.created(memberService.createPortalAccount(id, password));
+    }
+
+    @PutMapping("/{id}/portal-account/status")
+    @PreAuthorize("hasAnyRole('OWNER', 'PT')")
+    public ApiResponse<MemberDetailResponse> updatePortalAccountStatus(
+        @PathVariable Long id,
+        @RequestBody java.util.Map<String, String> payload
+    ) {
+        String statusStr = payload.getOrDefault("status", "ACTIVE");
+        com.gymduongdouble.backend.common.enums.UserStatus status =
+            "LOCKED".equalsIgnoreCase(statusStr) ? com.gymduongdouble.backend.common.enums.UserStatus.LOCKED : com.gymduongdouble.backend.common.enums.UserStatus.ACTIVE;
+        return ApiResponse.ok(memberService.updatePortalAccountStatus(id, status));
+    }
+
+    @PostMapping("/{id}/portal-account/reset-password")
+    @PreAuthorize("hasAnyRole('OWNER', 'PT')")
+    public ApiResponse<MemberDetailResponse> resetPortalAccountPassword(
+        @PathVariable Long id,
+        @RequestBody(required = false) java.util.Map<String, String> payload
+    ) {
+        String newPassword = payload != null ? payload.get("newPassword") : null;
+        return ApiResponse.ok(memberService.resetPortalAccountPassword(id, newPassword));
+    }
+
+    @DeleteMapping("/{id}/portal-account")
+    @PreAuthorize("hasAnyRole('OWNER', 'PT')")
+    public ApiResponse<MemberDetailResponse> deletePortalAccount(@PathVariable Long id) {
+        return ApiResponse.ok(memberService.deletePortalAccount(id));
     }
 }

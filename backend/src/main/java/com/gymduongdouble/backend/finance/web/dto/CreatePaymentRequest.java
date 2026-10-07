@@ -11,17 +11,20 @@ public record CreatePaymentRequest(
     @NotNull(message = "Khách hàng là bắt buộc.")
     Long memberId,
 
+    Long debtRecordId,
+
     Long membershipId,
 
-    @NotNull(message = "Ngày thanh toán là bắt buộc.")
     LocalDate paymentDate,
 
     @NotNull(message = "Số tiền là bắt buộc.")
     @DecimalMin(value = "1.0", message = "Số tiền phải lớn hơn 0.")
     BigDecimal amount,
 
+    @NotNull(message = "Phương thức thanh toán là bắt buộc.")
     PaymentMethod paymentMethod,
+
     RevenueCategory revenueCategory,
-    String description
+    String note
 ) {
 }
