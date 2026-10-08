@@ -85,7 +85,6 @@ Content-Type: application/json
   "defaultPrice": 6000000,
   "ptSessionCount": 20,
   "practiceSessionCount": 20,
-  "contentAccessLevel": "PREMIUM",
   "active": true
 }
 
@@ -100,7 +99,6 @@ Content-Type: application/json
   "planType": "SELF_TRAINING",
   "durationDays": 30,
   "defaultPrice": 300000,
-  "contentAccessLevel": "BASIC",
   "active": true,
   "description": "GÃ³i tá»± do táº­p luyá»‡n trong 30 ngÃ y"
 }
@@ -117,7 +115,6 @@ Content-Type: application/json
   "durationDays": 90,
   "defaultPrice": 900000,
   "guidanceSessionCount": 30,
-  "contentAccessLevel": "BASIC",
   "active": true,
   "description": "KhÃ¡ch táº­p theo giÃ¡o Ã¡n, cÃ³ há»— trá»£ hÆ°á»›ng dáº«n khi cáº§n"
 }
@@ -136,7 +133,6 @@ Content-Type: application/json
   "defaultPrice": 6000000,
   "ptSessionCount": 20,
   "practiceSessionCount": 20,
-  "contentAccessLevel": "PREMIUM",
   "active": true,
   "description": "GÃ³i 20 PT + 20 Ã´n táº­p"
 }
@@ -152,7 +148,6 @@ Content-Type: application/json
   "planType": "SELF_TRAINING",
   "durationDays": 15,
   "defaultPrice": 150000,
-  "contentAccessLevel": "NONE",
   "active": false
 }
 

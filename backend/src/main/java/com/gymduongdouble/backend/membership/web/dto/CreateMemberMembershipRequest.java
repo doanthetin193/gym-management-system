@@ -1,5 +1,6 @@
 package com.gymduongdouble.backend.membership.web.dto;
 
+import com.gymduongdouble.backend.common.enums.PaymentMethod;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
@@ -22,6 +23,13 @@ public record CreateMemberMembershipRequest(
 
     @DecimalMin(value = "0.0", message = "Giảm giá không được âm.")
     BigDecimal discountAmount,
+
+    @DecimalMin(value = "0.0", message = "Tiền trả trước không được âm.")
+    BigDecimal initialPaidAmount,
+
+    PaymentMethod initialPaymentMethod,
+    LocalDate initialPaymentDate,
+    String initialPaymentNote,
 
     String note
 ) {

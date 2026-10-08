@@ -38,6 +38,13 @@ const levelLabels: Record<ExerciseLevel, string> = {
   ADVANCED: 'Nâng cao',
 }
 
+const DEMO_TITLES = [
+  'Bench Press cÄƒn báº£n',
+  'Lat Pulldown Ä‘Ãºng form',
+  'Hip Thrust tÄƒng cÆ¡ mÃ´ng',
+  'GiÃ£n cá»• vai gÃ¡y vÄƒn phÃ²ng',
+]
+
 function errorMessage(error: unknown) {
   if (error instanceof ApiClientError) {
     return error.message
@@ -80,15 +87,9 @@ export function OwnerExercisesPage() {
   const hiddenCount = exercises.length - publishedCount
 
   // Detect old demo cards
-  const demoTitles = ['Bench Press căn bản', 'Lat Pulldown đúng form', 'Hip Thrust tăng cơ mông', 'Giãn cổ vai gáy văn phòng']
   const demoCards = useMemo(() => {
-    return exercises.filter((e) => demoTitles.includes(e.title) || e.tiktokUrl?.includes('735000000000000000'))
+    return exercises.filter((e) => DEMO_TITLES.includes(e.title) || e.tiktokUrl?.includes('735000000000000000'))
   }, [exercises])
-
-  // Reset page when search or category filter changes
-  useEffect(() => {
-    setPage(0)
-  }, [keyword, selectedCategory, published])
 
   const loadData = useCallback(async () => {
     setLoading(true)
@@ -408,7 +409,10 @@ export function OwnerExercisesPage() {
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
           <input
             value={keyword}
-            onChange={(e) => setKeyword(e.target.value)}
+            onChange={(e) => {
+              setKeyword(e.target.value)
+              setPage(0)
+            }}
             placeholder="Tìm theo tên bài tập, nhóm cơ, thiết bị..."
             className="h-9 w-full rounded-xl border border-[var(--line)] bg-[var(--input-bg)] pl-8 pr-3 text-xs font-semibold outline-none focus:border-[var(--brand-yellow)] transition-all"
           />
@@ -416,7 +420,10 @@ export function OwnerExercisesPage() {
 
         <select
           value={selectedCategory}
-          onChange={(e) => setSelectedCategory(e.target.value)}
+          onChange={(e) => {
+            setSelectedCategory(e.target.value)
+            setPage(0)
+          }}
           className="h-9 rounded-xl border border-[var(--line)] bg-[var(--input-bg)] px-3 text-xs font-semibold outline-none focus:border-[var(--brand-yellow)] min-w-[180px]"
         >
           <option value="ALL">Tất cả nhóm cơ ({categories.length})</option>
@@ -427,7 +434,10 @@ export function OwnerExercisesPage() {
 
         <select
           value={published}
-          onChange={(e) => setPublished(e.target.value)}
+          onChange={(e) => {
+            setPublished(e.target.value)
+            setPage(0)
+          }}
           className="h-9 rounded-xl border border-[var(--line)] bg-[var(--input-bg)] px-3 text-xs font-semibold outline-none focus:border-[var(--brand-yellow)]"
         >
           <option value="ALL">Tất cả trạng thái</option>

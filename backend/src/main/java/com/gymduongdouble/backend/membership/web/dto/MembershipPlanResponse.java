@@ -1,6 +1,5 @@
 package com.gymduongdouble.backend.membership.web.dto;
 
-import com.gymduongdouble.backend.common.enums.ContentAccessLevel;
 import com.gymduongdouble.backend.common.enums.PlanType;
 import com.gymduongdouble.backend.common.enums.PtLevel;
 import com.gymduongdouble.backend.membership.domain.MembershipPlan;
@@ -16,7 +15,6 @@ public record MembershipPlanResponse(
     Integer ptSessionCount,
     Integer practiceSessionCount,
     Integer guidanceSessionCount,
-    ContentAccessLevel contentAccessLevel,
     BigDecimal priceRatio,
     String description,
     boolean active
@@ -33,7 +31,6 @@ public record MembershipPlanResponse(
             plan.getPtSessionCount(),
             plan.getPracticeSessionCount(),
             plan.getGuidanceSessionCount(),
-            plan.getContentAccessLevel(),
             plan.getPriceRatio(),
             plan.getDescription(),
             plan.isActive()

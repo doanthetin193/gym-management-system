@@ -94,6 +94,7 @@ public class PtService {
     public PtProfileResponse saveProfile(PtProfileRequest request) {
         User user = findUser(request.userId());
         ensureCanManagePtUser(user.getId());
+        ensureUserHasRole(user, "PT", "Chỉ tài khoản PT mới được tạo hồ sơ huấn luyện viên.");
         PtProfile profile = ptProfileRepository.findByUserId(user.getId()).orElseGet(PtProfile::new);
         profile.setUser(user);
         profile.setPtLevel(request.ptLevel());
@@ -115,6 +116,7 @@ public class PtService {
     @Transactional
     public PtAssignmentResponse assignMember(PtAssignmentRequest request) {
         User ptUser = findUser(request.ptUserId());
+        ensureUserHasRole(ptUser, "PT", "Người phụ trách phải là tài khoản PT.");
         ensureCanManagePtUser(ptUser.getId());
         Member member = memberService.findEntity(request.memberId());
         ensureMemberHasAssignablePtPackage(member.getId());
@@ -150,6 +152,7 @@ public class PtService {
     @Transactional
     public PtScheduleResponse createSchedule(PtScheduleRequest request) {
         User ptUser = findUser(request.ptUserId());
+        ensureUserHasRole(ptUser, "PT", "Lịch dạy phải gắn với tài khoản PT.");
         Member member = request.memberId() == null ? null : memberService.findEntity(request.memberId());
         ensureCanManagePtUser(ptUser.getId());
         if (member != null) {
@@ -248,13 +251,14 @@ public class PtService {
         if (!sessionPackage.getMember().getId().equals(memberId)) {
             throw new BadRequestException("Gói buổi PT không thuộc khách hàng này.");
         }
+        ensureUsableSessionPackage(sessionPackage, request.sessionDate(), true);
         PtSchedule schedule = request.scheduleId() == null ? null : findSchedule(request.scheduleId());
         if (schedule != null) {
             ensureScheduleCanBeLogged(schedule, sessionPackage, memberId, request.sessionDate());
         }
         User ptUser = schedule != null
             ? schedule.getPtUser()
-            : sessionPackage.getPtUser() == null ? currentUserEntityOrNull() : sessionPackage.getPtUser();
+            : sessionPackage.getPtUser() == null ? currentPtUserOrNull() : sessionPackage.getPtUser();
 
         PtSessionLog log = new PtSessionLog();
         log.setSessionPackage(sessionPackage);
@@ -271,6 +275,9 @@ public class PtService {
 
         if (shouldConsumePtSession(log.getStatus())) {
             usePtSession(sessionPackage);
+        }
+        if (schedule != null) {
+            schedule.setStatus(scheduleStatusFor(log.getStatus()));
         }
 
         return PtSessionLogResponse.from(ptSessionLogRepository.save(log));
@@ -293,7 +300,11 @@ public class PtService {
             throw new BadRequestException("Buổi ôn tập cần chọn gói buổi PT.");
         }
         if (request.activityType() == ActivityType.PRACTICE) {
+            ensureUsableSessionPackage(sessionPackage, request.activityDate(), false);
             usePracticeSession(sessionPackage);
+        }
+        if (request.activityType() == ActivityType.GUIDANCE_CHECKIN) {
+            ensureGuidanceMembershipCanBeLogged(membership, memberId, request.activityDate());
         }
 
         MemberActivityLog log = new MemberActivityLog();
@@ -334,7 +345,11 @@ public class PtService {
     public PtGoalResponse createGoal(Long memberId, PtGoalRequest request) {
         ensureCanAccessMember(memberId);
         Member member = memberService.findEntity(memberId);
-        User ptUser = request.ptUserId() == null ? currentUserEntityOrNull() : findUser(request.ptUserId());
+        User ptUser = request.ptUserId() == null ? currentPtUserOrNull() : findUser(request.ptUserId());
+        if (ptUser != null) {
+            ensureUserHasRole(ptUser, "PT", "Mục tiêu PT phải gắn với tài khoản PT.");
+            ensureCanManagePtUser(ptUser.getId());
+        }
 
         PtGoal goal = new PtGoal();
         goal.setMember(member);
@@ -367,10 +382,13 @@ public class PtService {
     }
 
     private List<PtSessionPackage> activePtPackages(Long memberId) {
+        LocalDate today = LocalDate.now(VIETNAM_ZONE);
         return ptSessionPackageRepository.findByMemberIdOrderByStartDateDesc(memberId).stream()
             .filter(sessionPackage -> sessionPackage.getStatus() == SessionPackageStatus.ACTIVE)
             .filter(sessionPackage -> sessionPackage.getMembership().getStatus() != MembershipStatus.CANCELLED)
             .filter(sessionPackage -> sessionPackage.getMembership().getPlan().getPlanType() == PlanType.PT)
+            .filter(sessionPackage -> !sessionPackage.getEndDate().isBefore(today))
+            .filter(sessionPackage -> sessionPackage.getRemainingPtSessions() > 0 || sessionPackage.getRemainingPracticeSessions() > 0)
             .toList();
     }
 
@@ -391,6 +409,52 @@ public class PtService {
 
     private boolean shouldConsumePtSession(PtSessionStatus status) {
         return status == PtSessionStatus.COMPLETED || status == PtSessionStatus.MISSED;
+    }
+
+    private ScheduleStatus scheduleStatusFor(PtSessionStatus status) {
+        return switch (status) {
+            case COMPLETED -> ScheduleStatus.COMPLETED;
+            case MISSED -> ScheduleStatus.MISSED;
+            case CANCELLED -> ScheduleStatus.CANCELLED;
+            case RESCHEDULED -> ScheduleStatus.RESCHEDULED;
+        };
+    }
+
+    private void ensureUsableSessionPackage(PtSessionPackage sessionPackage, LocalDate activityDate, boolean requirePtSession) {
+        if (sessionPackage.getStatus() != SessionPackageStatus.ACTIVE) {
+            throw new BadRequestException("Gói PT không còn hoạt động.");
+        }
+        if (sessionPackage.getMembership().getStatus() == MembershipStatus.CANCELLED) {
+            throw new BadRequestException("Lượt đăng ký gói PT đã bị hủy.");
+        }
+        if (sessionPackage.getEndDate().isBefore(activityDate)) {
+            throw new BadRequestException("Gói PT đã hết hạn sử dụng.");
+        }
+        if (requirePtSession && sessionPackage.getRemainingPtSessions() <= 0) {
+            throw new BadRequestException("Gói PT không còn buổi PT để check-in.");
+        }
+    }
+
+    private void ensureGuidanceMembershipCanBeLogged(MemberMembership membership, Long memberId, LocalDate activityDate) {
+        if (membership == null) {
+            throw new BadRequestException("Buổi hướng dẫn/trị liệu cần chọn gói Cổ Vai Gáy/Hướng dẫn.");
+        }
+        if (!membership.getMember().getId().equals(memberId)) {
+            throw new BadRequestException("Lượt đăng ký gói không thuộc khách hàng này.");
+        }
+        if (membership.getPlan().getPlanType() != PlanType.GUIDANCE) {
+            throw new BadRequestException("Chỉ gói hướng dẫn/trị liệu mới được ghi buổi hướng dẫn.");
+        }
+        if (membership.getStatus() == MembershipStatus.CANCELLED || membership.getEndDate().isBefore(activityDate)) {
+            throw new BadRequestException("Gói hướng dẫn/trị liệu đã hết hiệu lực.");
+        }
+        Integer totalGuidanceSessions = membership.getPlan().getGuidanceSessionCount();
+        if (totalGuidanceSessions != null && totalGuidanceSessions > 0) {
+            long used = memberActivityLogRepository.countByMembershipIdAndActivityType(membership.getId(), ActivityType.GUIDANCE_CHECKIN);
+            if (used >= totalGuidanceSessions) {
+                throw new BadRequestException("Gói hướng dẫn/trị liệu đã dùng hết số buổi.");
+            }
+        }
     }
 
     private List<PtSessionPackage> listSessionPackageEntities(Long memberId) {
@@ -446,6 +510,13 @@ public class PtService {
         }
     }
 
+    private void ensureUserHasRole(User user, String roleCode, String message) {
+        boolean hasRole = user.getRoles().stream().anyMatch(role -> roleCode.equals(role.getCode()));
+        if (!hasRole) {
+            throw new BadRequestException(message);
+        }
+    }
+
     private void ensureCanAccessMember(Long memberId) {
         if (isOwner()) {
             return;
@@ -478,6 +549,14 @@ public class PtService {
     private User currentUserEntityOrNull() {
         Long userId = SecurityUtils.currentUserIdOrNull();
         return userId == null ? null : userRepository.findById(userId).orElse(null);
+    }
+
+    private User currentPtUserOrNull() {
+        User user = currentUserEntityOrNull();
+        if (user == null || user.getRoles().stream().noneMatch(role -> "PT".equals(role.getCode()))) {
+            return null;
+        }
+        return user;
     }
 
     private User findUser(Long userId) {

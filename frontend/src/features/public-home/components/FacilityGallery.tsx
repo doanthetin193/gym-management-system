@@ -17,7 +17,7 @@ export interface FacilityImage {
   label: string
 }
 
-export const facilityImages: FacilityImage[] = [
+const facilityImages: FacilityImage[] = [
   { id: 1, src: '/facility/img-1.jpg', label: 'Hình ảnh phòng tập #01' },
   { id: 2, src: '/facility/img-2.jpg', label: 'Hình ảnh phòng tập #02' },
   { id: 3, src: '/facility/img-3.jpg', label: 'Hình ảnh phòng tập #03' },

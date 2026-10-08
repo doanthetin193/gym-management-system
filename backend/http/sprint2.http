@@ -41,7 +41,6 @@ Content-Type: application/json
   "planType": "SELF_TRAINING",
   "durationDays": 10,
   "defaultPrice": 100000,
-  "contentAccessLevel": "BASIC",
   "active": true
 }
 
@@ -59,7 +58,6 @@ Content-Type: application/json
   "defaultPrice": 6000000,
   "ptSessionCount": 20,
   "practiceSessionCount": 20,
-  "contentAccessLevel": "PREMIUM",
   "active": true
 }
 

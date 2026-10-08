@@ -4,7 +4,6 @@ import com.gymduongdouble.backend.common.domain.SystemSetting;
 import com.gymduongdouble.backend.common.enums.ActivityType;
 import com.gymduongdouble.backend.common.enums.BusinessGoalCategory;
 import com.gymduongdouble.backend.common.enums.BusinessGoalMetric;
-import com.gymduongdouble.backend.common.enums.ContentAccessLevel;
 import com.gymduongdouble.backend.common.enums.DebtStatus;
 import com.gymduongdouble.backend.common.enums.ExerciseDifficulty;
 import com.gymduongdouble.backend.common.enums.FinancialCategoryType;
@@ -167,8 +166,11 @@ public class DataInitializer implements ApplicationRunner {
             .orElseThrow(() -> new IllegalStateException("OWNER role is missing."));
 
         User owner = userRepository.findByEmail(ownerEmail).orElseGet(User::new);
+        boolean newOwner = owner.getId() == null;
         owner.setEmail(ownerEmail);
-        owner.setPasswordHash(passwordEncoder.encode(ownerPassword));
+        if (newOwner || !StringUtils.hasText(owner.getPasswordHash())) {
+            owner.setPasswordHash(passwordEncoder.encode(ownerPassword));
+        }
         owner.setFullName(ownerFullName);
         owner.setPhone(StringUtils.hasText(ownerPhone) ? ownerPhone : null);
         owner.setStatus(UserStatus.ACTIVE);
@@ -421,27 +423,27 @@ public class DataInitializer implements ApplicationRunner {
 
     private Map<String, MembershipPlan> seedMembershipPlans() {
         List<SeedPlan> seedPlans = List.of(
-            new SeedPlan("SELF_1M", "Tự Tập - Full 1 Tháng", "Gói tự tập 1 tháng", PlanType.SELF_TRAINING, null, 30, bd("300000"), null, null, null, ContentAccessLevel.NONE, null, "Không giới hạn số buổi trong tháng, hỗ trợ kĩ thuật máy móc ban đầu, tư vấn \"Tập Luyện và Dinh Dưỡng\" vào cuối tuần."),
-            new SeedPlan("SELF_2M", "Tự Tập - Full 2 Tháng", "Gói tự tập 2 tháng", PlanType.SELF_TRAINING, null, 60, bd("560000"), null, null, null, ContentAccessLevel.NONE, null, "Không giới hạn số buổi trong tháng, hỗ trợ kĩ thuật máy móc ban đầu, tư vấn \"Tập Luyện và Dinh Dưỡng\" vào cuối tuần."),
-            new SeedPlan("SELF_4M", "Tự Tập - Full 4 Tháng", null, PlanType.SELF_TRAINING, null, 120, bd("1000000"), null, null, null, ContentAccessLevel.NONE, null, "Không giới hạn số buổi trong tháng, hỗ trợ kĩ thuật máy móc ban đầu, tư vấn \"Tập Luyện và Dinh Dưỡng\" vào cuối tuần."),
-            new SeedPlan("SELF_6M", "Tự Tập - Full 6 Tháng", null, PlanType.SELF_TRAINING, null, 180, bd("1320000"), null, null, null, ContentAccessLevel.NONE, null, "Không giới hạn số buổi trong tháng, hỗ trợ kĩ thuật máy móc ban đầu, tư vấn \"Tập Luyện và Dinh Dưỡng\" vào cuối tuần."),
-            new SeedPlan("SELF_VIP_1M", "Tự Tập VIP - Full 1 Tháng", null, PlanType.SELF_TRAINING, null, 30, bd("640000"), null, null, null, ContentAccessLevel.BASIC, null, "Bao gồm Gói tự tập, sử dụng sổ \"Buổi Tập Mẫu\", tặng File/Sổ Theo Dõi Tập Luyện, tặng File \"Gym Căn Bản\"."),
-            new SeedPlan("SELF_VIP_2M", "Tự Tập VIP - Full 2 Tháng", null, PlanType.SELF_TRAINING, null, 60, bd("1160000"), null, null, null, ContentAccessLevel.BASIC, null, "Bao gồm Gói tự tập, sử dụng sổ \"Buổi Tập Mẫu\", tặng File/Sổ Theo Dõi Tập Luyện, tặng File \"Gym Căn Bản\"."),
-            new SeedPlan("SELF_VIP_4M", "Tự Tập VIP - Full 4 Tháng", null, PlanType.SELF_TRAINING, null, 120, bd("2080000"), null, null, null, ContentAccessLevel.BASIC, null, "Bao gồm Gói tự tập, sử dụng sổ \"Buổi Tập Mẫu\", tặng File/Sổ Theo Dõi Tập Luyện, tặng File \"Gym Căn Bản\"."),
-            new SeedPlan("SELF_VIP_6M", "Tự Tập VIP - Full 6 Tháng", "Gói tự tập VIP 6 tháng", PlanType.SELF_TRAINING, null, 180, bd("2760000"), null, null, null, ContentAccessLevel.BASIC, null, "Bao gồm Gói tự tập, sử dụng sổ \"Buổi Tập Mẫu\", tặng File/Sổ Theo Dõi Tập Luyện, tặng File \"Gym Căn Bản\"."),
-            new SeedPlan("GUIDANCE_30", "Dạy Gym Cá Nhân - 12 PT + 12 Thực Nghiệm", "Gói giáo án 30 buổi", PlanType.PT, PtLevel.MAIN, 45, bd("5000000"), 12, 12, null, ContentAccessLevel.PREMIUM, bd("1.00"), "Kèm 1 - 1, thực nghiệm thực tế, chuẩn hóa Kĩ Thuật Tập Luyện, hiểu từng nhóm cơ kích hoạt qua Anatomy, hiểu dinh dưỡng tự tính thực đơn, hiểu nền tảng xây dựng giáo án."),
-            new SeedPlan("GUIDANCE_60", "Dạy Gym Cá Nhân - 24 PT + 24 Thực Nghiệm", "Gói giáo án 60 buổi", PlanType.PT, PtLevel.MAIN, 90, bd("9000000"), 24, 24, null, ContentAccessLevel.PREMIUM, bd("1.00"), "Kèm 1 - 1, lộ trình chuyên sâu làm chủ kỹ thuật tạ nặng, thấu hiểu dinh dưỡng và lập kế hoạch tăng cơ giảm mỡ trọn đời."),
-            new SeedPlan("PT_MAIN_20", "Tăng Cơ Giảm Mỡ (PT Chuẩn) - 2 Tháng (20 PT + 20 Hướng Dẫn)", "PT chính 20 PT + 20 ôn tập", PlanType.PT, PtLevel.MAIN, 60, bd("6000000"), 20, 20, null, ContentAccessLevel.PREMIUM, bd("1.00"), "PT Chuẩn (Đầy đủ chứng chỉ, VĐV, >3 năm kinh nghiệm, nhiều Transform tốt). 20 PT + 20 Hướng Dẫn."),
-            new SeedPlan("PT_MAIN_40", "Tăng Cơ Giảm Mỡ (PT Chuẩn) - 4 Tháng (40 PT + 40 Hướng Dẫn)", "PT chính 40 PT + 40 ôn tập", PlanType.PT, PtLevel.MAIN, 120, bd("11200000"), 40, 40, null, ContentAccessLevel.PREMIUM, bd("1.00"), "PT Chuẩn. 40 PT + 40 Hướng Dẫn. Tặng 2 buổi Giãn Cơ Full Body."),
-            new SeedPlan("PT_MAIN_60", "Tăng Cơ Giảm Mỡ (PT Chuẩn) - 6 Tháng (60 PT + 60 Hướng Dẫn)", null, PlanType.PT, PtLevel.MAIN, 180, bd("15600000"), 60, 60, null, ContentAccessLevel.PREMIUM, bd("1.00"), "PT Chuẩn. 60 PT + 60 Hướng Dẫn. Tặng 4 buổi Giãn Cơ Full Body."),
-            new SeedPlan("PT_NEW_20", "Tăng Cơ Giảm Mỡ (PT Mới Ra Nghề) - 2 Tháng", "PT mới 20 PT + 20 ôn tập", PlanType.PT, PtLevel.NEW, 60, bd("3900000"), 20, 20, null, ContentAccessLevel.PREMIUM, bd("0.65"), "65% gói PT Chuẩn. 20 PT + 20 Hướng Dẫn."),
-            new SeedPlan("PT_NEW_40", "Tăng Cơ Giảm Mỡ (PT Mới Ra Nghề) - 4 Tháng", null, PlanType.PT, PtLevel.NEW, 120, bd("7280000"), 40, 40, null, ContentAccessLevel.PREMIUM, bd("0.65"), "65% gói PT Chuẩn. 40 PT + 40 Hướng Dẫn. Tặng 2 buổi Giãn Cơ Full Body."),
-            new SeedPlan("PT_NEW_60", "Tăng Cơ Giảm Mỡ (PT Mới Ra Nghề) - 6 Tháng", null, PlanType.PT, PtLevel.NEW, 180, bd("10140000"), 60, 60, null, ContentAccessLevel.PREMIUM, bd("0.65"), "65% gói PT Chuẩn. 60 PT + 60 Hướng Dẫn. Tặng 4 buổi Giãn Cơ Full Body."),
-            new SeedPlan("SPORT_45", "Hiệu Suất Thể Thao - 1,5 Tháng (10 Kĩ Thuật + 10 Thể Lực)", null, PlanType.PT, PtLevel.MAIN, 45, bd("3000000"), 10, 10, null, ContentAccessLevel.PREMIUM, bd("1.00"), "Tăng sức mạnh, cải thiện thể lực, tăng tốc độ, nâng cao phản xạ, tăng sức bền, tối ưu vận động, phục hồi tốt hơn, cá nhân hóa theo mục tiêu riêng."),
-            new SeedPlan("SPORT_90", "Hiệu Suất Thể Thao - 3 Tháng (20 Kĩ Thuật + 20 Thể Lực)", null, PlanType.PT, PtLevel.MAIN, 90, bd("5600000"), 20, 20, null, ContentAccessLevel.PREMIUM, bd("1.00"), "Tặng 1 buổi Giãn Cơ Full Body. Tăng sức mạnh, cải thiện thể lực, tăng tốc độ, nâng cao phản xạ, tăng sức bền, tối ưu vận động, phục hồi tốt hơn."),
-            new SeedPlan("REHAB_1", "Văn Phòng Cổ Vai Gáy - 1 Trị Liệu + 3 Hướng Dẫn", null, PlanType.GUIDANCE, null, 15, bd("560000"), null, null, 4, ContentAccessLevel.BASIC, null, "Giảm đau mỏi cổ, vai, gáy. Cải thiện tư thế, tăng độ linh hoạt, thả lỏng cơ, tăng sức mạnh cổ và lưng, ngừa tái phát."),
-            new SeedPlan("REHAB_5", "Văn Phòng Cổ Vai Gáy - 5 Trị Liệu + 15 Hướng Dẫn", null, PlanType.GUIDANCE, null, 60, bd("2550000"), null, null, 20, ContentAccessLevel.BASIC, null, "Giảm đau mỏi cổ, vai, gáy. Cải thiện tư thế, tăng độ linh hoạt, thả lỏng cơ, tăng sức mạnh cổ và lưng, ngừa tái phát."),
-            new SeedPlan("REHAB_10", "Văn Phòng Cổ Vai Gáy - 10 Trị Liệu + 30 Hướng Dẫn", null, PlanType.GUIDANCE, null, 120, bd("4600000"), null, null, 40, ContentAccessLevel.BASIC, null, "Giảm đau mỏi cổ, vai, gáy. Cải thiện tư thế, tăng độ linh hoạt, thả lỏng cơ, tăng sức mạnh cổ và lưng, ngừa tái phát.")
+            new SeedPlan("SELF_1M", "Tự Tập - Full 1 Tháng", "Gói tự tập 1 tháng", PlanType.SELF_TRAINING, null, 30, bd("300000"), null, null, null, null, "Không giới hạn số buổi trong tháng, hỗ trợ kĩ thuật máy móc ban đầu, tư vấn \"Tập Luyện và Dinh Dưỡng\" vào cuối tuần."),
+            new SeedPlan("SELF_2M", "Tự Tập - Full 2 Tháng", "Gói tự tập 2 tháng", PlanType.SELF_TRAINING, null, 60, bd("560000"), null, null, null, null, "Không giới hạn số buổi trong tháng, hỗ trợ kĩ thuật máy móc ban đầu, tư vấn \"Tập Luyện và Dinh Dưỡng\" vào cuối tuần."),
+            new SeedPlan("SELF_4M", "Tự Tập - Full 4 Tháng", null, PlanType.SELF_TRAINING, null, 120, bd("1000000"), null, null, null, null, "Không giới hạn số buổi trong tháng, hỗ trợ kĩ thuật máy móc ban đầu, tư vấn \"Tập Luyện và Dinh Dưỡng\" vào cuối tuần."),
+            new SeedPlan("SELF_6M", "Tự Tập - Full 6 Tháng", null, PlanType.SELF_TRAINING, null, 180, bd("1320000"), null, null, null, null, "Không giới hạn số buổi trong tháng, hỗ trợ kĩ thuật máy móc ban đầu, tư vấn \"Tập Luyện và Dinh Dưỡng\" vào cuối tuần."),
+            new SeedPlan("SELF_VIP_1M", "Tự Tập VIP - Full 1 Tháng", null, PlanType.SELF_TRAINING, null, 30, bd("640000"), null, null, null, null, "Bao gồm Gói tự tập, sử dụng sổ \"Buổi Tập Mẫu\", tặng File/Sổ Theo Dõi Tập Luyện, tặng File \"Gym Căn Bản\"."),
+            new SeedPlan("SELF_VIP_2M", "Tự Tập VIP - Full 2 Tháng", null, PlanType.SELF_TRAINING, null, 60, bd("1160000"), null, null, null, null, "Bao gồm Gói tự tập, sử dụng sổ \"Buổi Tập Mẫu\", tặng File/Sổ Theo Dõi Tập Luyện, tặng File \"Gym Căn Bản\"."),
+            new SeedPlan("SELF_VIP_4M", "Tự Tập VIP - Full 4 Tháng", null, PlanType.SELF_TRAINING, null, 120, bd("2080000"), null, null, null, null, "Bao gồm Gói tự tập, sử dụng sổ \"Buổi Tập Mẫu\", tặng File/Sổ Theo Dõi Tập Luyện, tặng File \"Gym Căn Bản\"."),
+            new SeedPlan("SELF_VIP_6M", "Tự Tập VIP - Full 6 Tháng", "Gói tự tập VIP 6 tháng", PlanType.SELF_TRAINING, null, 180, bd("2760000"), null, null, null, null, "Bao gồm Gói tự tập, sử dụng sổ \"Buổi Tập Mẫu\", tặng File/Sổ Theo Dõi Tập Luyện, tặng File \"Gym Căn Bản\"."),
+            new SeedPlan("GUIDANCE_30", "Dạy Gym Cá Nhân - 12 PT + 12 Thực Nghiệm", "Gói giáo án 30 buổi", PlanType.PT, PtLevel.MAIN, 45, bd("5000000"), 12, 12, null, bd("1.00"), "Kèm 1 - 1, thực nghiệm thực tế, chuẩn hóa Kĩ Thuật Tập Luyện, hiểu từng nhóm cơ kích hoạt qua Anatomy, hiểu dinh dưỡng tự tính thực đơn, hiểu nền tảng xây dựng giáo án."),
+            new SeedPlan("GUIDANCE_60", "Dạy Gym Cá Nhân - 24 PT + 24 Thực Nghiệm", "Gói giáo án 60 buổi", PlanType.PT, PtLevel.MAIN, 90, bd("9000000"), 24, 24, null, bd("1.00"), "Kèm 1 - 1, lộ trình chuyên sâu làm chủ kỹ thuật tạ nặng, thấu hiểu dinh dưỡng và lập kế hoạch tăng cơ giảm mỡ trọn đời."),
+            new SeedPlan("PT_MAIN_20", "Tăng Cơ Giảm Mỡ (PT Chuẩn) - 2 Tháng (20 PT + 20 Hướng Dẫn)", "PT chính 20 PT + 20 ôn tập", PlanType.PT, PtLevel.MAIN, 60, bd("6000000"), 20, 20, null, bd("1.00"), "PT Chuẩn (Đầy đủ chứng chỉ, VĐV, >3 năm kinh nghiệm, nhiều Transform tốt). 20 PT + 20 Hướng Dẫn."),
+            new SeedPlan("PT_MAIN_40", "Tăng Cơ Giảm Mỡ (PT Chuẩn) - 4 Tháng (40 PT + 40 Hướng Dẫn)", "PT chính 40 PT + 40 ôn tập", PlanType.PT, PtLevel.MAIN, 120, bd("11200000"), 40, 40, null, bd("1.00"), "PT Chuẩn. 40 PT + 40 Hướng Dẫn. Tặng 2 buổi Giãn Cơ Full Body."),
+            new SeedPlan("PT_MAIN_60", "Tăng Cơ Giảm Mỡ (PT Chuẩn) - 6 Tháng (60 PT + 60 Hướng Dẫn)", null, PlanType.PT, PtLevel.MAIN, 180, bd("15600000"), 60, 60, null, bd("1.00"), "PT Chuẩn. 60 PT + 60 Hướng Dẫn. Tặng 4 buổi Giãn Cơ Full Body."),
+            new SeedPlan("PT_NEW_20", "Tăng Cơ Giảm Mỡ (PT Mới Ra Nghề) - 2 Tháng", "PT mới 20 PT + 20 ôn tập", PlanType.PT, PtLevel.NEW, 60, bd("3900000"), 20, 20, null, bd("0.65"), "65% gói PT Chuẩn. 20 PT + 20 Hướng Dẫn."),
+            new SeedPlan("PT_NEW_40", "Tăng Cơ Giảm Mỡ (PT Mới Ra Nghề) - 4 Tháng", null, PlanType.PT, PtLevel.NEW, 120, bd("7280000"), 40, 40, null, bd("0.65"), "65% gói PT Chuẩn. 40 PT + 40 Hướng Dẫn. Tặng 2 buổi Giãn Cơ Full Body."),
+            new SeedPlan("PT_NEW_60", "Tăng Cơ Giảm Mỡ (PT Mới Ra Nghề) - 6 Tháng", null, PlanType.PT, PtLevel.NEW, 180, bd("10140000"), 60, 60, null, bd("0.65"), "65% gói PT Chuẩn. 60 PT + 60 Hướng Dẫn. Tặng 4 buổi Giãn Cơ Full Body."),
+            new SeedPlan("SPORT_45", "Hiệu Suất Thể Thao - 1,5 Tháng (10 Kĩ Thuật + 10 Thể Lực)", null, PlanType.PT, PtLevel.MAIN, 45, bd("3000000"), 10, 10, null, bd("1.00"), "Tăng sức mạnh, cải thiện thể lực, tăng tốc độ, nâng cao phản xạ, tăng sức bền, tối ưu vận động, phục hồi tốt hơn, cá nhân hóa theo mục tiêu riêng."),
+            new SeedPlan("SPORT_90", "Hiệu Suất Thể Thao - 3 Tháng (20 Kĩ Thuật + 20 Thể Lực)", null, PlanType.PT, PtLevel.MAIN, 90, bd("5600000"), 20, 20, null, bd("1.00"), "Tặng 1 buổi Giãn Cơ Full Body. Tăng sức mạnh, cải thiện thể lực, tăng tốc độ, nâng cao phản xạ, tăng sức bền, tối ưu vận động, phục hồi tốt hơn."),
+            new SeedPlan("REHAB_1", "Văn Phòng Cổ Vai Gáy - 1 Trị Liệu + 3 Hướng Dẫn", null, PlanType.GUIDANCE, null, 15, bd("560000"), null, null, 4, null, "Giảm đau mỏi cổ, vai, gáy. Cải thiện tư thế, tăng độ linh hoạt, thả lỏng cơ, tăng sức mạnh cổ và lưng, ngừa tái phát."),
+            new SeedPlan("REHAB_5", "Văn Phòng Cổ Vai Gáy - 5 Trị Liệu + 15 Hướng Dẫn", null, PlanType.GUIDANCE, null, 60, bd("2550000"), null, null, 20, null, "Giảm đau mỏi cổ, vai, gáy. Cải thiện tư thế, tăng độ linh hoạt, thả lỏng cơ, tăng sức mạnh cổ và lưng, ngừa tái phát."),
+            new SeedPlan("REHAB_10", "Văn Phòng Cổ Vai Gáy - 10 Trị Liệu + 30 Hướng Dẫn", null, PlanType.GUIDANCE, null, 120, bd("4600000"), null, null, 40, null, "Giảm đau mỏi cổ, vai, gáy. Cải thiện tư thế, tăng độ linh hoạt, thả lỏng cơ, tăng sức mạnh cổ và lưng, ngừa tái phát.")
         );
 
         List<MembershipPlan> existingPlans = membershipPlanRepository.findAll();
@@ -467,7 +469,6 @@ public class DataInitializer implements ApplicationRunner {
             entity.setPtSessionCount(plan.ptSessionCount());
             entity.setPracticeSessionCount(plan.practiceSessionCount());
             entity.setGuidanceSessionCount(plan.guidanceSessionCount());
-            entity.setContentAccessLevel(plan.contentAccessLevel());
             entity.setPriceRatio(plan.priceRatio());
             entity.setDescription(plan.description());
             entity.setActive(true);
@@ -830,7 +831,6 @@ public class DataInitializer implements ApplicationRunner {
         Integer ptSessionCount,
         Integer practiceSessionCount,
         Integer guidanceSessionCount,
-        ContentAccessLevel contentAccessLevel,
         BigDecimal priceRatio,
         String description
     ) {

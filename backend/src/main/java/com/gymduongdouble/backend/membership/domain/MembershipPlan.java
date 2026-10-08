@@ -1,7 +1,6 @@
 package com.gymduongdouble.backend.membership.domain;
 
 import com.gymduongdouble.backend.common.domain.AuditableEntity;
-import com.gymduongdouble.backend.common.enums.ContentAccessLevel;
 import com.gymduongdouble.backend.common.enums.PlanType;
 import com.gymduongdouble.backend.common.enums.PtLevel;
 import jakarta.persistence.Column;
@@ -46,10 +45,6 @@ public class MembershipPlan extends AuditableEntity {
 
     @Column(name = "guidance_session_count")
     private Integer guidanceSessionCount;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "content_access_level", nullable = false, length = 20)
-    private ContentAccessLevel contentAccessLevel = ContentAccessLevel.NONE;
 
     @Column(name = "price_ratio", precision = 5, scale = 2)
     private BigDecimal priceRatio;

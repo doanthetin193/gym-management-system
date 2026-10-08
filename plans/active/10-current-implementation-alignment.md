@@ -1,6 +1,6 @@
 # 10 - Cập nhật kế hoạch theo implementation hiện tại
 
-Cập nhật ngày 07/10/2026.
+Cập nhật ngày 08/10/2026.
 
 Tài liệu này dùng để đồng bộ lại kế hoạch sau giai đoạn nâng cấp UI và bổ sung nghiệp vụ bằng Antigravity. Từ thời điểm này, nếu tài liệu cũ còn khác với code hiện tại thì ưu tiên tài liệu này làm nguồn chốt scope.
 
@@ -298,3 +298,29 @@ Giai đoạn hiện tại được xem là chốt khi:
 - Backend test pass.
 - Frontend build pass.
 - Frontend lint không có lỗi chặn build.
+
+## 14. Cập nhật hardening ngày 08/10/2026
+
+Các chỉnh sửa ngày 08/10/2026 được xem là một phần của implementation hiện tại:
+
+- Seed OWNER không được tự reset mật khẩu ở mỗi lần chạy app. Nếu OWNER đã tồn tại và đã có `passwordHash`, hệ thống giữ nguyên mật khẩu hiện tại.
+- Tài khoản portal hội viên chỉ được tạo/reuse cho user `MEMBER`-only do hệ thống sinh ra. Không reuse, xoá hoặc khoá nhầm tài khoản `OWNER`/`PT` khi tạo/xoá portal account.
+- Tạo/gia hạn gói hội viên kèm tiền trả trước được xử lý atomic trong một transaction:
+  - tạo `member_memberships`;
+  - tạo/cập nhật `debt_records`;
+  - tạo `payments`;
+  - đồng bộ `financial_transactions` loại income;
+  - đồng bộ `paidAmount` và `debtAmount`.
+- Tổng công nợ ở màn hình hội viên và portal chỉ tính các debt còn mở (`OPEN`, `PARTIALLY_PAID`) và còn số tiền phải thu lớn hơn 0.
+- Backend không còn dùng `ContentAccessLevel/contentAccessLevel`. Thư viện TikTok hiện là public, không có mô hình premium content trong scope hiện tại.
+- PT hardening:
+  - chỉ user có role `PT` mới được tạo hồ sơ PT, nhận assignment, nhận lịch dạy hoặc được gán mục tiêu PT;
+  - chỉ khách có gói PT active, còn hạn và còn buổi mới được gán PT;
+  - ghi log buổi PT sẽ đồng bộ trạng thái lịch PT tương ứng;
+  - buổi ôn tập và buổi hướng dẫn/trị liệu được kiểm soát số buổi còn lại theo gói.
+- Prod profile tạm tắt Flyway khi chưa có migration thật; giai đoạn dev hiện vẫn ưu tiên Hibernate update/drop-create theo nhu cầu reset dữ liệu.
+- Frontend dọn lint warning: bỏ export/hằng số thừa, bỏ import không dùng, chuẩn hoá label nút PDF thành `In / lưu PDF`, và loại trạng thái PT không khớp enum backend.
+- Kiểm tra sau cập nhật:
+  - `backend`: `.\mvnw.cmd -q test` pass.
+  - `frontend`: `npm run lint` pass.
+  - `frontend`: `npm run build` pass, chỉ còn cảnh báo bundle size của Vite.

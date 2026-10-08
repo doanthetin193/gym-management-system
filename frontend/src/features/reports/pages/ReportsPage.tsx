@@ -492,7 +492,7 @@ export function ReportsPage() {
             className="inline-flex h-10 items-center gap-2 rounded-xl border border-[var(--line)] bg-[var(--surface)] px-3.5 text-xs font-black text-[var(--text-strong)] shadow-sm hover:border-[var(--brand-yellow)]/50 hover:bg-[var(--surface-muted)] transition-all active:scale-[0.98]"
           >
             <FileText size={15} />
-            Xuất PDF
+            In / lưu PDF
           </button>
           <button
             onClick={exportFullBackup}

@@ -38,7 +38,6 @@ Content-Type: application/json
   "planType": "SELF_TRAINING",
   "durationDays": 30,
   "defaultPrice": 900000,
-  "contentAccessLevel": "BASIC",
   "active": true
 }
 

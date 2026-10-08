@@ -137,7 +137,6 @@ Create membership plan request:
   "ptSessionCount": 20,
   "practiceSessionCount": 20,
   "guidanceSessionCount": 0,
-  "contentAccessLevel": "PREMIUM",
   "priceRatio": 0.65
 }
 ```
@@ -146,9 +145,9 @@ Enum cáº§n thá»‘ng nháº¥t:
 
 - `planType`: SELF_TRAINING, PT, GUIDANCE, OTHER.
 - `ptLevel`: MAIN, NEW. Chá»‰ dÃ¹ng cho gÃ³i PT.
-- `contentAccessLevel`: NONE, BASIC, PREMIUM.
 - GÃ³i GiÃ¡o Ã¡n/HÆ°á»›ng Dáº«n dÃ¹ng `planType = GUIDANCE` vÃ  `guidanceSessionCount` lÃ  30, 60 hoáº·c 90.
 - KhÃ´ng dÃ¹ng `STUDENT`; cá»™t `Sinh viÃªn` trong Excel cÅ© Ä‘Æ°á»£c hiá»ƒu lÃ  doanh thu/gÃ³i `PT má»›i`.
+- KhÃ´ng cÃ²n `contentAccessLevel` trong request/response vÃ¬ thÆ° viá»‡n TikTok public khÃ´ng phÃ¢n táº§ng premium.
 
 Create membership request:
 
@@ -156,10 +155,14 @@ Create membership request:
 {
   "planId": 1,
   "soldByUserId": 2,
+  "ptUserId": null,
   "startDate": "2026-09-01",
   "actualPrice": 900000,
-  "paidAmount": 500000,
   "discountAmount": 0,
+  "initialPaidAmount": 500000,
+  "initialPaymentMethod": "BANK_TRANSFER",
+  "initialPaymentDate": "2026-09-01",
+  "initialPaymentNote": "Thanh toÃ¡n má»™t pháº§n",
   "note": "Thanh toÃ¡n má»™t pháº§n"
 }
 ```
@@ -167,6 +170,8 @@ Create membership request:
 Ghi chÃº:
 
 - `soldByUserId` nullable. Náº¿u PT/chá»§ phÃ²ng trá»±c tiáº¿p sale gÃ³i, lÆ°u user Ä‘Ã³ Ä‘á»ƒ phase sau tÃ­nh hoa há»“ng sale.
+- `initialPaidAmount` lÃ  sá»‘ tiá»n tráº£ trÆ°á»›c khi táº¡o/gia háº¡n gÃ³i. Backend táº¡o payment, debt vÃ  income transaction trong cÃ¹ng transaction.
+- `initialPaymentMethod` báº¯t buá»™c khi `initialPaidAmount > 0`.
 - Hoa há»“ng sale phase sau tÃ­nh theo sá»‘ tiá»n khÃ¡ch thá»±c thanh toÃ¡n, nhÆ°ng ngÆ°á»i sale nÃªn Ä‘Æ°á»£c lÆ°u ngay tá»« lÃºc bÃ¡n/gia háº¡n gÃ³i.
 
 Response nÃªn cÃ³:
@@ -519,7 +524,7 @@ YÃªu cáº§u:
 - AI score API.
 - Payment online API.
 - Auto Zalo API.
-- Export PDF/Excel API.
+- Export PDF API server-side. Xuáº¥t `.xlsx` hiá»‡n Ä‘Ã£ xá»­ lÃ½ á»Ÿ frontend/report flow, khÃ´ng cÃ²n xáº¿p lÃ  API cháº·n MVP.
 - Import API.
 
 ## 14. Quyá»n truy cáº­p API

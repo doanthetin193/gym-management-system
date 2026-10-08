@@ -182,17 +182,13 @@ export function MemberDetailPage() {
     setMembershipSubmitting(true)
     setMembershipError(null)
     try {
-      const membership = await createMemberMembership(detail.profile.id, payload.membership)
-      if (payload.paidAmount > 0) {
-        await createPayment({
-          memberId: detail.profile.id,
-          membershipId: membership.id,
-          paymentDate: payload.membership.startDate,
-          amount: payload.paidAmount,
-          paymentMethod: payload.paymentMethod,
-          note: payload.membership.note || `Thu tiền gói ${membership.planName}`,
-        })
-      }
+      await createMemberMembership(detail.profile.id, {
+        ...payload.membership,
+        initialPaidAmount: payload.paidAmount,
+        initialPaymentMethod: payload.paidAmount > 0 ? payload.paymentMethod : null,
+        initialPaymentDate: payload.membership.startDate,
+        initialPaymentNote: payload.membership.note,
+      })
       setMembershipModalOpen(false)
       await loadDetail()
     } catch (caughtError) {

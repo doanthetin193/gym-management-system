@@ -55,16 +55,13 @@ const scheduleStatusLabels: Record<string, string> = {
   CANCELLED: 'Đã hủy',
   MISSED: 'Vắng mặt',
   RESCHEDULED: 'Đã đổi lịch',
-  NO_SHOW: 'Vắng mặt',
 }
 
 const sessionStatusLabels: Record<string, string> = {
   COMPLETED: 'Đã tập',
-  CANCELLED_VALID: 'Hủy hợp lệ',
   CANCELLED: 'Đã hủy',
   MISSED: 'Vắng mặt',
   RESCHEDULED: 'Đã đổi lịch',
-  NO_SHOW: 'Vắng mặt',
 }
 
 const goalTypeLabels: Record<GoalType, { label: string; icon: LucideIcon; color: string }> = {
@@ -255,7 +252,11 @@ export function PtSchedulePage() {
   }, [])
 
   useEffect(() => {
-    void loadData()
+    const timeoutId = window.setTimeout(() => {
+      void loadData()
+    }, 0)
+
+    return () => window.clearTimeout(timeoutId)
   }, [loadData])
 
   useEffect(() => {
@@ -269,7 +270,11 @@ export function PtSchedulePage() {
   }, [memberKeyword])
 
   useEffect(() => {
-    void loadDetail(selectedMemberId)
+    const timeoutId = window.setTimeout(() => {
+      void loadDetail(selectedMemberId)
+    }, 0)
+
+    return () => window.clearTimeout(timeoutId)
   }, [loadDetail, selectedMemberId])
 
   async function handleCreateMyProfile() {
@@ -512,7 +517,7 @@ export function PtSchedulePage() {
     setFormError(null)
     try {
       await createPtGoal(selectedMemberId, {
-        ptUserId: user.id,
+        ptUserId: isOwner ? selectedAssignment?.ptUserId ?? null : user.id,
         goalType: goalForm.goalType,
         goalDescription: goalForm.goalDescription.trim() || null,
         startDate: todayIso(),
@@ -532,8 +537,12 @@ export function PtSchedulePage() {
 
   useEffect(() => {
     if (activePackage && !sessionForm.sessionPackageId) {
-      setSessionForm((current) => ({ ...current, sessionPackageId: activePackage.id.toString() }))
-      setActivityForm((current) => ({ ...current, sessionPackageId: activePackage.id.toString() }))
+      const timeoutId = window.setTimeout(() => {
+        setSessionForm((current) => ({ ...current, sessionPackageId: activePackage.id.toString() }))
+        setActivityForm((current) => ({ ...current, sessionPackageId: activePackage.id.toString() }))
+      }, 0)
+
+      return () => window.clearTimeout(timeoutId)
     }
   }, [activePackage, sessionForm.sessionPackageId])
 

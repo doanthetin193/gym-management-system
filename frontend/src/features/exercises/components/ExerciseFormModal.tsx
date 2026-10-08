@@ -1,6 +1,6 @@
 import { Play, Plus, Save, Video, X } from 'lucide-react'
 import type { FormEvent } from 'react'
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { createOwnerExerciseCategory } from '../api/exerciseApi'
 import type { Exercise, ExerciseCategory, ExerciseLevel, ExercisePayload } from '../types/exercise'
 
@@ -44,7 +44,11 @@ export function ExerciseFormModal({
   onSubmit,
   onCategoryCreated,
 }: Props) {
-  const [categoryList, setCategoryList] = useState<ExerciseCategory[]>(categories)
+  const [createdCategories, setCreatedCategories] = useState<ExerciseCategory[]>([])
+  const categoryList = useMemo(() => {
+    const existingIds = new Set(categories.map((category) => category.id))
+    return [...categories, ...createdCategories.filter((category) => !existingIds.has(category.id))]
+  }, [categories, createdCategories])
   const firstCategoryId = categoryList[0]?.id ?? 0
   const [categoryId, setCategoryId] = useState(initialExercise?.categoryId ?? firstCategoryId)
   const [title, setTitle] = useState(initialExercise?.title ?? '')
@@ -65,10 +69,6 @@ export function ExerciseFormModal({
   const [creatingCategory, setCreatingCategory] = useState(false)
   const [categoryError, setCategoryError] = useState<string | null>(null)
 
-  useEffect(() => {
-    setCategoryList(categories)
-  }, [categories])
-
   async function handleCreateCategory() {
     const trimmed = newCategoryName.trim()
     if (!trimmed) return
@@ -82,7 +82,7 @@ export function ExerciseFormModal({
         sortOrder: categoryList.length + 1,
         active: true,
       })
-      setCategoryList((prev) => [...prev, res])
+      setCreatedCategories((prev) => [...prev, res])
       setCategoryId(res.id)
       setNewCategoryName('')
       setShowNewCategoryInput(false)

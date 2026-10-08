@@ -245,7 +245,11 @@ export function RemindersPage() {
   }, [])
 
   useEffect(() => {
-    void loadReminders()
+    const timeoutId = window.setTimeout(() => {
+      void loadReminders()
+    }, 0)
+
+    return () => window.clearTimeout(timeoutId)
   }, [loadReminders])
 
   const counts = useMemo(() => {

@@ -1,7 +1,7 @@
 import { X } from 'lucide-react'
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import type { ContentAccessLevel, MembershipPlanPayload, PlanType, PtLevel } from '../types/membershipPlan'
+import type { MembershipPlanPayload, PlanType, PtLevel } from '../types/membershipPlan'
 
 type MembershipPlanFormModalProps = {
   submitting: boolean
@@ -19,7 +19,6 @@ type PlanFormState = {
   ptSessionCount: string
   practiceSessionCount: string
   guidanceSessionCount: string
-  contentAccessLevel: ContentAccessLevel
   priceRatio: string
   description: string
   active: boolean
@@ -46,7 +45,6 @@ export function MembershipPlanFormModal({ submitting, error, onClose, onSubmit }
     ptSessionCount: '',
     practiceSessionCount: '',
     guidanceSessionCount: '',
-    contentAccessLevel: 'NONE',
     priceRatio: '',
     description: '',
     active: true,
@@ -63,7 +61,6 @@ export function MembershipPlanFormModal({ submitting, error, onClose, onSubmit }
       ptSessionCount: form.planType === 'PT' ? toNumber(form.ptSessionCount) : null,
       practiceSessionCount: form.planType === 'PT' ? toNumber(form.practiceSessionCount) : null,
       guidanceSessionCount: form.planType === 'GUIDANCE' ? toNumber(form.guidanceSessionCount) : null,
-      contentAccessLevel: form.contentAccessLevel,
       priceRatio: toNumber(form.priceRatio),
       description: form.description.trim() || null,
       active: form.active,
@@ -149,19 +146,6 @@ export function MembershipPlanFormModal({ submitting, error, onClose, onSubmit }
                 className="mt-1.5 h-10 w-full rounded-xl border border-[var(--line)] bg-[var(--input-bg)] px-3 text-xs font-semibold text-[var(--text-strong)] outline-none transition focus:border-amber-500"
                 required
               />
-            </label>
-
-            <label className="block">
-              <span className="text-xs font-bold text-[var(--text-strong)]">Quyền truy cập nội dung</span>
-              <select
-                value={form.contentAccessLevel}
-                onChange={(event) => setForm((current) => ({ ...current, contentAccessLevel: event.target.value as ContentAccessLevel }))}
-                className="mt-1.5 h-10 w-full rounded-xl border border-[var(--line)] bg-[var(--surface-muted)] px-3 text-xs font-semibold text-[var(--text-strong)] outline-none transition focus:border-amber-500"
-              >
-                <option value="NONE" className="bg-[var(--surface)] text-[var(--text-strong)]">Tiêu chuẩn (NONE)</option>
-                <option value="BASIC" className="bg-[var(--surface)] text-[var(--text-strong)]">Cơ bản (Sổ tập/Tài liệu)</option>
-                <option value="PREMIUM" className="bg-[var(--surface)] text-[var(--text-strong)]">VIP Premium</option>
-              </select>
             </label>
 
             {form.planType === 'PT' ? (

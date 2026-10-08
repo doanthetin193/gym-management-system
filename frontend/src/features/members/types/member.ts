@@ -1,4 +1,5 @@
 import type { MembershipPlan } from '../../membership-plans/types/membershipPlan'
+import type { PaymentMethod } from '../../payments/types/payment'
 
 export type Gender = 'MALE' | 'FEMALE' | 'OTHER'
 
@@ -106,6 +107,10 @@ export type MemberMembershipPayload = {
   endDate?: string | null
   actualPrice?: number | null
   discountAmount?: number | null
+  initialPaidAmount?: number | null
+  initialPaymentMethod?: PaymentMethod | null
+  initialPaymentDate?: string | null
+  initialPaymentNote?: string | null
   note?: string | null
 }
 

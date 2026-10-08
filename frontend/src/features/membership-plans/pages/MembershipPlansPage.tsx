@@ -331,7 +331,7 @@ function normalizeStr(text: string) {
   return text.toLowerCase().replace(/\s+/g, ' ').trim()
 }
 
-export function getPlanSpec(plan: MembershipPlan): StandardPlanSpec | null {
+function getPlanSpec(plan: MembershipPlan): StandardPlanSpec | null {
   if (CANONICAL_PLANS[plan.name]) {
     return CANONICAL_PLANS[plan.name]
   }
@@ -350,7 +350,7 @@ export function getPlanSpec(plan: MembershipPlan): StandardPlanSpec | null {
   return null
 }
 
-export function classifyPlan(plan: MembershipPlan): Exclude<BusinessCategory, 'all'> {
+function classifyPlan(plan: MembershipPlan): Exclude<BusinessCategory, 'all'> {
   const spec = getPlanSpec(plan)
   if (spec && spec.category !== 'all') {
     return spec.category
@@ -454,7 +454,11 @@ export function MembershipPlansPage() {
   }, [canManagePlans])
 
   useEffect(() => {
-    void loadPlans()
+    const timeoutId = window.setTimeout(() => {
+      void loadPlans()
+    }, 0)
+
+    return () => window.clearTimeout(timeoutId)
   }, [loadPlans])
 
   async function handleCreatePlan(payload: MembershipPlanPayload) {
@@ -889,13 +893,7 @@ function PlanCard({
       {/* Card Footer Info */}
       <div className="mt-4 flex items-center justify-between border-t border-[var(--line)] pt-3 text-[11px] font-semibold text-[var(--text-muted)]">
         <span>Mã gói: #{plan.id}</span>
-        <span>
-          {plan.contentAccessLevel === 'PREMIUM'
-            ? 'Quyền VIP Premium'
-            : plan.contentAccessLevel === 'BASIC'
-              ? 'Quyền Cơ bản'
-              : 'Tiêu chuẩn'}
-        </span>
+        <span>{plan.active ? 'Đang bán' : 'Đã ẩn'}</span>
       </div>
     </article>
   )

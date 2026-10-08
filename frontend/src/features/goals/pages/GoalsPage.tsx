@@ -127,7 +127,11 @@ export function GoalsPage() {
   }, [year, month])
 
   useEffect(() => {
-    void loadData()
+    const timeoutId = window.setTimeout(() => {
+      void loadData()
+    }, 0)
+
+    return () => window.clearTimeout(timeoutId)
   }, [loadData])
 
   async function handleCreateGoal(event: FormEvent<HTMLFormElement>) {

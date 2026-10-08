@@ -106,11 +106,6 @@ export function MembersPage() {
   const [formError, setFormError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
-  // Reset to page 1 whenever filter or keyword changes
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [keyword, filter])
-
   // Full global stats (independent of current active filter)
   const stats = useMemo(() => {
     const list = allMembers.length > 0 ? allMembers : members
@@ -188,7 +183,11 @@ export function MembersPage() {
   }, [filter, keyword])
 
   useEffect(() => {
-    void loadAllMembers()
+    const timeoutId = window.setTimeout(() => {
+      void loadAllMembers()
+    }, 0)
+
+    return () => window.clearTimeout(timeoutId)
   }, [loadAllMembers])
 
   useEffect(() => {
@@ -308,14 +307,20 @@ export function MembersPage() {
             <Search size={16} className="shrink-0 text-slate-400 dark:text-gray-400" />
             <input
               value={keyword}
-              onChange={(event) => setKeyword(event.target.value)}
+              onChange={(event) => {
+                setKeyword(event.target.value)
+                setCurrentPage(1)
+              }}
               placeholder="Tìm theo tên hội viên, số điện thoại..."
               className="h-10 min-w-0 flex-1 bg-transparent px-2.5 text-xs md:text-sm font-semibold text-slate-900 placeholder:text-slate-400 outline-none dark:text-white dark:placeholder:text-gray-400"
             />
             {keyword && (
               <button
                 type="button"
-                onClick={() => setKeyword('')}
+                onClick={() => {
+                  setKeyword('')
+                  setCurrentPage(1)
+                }}
                 className="text-slate-400 hover:text-slate-600 dark:hover:text-white"
                 title="Xóa tìm kiếm"
               >
@@ -333,7 +338,10 @@ export function MembersPage() {
                   <button
                     key={option.value}
                     type="button"
-                    onClick={() => setFilter(option.value)}
+                    onClick={() => {
+                      setFilter(option.value)
+                      setCurrentPage(1)
+                    }}
                     className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold transition ${
                       isActive
                         ? 'bg-[#087ec1] text-white shadow-sm dark:bg-[#ffcc08] dark:text-slate-900'

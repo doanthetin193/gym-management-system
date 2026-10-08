@@ -1,6 +1,7 @@
 package com.gymduongdouble.backend.member.service;
 
 import com.gymduongdouble.backend.common.enums.MembershipStatus;
+import com.gymduongdouble.backend.common.enums.DebtStatus;
 import com.gymduongdouble.backend.common.exception.ResourceNotFoundException;
 import com.gymduongdouble.backend.finance.domain.DebtRecord;
 import com.gymduongdouble.backend.finance.repository.DebtRecordRepository;
@@ -84,7 +85,9 @@ public class MemberPortalService {
                 .map(PtGoalResponse::from)
                 .toList(),
             debts.stream()
+                .filter(debt -> debt.getStatus() == DebtStatus.OPEN || debt.getStatus() == DebtStatus.PARTIALLY_PAID)
                 .map(DebtRecord::getRemainingAmount)
+                .filter(amount -> amount.compareTo(BigDecimal.ZERO) > 0)
                 .reduce(BigDecimal.ZERO, BigDecimal::add)
         );
     }

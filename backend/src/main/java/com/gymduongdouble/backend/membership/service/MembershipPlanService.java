@@ -1,6 +1,5 @@
 package com.gymduongdouble.backend.membership.service;
 
-import com.gymduongdouble.backend.common.enums.ContentAccessLevel;
 import com.gymduongdouble.backend.common.exception.BadRequestException;
 import com.gymduongdouble.backend.common.exception.ResourceNotFoundException;
 import com.gymduongdouble.backend.membership.domain.MembershipPlan;
@@ -32,7 +31,6 @@ public class MembershipPlanService {
         plan.setPtSessionCount(request.ptSessionCount());
         plan.setPracticeSessionCount(request.practiceSessionCount());
         plan.setGuidanceSessionCount(request.guidanceSessionCount());
-        plan.setContentAccessLevel(request.contentAccessLevel() == null ? ContentAccessLevel.NONE : request.contentAccessLevel());
         plan.setPriceRatio(request.priceRatio());
         plan.setDescription(request.description());
         plan.setActive(request.active() == null || request.active());

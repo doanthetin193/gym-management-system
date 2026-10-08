@@ -1,14 +1,25 @@
 package com.gymduongdouble.backend.membership.service;
 
 import com.gymduongdouble.backend.common.enums.DebtStatus;
+import com.gymduongdouble.backend.common.enums.FinancialCategoryType;
+import com.gymduongdouble.backend.common.enums.FinancialTransactionType;
 import com.gymduongdouble.backend.common.enums.MembershipStatus;
+import com.gymduongdouble.backend.common.enums.PaymentMethod;
 import com.gymduongdouble.backend.common.enums.PlanType;
+import com.gymduongdouble.backend.common.enums.PtLevel;
+import com.gymduongdouble.backend.common.enums.RevenueCategory;
 import com.gymduongdouble.backend.common.enums.SessionPackageStatus;
 import com.gymduongdouble.backend.common.exception.BadRequestException;
 import com.gymduongdouble.backend.common.exception.ResourceNotFoundException;
 import com.gymduongdouble.backend.common.security.SecurityUtils;
 import com.gymduongdouble.backend.finance.domain.DebtRecord;
+import com.gymduongdouble.backend.finance.domain.FinancialCategory;
+import com.gymduongdouble.backend.finance.domain.FinancialTransaction;
+import com.gymduongdouble.backend.finance.domain.Payment;
 import com.gymduongdouble.backend.finance.repository.DebtRecordRepository;
+import com.gymduongdouble.backend.finance.repository.FinancialCategoryRepository;
+import com.gymduongdouble.backend.finance.repository.FinancialTransactionRepository;
+import com.gymduongdouble.backend.finance.repository.PaymentRepository;
 import com.gymduongdouble.backend.member.domain.Member;
 import com.gymduongdouble.backend.member.service.MemberAccessService;
 import com.gymduongdouble.backend.member.service.MemberService;
@@ -37,6 +48,9 @@ public class MemberMembershipService {
     private final MembershipPlanRepository membershipPlanRepository;
     private final MemberMembershipRepository memberMembershipRepository;
     private final DebtRecordRepository debtRecordRepository;
+    private final PaymentRepository paymentRepository;
+    private final FinancialCategoryRepository financialCategoryRepository;
+    private final FinancialTransactionRepository financialTransactionRepository;
     private final PtSessionPackageRepository ptSessionPackageRepository;
     private final UserRepository userRepository;
     private final MemberAccessService memberAccessService;
@@ -56,7 +70,18 @@ public class MemberMembershipService {
         LocalDate endDate = resolveEndDate(plan, request, startDate);
         BigDecimal actualPrice = request.actualPrice() == null ? plan.getDefaultPrice() : request.actualPrice();
         BigDecimal discountAmount = request.discountAmount() == null ? BigDecimal.ZERO : request.discountAmount();
-        BigDecimal debtAmount = actualPrice.subtract(discountAmount).max(BigDecimal.ZERO);
+        if (discountAmount.compareTo(actualPrice) > 0) {
+            throw new BadRequestException("Giảm giá không được lớn hơn giá bán thực tế.");
+        }
+        BigDecimal payableAmount = actualPrice.subtract(discountAmount).max(BigDecimal.ZERO);
+        BigDecimal initialPaidAmount = request.initialPaidAmount() == null ? BigDecimal.ZERO : request.initialPaidAmount();
+        if (initialPaidAmount.compareTo(payableAmount) > 0) {
+            throw new BadRequestException("Tiền trả trước không được lớn hơn số tiền phải thu.");
+        }
+        if (initialPaidAmount.compareTo(BigDecimal.ZERO) > 0 && request.initialPaymentMethod() == null) {
+            throw new BadRequestException("Phương thức thanh toán là bắt buộc khi có tiền trả trước.");
+        }
+        BigDecimal debtAmount = payableAmount;
 
         MemberMembership membership = new MemberMembership();
         membership.setMember(member);
@@ -73,7 +98,8 @@ public class MemberMembershipService {
         membership.setCreatedBy(currentUserOrNull());
 
         MemberMembership saved = memberMembershipRepository.save(membership);
-        createDebtIfNeeded(saved, debtAmount);
+        DebtRecord debtRecord = createDebtIfNeeded(saved, debtAmount);
+        createInitialPaymentIfNeeded(saved, debtRecord, initialPaidAmount, request);
         createPtPackageIfNeeded(saved, request.ptUserId());
 
         return MemberMembershipResponse.from(saved);
@@ -116,9 +142,9 @@ public class MemberMembershipService {
         return startDate.plusDays(plan.getDurationDays() - 1L);
     }
 
-    private void createDebtIfNeeded(MemberMembership membership, BigDecimal debtAmount) {
+    private DebtRecord createDebtIfNeeded(MemberMembership membership, BigDecimal debtAmount) {
         if (debtAmount.compareTo(BigDecimal.ZERO) <= 0) {
-            return;
+            return null;
         }
 
         DebtRecord debtRecord = new DebtRecord();
@@ -130,7 +156,36 @@ public class MemberMembershipService {
         debtRecord.setDueDate(membership.getStartDate());
         debtRecord.setStatus(DebtStatus.OPEN);
         debtRecord.setNote("Công nợ phát sinh khi đăng ký gói.");
-        debtRecordRepository.save(debtRecord);
+        return debtRecordRepository.save(debtRecord);
+    }
+
+    private void createInitialPaymentIfNeeded(
+        MemberMembership membership,
+        DebtRecord debtRecord,
+        BigDecimal amount,
+        CreateMemberMembershipRequest request
+    ) {
+        if (amount.compareTo(BigDecimal.ZERO) <= 0) {
+            return;
+        }
+        if (debtRecord == null) {
+            throw new BadRequestException("Gói này không còn khoản cần thu.");
+        }
+
+        Payment payment = new Payment();
+        payment.setMember(membership.getMember());
+        payment.setMembership(membership);
+        payment.setDebtRecord(debtRecord);
+        payment.setPaymentDate(request.initialPaymentDate() == null ? membership.getStartDate() : request.initialPaymentDate());
+        payment.setAmount(amount);
+        payment.setPaymentMethod(request.initialPaymentMethod() == null ? PaymentMethod.CASH : request.initialPaymentMethod());
+        payment.setRevenueCategory(inferRevenueCategory(membership));
+        payment.setDescription(request.initialPaymentNote() == null ? request.note() : request.initialPaymentNote());
+        payment.setCreatedBy(currentUserOrNull());
+        Payment savedPayment = paymentRepository.save(payment);
+
+        syncDebtAndMembership(debtRecord, membership, amount);
+        createIncomeTransaction(savedPayment);
     }
 
     private void createPtPackageIfNeeded(MemberMembership membership, Long ptUserId) {
@@ -141,7 +196,7 @@ public class MemberMembershipService {
 
         PtSessionPackage sessionPackage = new PtSessionPackage();
         sessionPackage.setMember(membership.getMember());
-        sessionPackage.setPtUser(findUserOrNull(ptUserId));
+        sessionPackage.setPtUser(findPtUserOrNull(ptUserId));
         sessionPackage.setMembership(membership);
         sessionPackage.setTotalPtSessions(valueOrZero(plan.getPtSessionCount()));
         sessionPackage.setUsedPtSessions(0);
@@ -159,6 +214,71 @@ public class MemberMembershipService {
         return value == null ? 0 : value;
     }
 
+    private void syncDebtAndMembership(DebtRecord debtRecord, MemberMembership membership, BigDecimal amount) {
+        BigDecimal paidAmount = debtRecord.getPaidAmount().add(amount);
+        BigDecimal remainingAmount = debtRecord.getRemainingAmount().subtract(amount).max(BigDecimal.ZERO);
+        debtRecord.setPaidAmount(paidAmount.min(debtRecord.getOriginalAmount()));
+        debtRecord.setRemainingAmount(remainingAmount);
+        debtRecord.setStatus(resolveDebtStatus(debtRecord));
+
+        BigDecimal membershipPaidAmount = membership.getPaidAmount().add(amount);
+        BigDecimal payableAmount = membership.getActualPrice().subtract(membership.getDiscountAmount()).max(BigDecimal.ZERO);
+        membership.setPaidAmount(membershipPaidAmount.min(payableAmount));
+        membership.setDebtAmount(debtRecord.getRemainingAmount());
+    }
+
+    private DebtStatus resolveDebtStatus(DebtRecord debtRecord) {
+        if (debtRecord.getRemainingAmount().compareTo(BigDecimal.ZERO) <= 0) {
+            return DebtStatus.PAID;
+        }
+        if (debtRecord.getPaidAmount().compareTo(BigDecimal.ZERO) > 0) {
+            return DebtStatus.PARTIALLY_PAID;
+        }
+        return DebtStatus.OPEN;
+    }
+
+    private RevenueCategory inferRevenueCategory(MemberMembership membership) {
+        MembershipPlan plan = membership.getPlan();
+        if (plan.getPlanType() == PlanType.SELF_TRAINING) {
+            return RevenueCategory.SELF_TRAINING;
+        }
+        if (plan.getPlanType() == PlanType.GUIDANCE) {
+            return RevenueCategory.GUIDANCE;
+        }
+        if (plan.getPlanType() == PlanType.PT && plan.getPtLevel() == PtLevel.NEW) {
+            return RevenueCategory.PT_NEW;
+        }
+        if (plan.getPlanType() == PlanType.PT) {
+            return RevenueCategory.PT_MAIN;
+        }
+        return RevenueCategory.OTHER_INCOME;
+    }
+
+    private void createIncomeTransaction(Payment payment) {
+        RevenueCategory revenueCategory = payment.getRevenueCategory();
+        FinancialCategory category = financialCategoryRepository.findByCode(revenueCategory.name())
+            .orElseGet(() -> {
+                FinancialCategory newCategory = new FinancialCategory();
+                newCategory.setType(FinancialCategoryType.INCOME);
+                newCategory.setCode(revenueCategory.name());
+                newCategory.setName(revenueCategory.name());
+                newCategory.setActive(true);
+                return financialCategoryRepository.save(newCategory);
+            });
+
+        FinancialTransaction transaction = new FinancialTransaction();
+        transaction.setType(FinancialTransactionType.INCOME);
+        transaction.setCategory(category);
+        transaction.setAmount(payment.getAmount());
+        transaction.setTransactionDate(payment.getPaymentDate());
+        transaction.setMember(payment.getMember());
+        transaction.setMembership(payment.getMembership());
+        transaction.setPayment(payment);
+        transaction.setDescription(payment.getDescription());
+        transaction.setCreatedBy(payment.getCreatedBy());
+        financialTransactionRepository.save(transaction);
+    }
+
     private User currentUserOrNull() {
         return SecurityUtils.currentUserIdOrNull() == null ? null : findUserOrNull(SecurityUtils.currentUserIdOrNull());
     }
@@ -168,5 +288,13 @@ public class MemberMembershipService {
             return null;
         }
         return userRepository.findById(id).orElse(null);
+    }
+
+    private User findPtUserOrNull(Long id) {
+        User user = findUserOrNull(id);
+        if (user != null && user.getRoles().stream().noneMatch(role -> "PT".equals(role.getCode()))) {
+            throw new BadRequestException("Người phụ trách gói PT phải là tài khoản PT.");
+        }
+        return user;
     }
 }

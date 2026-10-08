@@ -2,6 +2,9 @@ package com.gymduongdouble.backend.member.service;
 
 import com.gymduongdouble.backend.common.enums.MemberStatus;
 import com.gymduongdouble.backend.common.enums.MembershipStatus;
+import com.gymduongdouble.backend.common.enums.DebtStatus;
+import com.gymduongdouble.backend.common.enums.UserStatus;
+import com.gymduongdouble.backend.common.exception.BadRequestException;
 import com.gymduongdouble.backend.common.exception.ConflictException;
 import com.gymduongdouble.backend.common.exception.ResourceNotFoundException;
 import com.gymduongdouble.backend.finance.domain.DebtRecord;
@@ -24,17 +27,14 @@ import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
-
-import com.gymduongdouble.backend.common.enums.UserStatus;
-import com.gymduongdouble.backend.common.exception.BadRequestException;
 import com.gymduongdouble.backend.user.domain.Role;
 import com.gymduongdouble.backend.user.domain.User;
 import com.gymduongdouble.backend.user.repository.RoleRepository;
 import com.gymduongdouble.backend.user.repository.UserRepository;
-import org.springframework.security.crypto.password.PasswordEncoder;
 
 @Service
 @RequiredArgsConstructor
@@ -149,6 +149,7 @@ public class MemberService {
 
     private MemberMembership latestMembership(Long memberId) {
         return memberMembershipRepository.findByMemberIdOrderByStartDateDesc(memberId).stream()
+            .filter(membership -> membership.getStatus() != MembershipStatus.CANCELLED)
             .max(Comparator.comparing(MemberMembership::getEndDate))
             .orElse(null);
     }
@@ -176,7 +177,9 @@ public class MemberService {
 
     private BigDecimal totalDebt(Long memberId) {
         return debtRecordRepository.findByMemberIdOrderByCreatedAtDesc(memberId).stream()
+            .filter(debt -> debt.getStatus() == DebtStatus.OPEN || debt.getStatus() == DebtStatus.PARTIALLY_PAID)
             .map(DebtRecord::getRemainingAmount)
+            .filter(amount -> amount.compareTo(BigDecimal.ZERO) > 0)
             .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
@@ -188,22 +191,9 @@ public class MemberService {
             throw new ConflictException("Hội viên này đã có tài khoản Portal.");
         }
 
-        String cleanPhone = member.getPhone().trim();
-        String phoneDigits = cleanPhone.replaceAll("\\D", "");
-        String defaultEmail = "member." + (phoneDigits.isEmpty() ? member.getId() : phoneDigits) + "@gymduongdouble.local";
-
-        User user = userRepository.findByPhone(cleanPhone)
-            .or(() -> userRepository.findByEmail(defaultEmail))
-            .orElseGet(() -> {
-                Role role = roleRepository.findByCode("MEMBER")
-                    .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy vai trò MEMBER"));
-                User newUser = new User();
-                newUser.setEmail(defaultEmail);
-                newUser.setPhone(cleanPhone);
-                newUser.setFullName(member.getFullName());
-                newUser.getRoles().add(role);
-                return newUser;
-            });
+        String cleanPhone = requirePortalPhone(member);
+        String defaultEmail = portalEmailFor(member, cleanPhone);
+        User user = findOrCreatePortalUser(member, cleanPhone, defaultEmail);
 
         String pass = requirePortalPassword(initialPassword);
         user.setPasswordHash(passwordEncoder.encode(pass));
@@ -250,9 +240,67 @@ public class MemberService {
             User user = member.getUser();
             member.setUser(null);
             memberRepository.save(member);
-            userRepository.delete(user);
+            if (canDeletePortalUser(user)) {
+                userRepository.delete(user);
+            } else if (isMemberOnlyUser(user)) {
+                user.setStatus(UserStatus.LOCKED);
+                userRepository.save(user);
+            }
         }
         return getDetail(memberId);
+    }
+
+    private User findOrCreatePortalUser(Member member, String cleanPhone, String defaultEmail) {
+        return userRepository.findByPhone(cleanPhone)
+            .map(user -> reusablePortalUserOrThrow(user, member.getId(), defaultEmail))
+            .or(() -> userRepository.findByEmail(defaultEmail)
+                .map(user -> reusablePortalUserOrThrow(user, member.getId(), defaultEmail)))
+            .orElseGet(() -> {
+                Role role = roleRepository.findByCode("MEMBER")
+                    .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy vai trò MEMBER"));
+                User newUser = new User();
+                newUser.setEmail(defaultEmail);
+                newUser.setPhone(cleanPhone);
+                newUser.setFullName(member.getFullName());
+                newUser.getRoles().add(role);
+                return newUser;
+            });
+    }
+
+    private User reusablePortalUserOrThrow(User user, Long memberId, String expectedEmail) {
+        if (!isMemberOnlyUser(user) || !expectedEmail.equalsIgnoreCase(user.getEmail())) {
+            throw new ConflictException("Số điện thoại này đang thuộc tài khoản quản trị/PT khác, không thể cấp Portal hội viên.");
+        }
+        memberRepository.findByUserId(user.getId()).ifPresent(linkedMember -> {
+            if (!linkedMember.getId().equals(memberId)) {
+                throw new ConflictException("Tài khoản Portal này đã được liên kết với hội viên khác.");
+            }
+        });
+        return user;
+    }
+
+    private boolean canDeletePortalUser(User user) {
+        return isMemberOnlyUser(user)
+            && user.getEmail() != null
+            && user.getEmail().endsWith("@gymduongdouble.local")
+            && memberRepository.findByUserId(user.getId()).isEmpty();
+    }
+
+    private boolean isMemberOnlyUser(User user) {
+        return user.getRoles().size() == 1
+            && user.getRoles().stream().allMatch(role -> "MEMBER".equals(role.getCode()));
+    }
+
+    private String requirePortalPhone(Member member) {
+        if (!StringUtils.hasText(member.getPhone())) {
+            throw new BadRequestException("Hội viên cần có số điện thoại trước khi cấp tài khoản Portal.");
+        }
+        return member.getPhone().trim();
+    }
+
+    private String portalEmailFor(Member member, String cleanPhone) {
+        String phoneDigits = cleanPhone.replaceAll("\\D", "");
+        return "member." + (phoneDigits.isEmpty() ? member.getId() : phoneDigits) + "@gymduongdouble.local";
     }
 
     private String requirePortalPassword(String password) {

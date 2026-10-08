@@ -198,7 +198,6 @@ membership_plans
   pt_session_count
   practice_session_count
   guidance_session_count
-  content_access_level
   price_ratio
   description
   active
@@ -210,7 +209,6 @@ Enum/code:
 
 - `PlanType`: SELF_TRAINING, PT, GUIDANCE, OTHER.
 - `PtLevel`: MAIN, NEW.
-- `ContentAccessLevel`: NONE, BASIC, PREMIUM.
 
 Ghi chÃº:
 
@@ -218,16 +216,16 @@ Ghi chÃº:
 - `pt_session_count` lÃ  sá»‘ buá»•i PT cÃ³ PT trá»±c tiáº¿p.
 - `practice_session_count` lÃ  sá»‘ buá»•i Ã”n táº­p Ä‘i kÃ¨m gÃ³i PT, khÃ¡ch tá»± Ã´n bÃ i khÃ´ng cÃ³ PT trá»±c tiáº¿p.
 - `guidance_session_count` dÃ¹ng cho gÃ³i GiÃ¡o Ã¡n/HÆ°á»›ng Dáº«n 30, 60, 90 buá»•i.
-- `content_access_level` xÃ¡c Ä‘á»‹nh quyá»n xem thÆ° viá»‡n bÃ i táº­p/chÆ°Æ¡ng trÃ¬nh tráº£ phÃ­.
 - `price_ratio` há»— trá»£ cáº¥u hÃ¬nh gÃ³i PT má»›i báº±ng khoáº£ng 65% gÃ³i PT chÃ­nh náº¿u cáº§n.
+- Scope hiá»‡n táº¡i khÃ´ng cÃ²n `content_access_level`; thÆ° viá»‡n TikTok lÃ  public, khÃ´ng lÃ m premium content/LMS.
 - KhÃ´ng táº¡o `PlanType.STUDENT`. Cá»™t `Sinh viÃªn` trong Excel cÅ© thá»±c cháº¥t lÃ  khoáº£n thu cá»§a gÃ³i PT má»›i.
 
 VÃ­ dá»¥ plan:
 
 - `Tá»± táº­p 1 thÃ¡ng`: `plan_type = SELF_TRAINING`.
-- `PT chÃ­nh 20 + 20`: `plan_type = PT`, `pt_level = MAIN`, `pt_session_count = 20`, `practice_session_count = 20`, `content_access_level = PREMIUM`.
-- `PT má»›i 20 + 20`: `plan_type = PT`, `pt_level = NEW`, `pt_session_count = 20`, `practice_session_count = 20`, `price_ratio = 0.65`, `content_access_level = PREMIUM`.
-- `GiÃ¡o Ã¡n 30 buá»•i`: `plan_type = GUIDANCE`, `guidance_session_count = 30`, `content_access_level = BASIC` hoáº·c `PREMIUM` tÃ¹y cÃ¡ch bÃ¡n.
+- `PT chÃ­nh 20 + 20`: `plan_type = PT`, `pt_level = MAIN`, `pt_session_count = 20`, `practice_session_count = 20`.
+- `PT má»›i 20 + 20`: `plan_type = PT`, `pt_level = NEW`, `pt_session_count = 20`, `practice_session_count = 20`, `price_ratio = 0.65`.
+- `GiÃ¡o Ã¡n 30 buá»•i`: `plan_type = GUIDANCE`, `guidance_session_count = 30`.
 
 ### 6.2 `member_memberships`
 
