@@ -10,6 +10,7 @@ import com.gymduongdouble.backend.common.enums.RevenueCategory;
 import com.gymduongdouble.backend.common.exception.BadRequestException;
 import com.gymduongdouble.backend.common.exception.ResourceNotFoundException;
 import com.gymduongdouble.backend.common.security.SecurityUtils;
+import com.gymduongdouble.backend.common.time.AppClock;
 import com.gymduongdouble.backend.finance.domain.DebtRecord;
 import com.gymduongdouble.backend.finance.domain.FinancialCategory;
 import com.gymduongdouble.backend.finance.domain.FinancialTransaction;
@@ -78,7 +79,7 @@ public class PaymentService {
         payment.setMember(member);
         payment.setMembership(membership);
         payment.setDebtRecord(debtRecord);
-        payment.setPaymentDate(request.paymentDate() == null ? LocalDate.now() : request.paymentDate());
+        payment.setPaymentDate(request.paymentDate() == null ? AppClock.today() : request.paymentDate());
         payment.setAmount(request.amount());
         payment.setPaymentMethod(request.paymentMethod());
         payment.setRevenueCategory(revenueCategory);

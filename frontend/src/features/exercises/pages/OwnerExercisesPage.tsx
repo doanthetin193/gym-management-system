@@ -39,10 +39,10 @@ const levelLabels: Record<ExerciseLevel, string> = {
 }
 
 const DEMO_TITLES = [
-  'Bench Press cÄƒn báº£n',
-  'Lat Pulldown Ä‘Ãºng form',
-  'Hip Thrust tÄƒng cÆ¡ mÃ´ng',
-  'GiÃ£n cá»• vai gÃ¡y vÄƒn phÃ²ng',
+  'Bench Press căn bản',
+  'Lat Pulldown đúng form',
+  'Hip Thrust tăng cơ mông',
+  'Giãn cổ vai gáy văn phòng',
 ]
 
 function errorMessage(error: unknown) {

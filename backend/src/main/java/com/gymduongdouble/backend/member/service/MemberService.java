@@ -7,6 +7,7 @@ import com.gymduongdouble.backend.common.enums.UserStatus;
 import com.gymduongdouble.backend.common.exception.BadRequestException;
 import com.gymduongdouble.backend.common.exception.ConflictException;
 import com.gymduongdouble.backend.common.exception.ResourceNotFoundException;
+import com.gymduongdouble.backend.common.time.AppClock;
 import com.gymduongdouble.backend.finance.domain.DebtRecord;
 import com.gymduongdouble.backend.finance.repository.DebtRecordRepository;
 import com.gymduongdouble.backend.member.domain.Member;
@@ -75,7 +76,7 @@ public class MemberService {
     public MemberDetailResponse getDetail(Long id) {
         memberAccessService.ensureCanAccessMember(id);
         Member member = findEntity(id);
-        LocalDate today = LocalDate.now();
+        LocalDate today = AppClock.today();
         List<MemberMembership> memberships = memberMembershipRepository.findByMemberIdOrderByStartDateDesc(id);
 
         List<MemberMembershipResponse> activeMemberships = memberships.stream()
@@ -130,7 +131,7 @@ public class MemberService {
             ? memberRepository.findByFullNameContainingIgnoreCaseOrPhoneContaining(keyword.trim(), keyword.trim())
             : memberRepository.findAll();
 
-        LocalDate today = LocalDate.now();
+        LocalDate today = AppClock.today();
         MemberListFilter resolvedFilter = filter == null ? MemberListFilter.ALL : filter;
 
         return members.stream()

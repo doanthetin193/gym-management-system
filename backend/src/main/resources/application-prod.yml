@@ -6,3 +6,11 @@ spring:
   flyway:
     enabled: false
     locations: classpath:db/migration
+
+app:
+  security:
+    jwt:
+      secret: ${JWT_SECRET}
+  seed:
+    demo:
+      enabled: false

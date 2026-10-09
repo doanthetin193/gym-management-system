@@ -67,7 +67,7 @@ public class MemberController {
     }
 
     @PutMapping("/{id}/portal-account/status")
-    @PreAuthorize("hasAnyRole('OWNER', 'PT')")
+    @PreAuthorize("hasRole('OWNER')")
     public ApiResponse<MemberDetailResponse> updatePortalAccountStatus(
         @PathVariable Long id,
         @RequestBody java.util.Map<String, String> payload
@@ -79,7 +79,7 @@ public class MemberController {
     }
 
     @PostMapping("/{id}/portal-account/reset-password")
-    @PreAuthorize("hasAnyRole('OWNER', 'PT')")
+    @PreAuthorize("hasRole('OWNER')")
     public ApiResponse<MemberDetailResponse> resetPortalAccountPassword(
         @PathVariable Long id,
         @RequestBody(required = false) java.util.Map<String, String> payload
@@ -89,7 +89,7 @@ public class MemberController {
     }
 
     @DeleteMapping("/{id}/portal-account")
-    @PreAuthorize("hasAnyRole('OWNER', 'PT')")
+    @PreAuthorize("hasRole('OWNER')")
     public ApiResponse<MemberDetailResponse> deletePortalAccount(@PathVariable Long id) {
         return ApiResponse.ok(memberService.deletePortalAccount(id));
     }

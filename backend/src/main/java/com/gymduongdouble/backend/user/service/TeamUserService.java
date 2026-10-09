@@ -92,12 +92,7 @@ public class TeamUserService {
 
         boolean isCurrentOwner = user.getRoles().stream().anyMatch(r -> "OWNER".equals(r.getCode()));
         if (isCurrentOwner && !"OWNER".equals(targetRoleCode)) {
-            long ownerCount = userRepository.findAll().stream()
-                .filter(u -> u.getStatus() == UserStatus.ACTIVE && u.getRoles().stream().anyMatch(r -> "OWNER".equals(r.getCode())))
-                .count();
-            if (ownerCount <= 1) {
-                throw new BadRequestException("Hệ thống phải có ít nhất một Chủ phòng đang hoạt động.");
-            }
+            ensureNotLastActiveOwner(user);
         }
 
         Role newRole = roleRepository.findByCode(targetRoleCode)
@@ -126,6 +121,9 @@ public class TeamUserService {
         }
 
         User user = findUser(userId);
+        if (status == UserStatus.LOCKED) {
+            ensureNotLastActiveOwner(user);
+        }
         user.setStatus(status);
         return TeamUserResponse.from(userRepository.save(user));
     }
@@ -144,12 +142,30 @@ public class TeamUserService {
         }
 
         User user = findUser(userId);
+        ensureNotLastActiveOwner(user);
         ptProfileRepository.findByUserId(userId).ifPresent(ptProfile -> {
             ptProfile.setActive(false);
             ptProfileRepository.save(ptProfile);
         });
 
-        userRepository.delete(user);
+        user.setStatus(UserStatus.LOCKED);
+        userRepository.save(user);
+    }
+
+    private void ensureNotLastActiveOwner(User user) {
+        boolean isActiveOwner = user.getStatus() == UserStatus.ACTIVE
+            && user.getRoles().stream().anyMatch(r -> "OWNER".equals(r.getCode()));
+        if (!isActiveOwner) {
+            return;
+        }
+
+        long activeOwnerCount = userRepository.findAll().stream()
+            .filter(u -> u.getStatus() == UserStatus.ACTIVE)
+            .filter(u -> u.getRoles().stream().anyMatch(r -> "OWNER".equals(r.getCode())))
+            .count();
+        if (activeOwnerCount <= 1) {
+            throw new BadRequestException("Hệ thống phải có ít nhất một Chủ phòng đang hoạt động.");
+        }
     }
 
     private User findUser(Long userId) {

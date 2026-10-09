@@ -3,6 +3,7 @@ package com.gymduongdouble.backend.member.service;
 import com.gymduongdouble.backend.common.enums.PtAssignmentStatus;
 import com.gymduongdouble.backend.common.security.AuthenticatedUser;
 import com.gymduongdouble.backend.common.security.SecurityUtils;
+import com.gymduongdouble.backend.common.time.AppClock;
 import com.gymduongdouble.backend.pt.domain.PtAssignment;
 import com.gymduongdouble.backend.pt.repository.PtAssignmentRepository;
 import java.time.LocalDate;
@@ -47,7 +48,7 @@ public class MemberAccessService {
     }
 
     private boolean isActive(PtAssignment assignment) {
-        LocalDate today = LocalDate.now();
+        LocalDate today = AppClock.today();
         return assignment.getStatus() == PtAssignmentStatus.ACTIVE
             && (assignment.getEndDate() == null || !assignment.getEndDate().isBefore(today));
     }

@@ -10,6 +10,7 @@ import com.gymduongdouble.backend.common.enums.PtLevel;
 import com.gymduongdouble.backend.common.enums.SessionPackageStatus;
 import com.gymduongdouble.backend.common.exception.ResourceNotFoundException;
 import com.gymduongdouble.backend.common.security.SecurityUtils;
+import com.gymduongdouble.backend.common.time.AppClock;
 import com.gymduongdouble.backend.dashboard.domain.BusinessGoal;
 import com.gymduongdouble.backend.dashboard.repository.BusinessGoalRepository;
 import com.gymduongdouble.backend.dashboard.web.dto.BusinessGoalProgressItemResponse;
@@ -66,7 +67,7 @@ public class DashboardService {
     @Transactional(readOnly = true)
     public OwnerDashboardResponse ownerDashboard(Integer year, Integer month) {
         YearMonth period = resolvePeriod(year, month);
-        LocalDate today = LocalDate.now();
+        LocalDate today = AppClock.today();
         FinanceTotals financeTotals = financeTotals(period.atDay(1), period.atEndOfMonth());
         MemberReportResponse memberReport = memberReport(period.getYear(), period.getMonthValue());
         BigDecimal totalDebt = openDebts().stream()
@@ -149,7 +150,7 @@ public class DashboardService {
 
     @Transactional(readOnly = true)
     public FinanceReportResponse financeReport(Integer year, Integer month) {
-        int resolvedYear = year == null ? LocalDate.now().getYear() : year;
+        int resolvedYear = year == null ? AppClock.today().getYear() : year;
 
         if (month != null) {
             YearMonth period = YearMonth.of(resolvedYear, month);
@@ -182,7 +183,7 @@ public class DashboardService {
         YearMonth period = resolvePeriod(year, month);
         LocalDate start = period.atDay(1);
         LocalDate end = period.atEndOfMonth();
-        LocalDate today = LocalDate.now();
+        LocalDate today = AppClock.today();
         List<MemberMembership> monthMemberships = memberMembershipRepository.findByStartDateBetween(start, end);
 
         Set<Long> newMembers = new HashSet<>();
@@ -237,7 +238,7 @@ public class DashboardService {
 
     @Transactional(readOnly = true)
     public List<NotificationResponse> notifications() {
-        LocalDate today = LocalDate.now();
+        LocalDate today = AppClock.today();
 
         List<NotificationResponse> expiring = currentMembershipsByMember().stream()
             .filter(membership -> isActiveMembership(membership, today))
@@ -410,7 +411,7 @@ public class DashboardService {
     }
 
     private YearMonth resolvePeriod(Integer year, Integer month) {
-        LocalDate today = LocalDate.now();
+        LocalDate today = AppClock.today();
         return YearMonth.of(year == null ? today.getYear() : year, month == null ? today.getMonthValue() : month);
     }
 

@@ -5,7 +5,7 @@ spring:
     name: gym-duong-double-backend
 
   profiles:
-    active: dev
+    active: ${SPRING_PROFILES_ACTIVE:dev}
 
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/gym_duong_double}

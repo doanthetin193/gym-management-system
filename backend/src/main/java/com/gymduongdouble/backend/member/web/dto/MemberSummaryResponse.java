@@ -3,6 +3,7 @@ package com.gymduongdouble.backend.member.web.dto;
 import com.gymduongdouble.backend.common.enums.MembershipStatus;
 import com.gymduongdouble.backend.common.enums.MemberStatus;
 import com.gymduongdouble.backend.common.enums.PlanType;
+import com.gymduongdouble.backend.common.time.AppClock;
 import com.gymduongdouble.backend.member.domain.Member;
 import com.gymduongdouble.backend.membership.domain.MemberMembership;
 import java.time.LocalDate;
@@ -25,7 +26,7 @@ public record MemberSummaryResponse(
     public static MemberSummaryResponse from(Member member, MemberMembership membership) {
         Long daysUntilExpiration = membership == null
             ? null
-            : ChronoUnit.DAYS.between(LocalDate.now(), membership.getEndDate());
+            : ChronoUnit.DAYS.between(AppClock.today(), membership.getEndDate());
 
         return new MemberSummaryResponse(
             member.getId(),

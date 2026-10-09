@@ -3,6 +3,7 @@ package com.gymduongdouble.backend.member.service;
 import com.gymduongdouble.backend.common.enums.MembershipStatus;
 import com.gymduongdouble.backend.common.enums.DebtStatus;
 import com.gymduongdouble.backend.common.exception.ResourceNotFoundException;
+import com.gymduongdouble.backend.common.time.AppClock;
 import com.gymduongdouble.backend.finance.domain.DebtRecord;
 import com.gymduongdouble.backend.finance.repository.DebtRecordRepository;
 import com.gymduongdouble.backend.finance.repository.PaymentRepository;
@@ -51,7 +52,7 @@ public class MemberPortalService {
         Member member = memberRepository.findByUserId(userId)
             .orElseThrow(() -> new ResourceNotFoundException("Tai khoan hoi vien chua duoc lien ket voi ho so khach hang."));
         Long memberId = member.getId();
-        LocalDate today = LocalDate.now();
+        LocalDate today = AppClock.today();
         List<MemberMembership> memberships = memberMembershipRepository.findByMemberIdOrderByStartDateDesc(memberId);
         List<DebtRecord> debts = debtRecordRepository.findByMemberIdOrderByCreatedAtDesc(memberId);
 

@@ -11,7 +11,6 @@ import {
   Save,
   ShieldCheck,
   Sparkles,
-  Trash2,
   UserPlus,
   Users,
 } from 'lucide-react'
@@ -231,16 +230,16 @@ export function SettingsPage() {
   async function handleDeleteTeamUser(account: TeamUser) {
     const isSelf = currentUser && account.id === currentUser.id
     if (isSelf) {
-      alert('Bạn không thể tự xóa tài khoản của chính mình.')
+      alert('Bạn không thể tự vô hiệu hóa tài khoản của chính mình.')
       return
     }
-    if (!window.confirm(`Xóa vĩnh viễn tài khoản nhân sự "${account.fullName}" (${account.email}) khỏi hệ thống?`)) {
+    if (!window.confirm(`Vô hiệu hóa tài khoản nhân sự "${account.fullName}" (${account.email})? Tài khoản sẽ bị khóa nhưng lịch sử vận hành vẫn được giữ lại.`)) {
       return
     }
 
     try {
       await deleteTeamUser(account.id)
-      setTeamUserSuccess(`Đã xóa tài khoản "${account.fullName}" thành công!`)
+      setTeamUserSuccess(`Đã vô hiệu hóa tài khoản "${account.fullName}" thành công!`)
       setTimeout(() => setTeamUserSuccess(null), 3000)
       await loadTeamUsers()
     } catch (err) {
@@ -533,9 +532,9 @@ export function SettingsPage() {
                                   type="button"
                                   onClick={() => void handleDeleteTeamUser(account)}
                                   className="grid size-8 place-items-center rounded-lg border border-red-500/20 bg-red-500/10 text-red-400 hover:bg-red-500/20 transition"
-                                  title="Xóa tài khoản nhân viên"
+                                  title="Vô hiệu hóa tài khoản nhân viên"
                                 >
-                                  <Trash2 size={13} />
+                                  <Lock size={13} />
                                 </button>
                               )}
                             </div>

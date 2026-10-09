@@ -14,7 +14,6 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -86,13 +85,5 @@ public class DashboardController {
     @GetMapping("/v1/notifications")
     public ApiResponse<List<NotificationResponse>> notifications() {
         return ApiResponse.ok(dashboardService.notifications());
-    }
-
-    @PatchMapping("/v1/notifications/{id}/read")
-    public ApiResponse<NotificationResponse> markRead(@PathVariable String id) {
-        return ApiResponse.ok(dashboardService.notifications().stream()
-            .filter(notification -> notification.id().equals(id))
-            .findFirst()
-            .orElse(null));
     }
 }
