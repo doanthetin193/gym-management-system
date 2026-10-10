@@ -458,6 +458,7 @@ public class DataInitializer implements ApplicationRunner {
             if (entity == null) {
                 entity = findExistingPlan(existingPlans, plan);
             }
+            boolean isNewPlan = entity == null;
             if (entity == null) {
                 entity = new MembershipPlan();
             }
@@ -471,7 +472,9 @@ public class DataInitializer implements ApplicationRunner {
             entity.setGuidanceSessionCount(plan.guidanceSessionCount());
             entity.setPriceRatio(plan.priceRatio());
             entity.setDescription(plan.description());
-            entity.setActive(true);
+            if (isNewPlan) {
+                entity.setActive(true);
+            }
             MembershipPlan saved = membershipPlanRepository.save(entity);
             existingPlansByName.put(saved.getName(), saved);
             return saved;
@@ -480,13 +483,6 @@ public class DataInitializer implements ApplicationRunner {
         Set<Long> seededPlanIds = seededPlans.values().stream()
             .map(MembershipPlan::getId)
             .collect(Collectors.toSet());
-
-        membershipPlanRepository.findAll().stream()
-            .filter(plan -> plan.isActive() && !seededPlanIds.contains(plan.getId()))
-            .forEach(plan -> {
-                plan.setActive(false);
-                membershipPlanRepository.save(plan);
-            });
 
         deleteLegacyCorruptedPlans(seededPlanIds);
 

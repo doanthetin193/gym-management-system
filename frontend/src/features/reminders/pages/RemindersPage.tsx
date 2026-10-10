@@ -18,6 +18,7 @@ import {
 import type { LucideIcon } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import { localIsoDate } from '../../../shared/lib/date'
 import { copyText, buildZaloUrl } from '../../../shared/lib/zalo'
 import { getMemberDetail, listMembers } from '../../members/api/memberApi'
 import type { MemberDetail, MemberSummary } from '../../members/types/member'
@@ -89,10 +90,6 @@ function formatMoney(value: number | null | undefined) {
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(value ?? 0)
 }
 
-function todayIso() {
-  return new Date().toISOString().slice(0, 10)
-}
-
 function daysBetween(fromIso: string, toIso: string) {
   const from = new Date(`${fromIso}T00:00:00`).getTime()
   const to = new Date(`${toIso}T00:00:00`).getTime()
@@ -109,7 +106,7 @@ function nextBirthdayIso(dateOfBirth: string) {
     next = new Date(today.getFullYear() + 1, birthday.getMonth(), birthday.getDate())
   }
 
-  return next.toISOString().slice(0, 10)
+  return localIsoDate(next)
 }
 
 function memberContact(detail: MemberDetail | undefined, summary: MemberSummary) {
@@ -120,7 +117,7 @@ function memberContact(detail: MemberDetail | undefined, summary: MemberSummary)
 }
 
 function buildReminderItems(members: MemberSummary[], details: Map<number, MemberDetail>, debts: DebtRecord[]) {
-  const today = todayIso()
+  const today = localIsoDate()
   const items: ReminderItem[] = []
 
   for (const member of members) {

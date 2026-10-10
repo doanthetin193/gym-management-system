@@ -57,7 +57,7 @@ public class MemberController {
     }
 
     @PostMapping("/{id}/portal-account")
-    @PreAuthorize("hasAnyRole('OWNER', 'PT')")
+    @PreAuthorize("hasRole('OWNER')")
     public ApiResponse<MemberDetailResponse> createPortalAccount(
         @PathVariable Long id,
         @RequestBody(required = false) java.util.Map<String, String> payload

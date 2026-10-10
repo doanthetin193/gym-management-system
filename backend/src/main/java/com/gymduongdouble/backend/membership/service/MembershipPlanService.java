@@ -1,6 +1,7 @@
 package com.gymduongdouble.backend.membership.service;
 
 import com.gymduongdouble.backend.common.exception.BadRequestException;
+import com.gymduongdouble.backend.common.exception.ConflictException;
 import com.gymduongdouble.backend.common.exception.ResourceNotFoundException;
 import com.gymduongdouble.backend.membership.domain.MembershipPlan;
 import com.gymduongdouble.backend.membership.repository.MembershipPlanRepository;
@@ -21,9 +22,13 @@ public class MembershipPlanService {
     @Transactional
     public MembershipPlanResponse create(MembershipPlanRequest request) {
         validatePlanShape(request);
+        String cleanName = request.name().trim();
+        if (membershipPlanRepository.existsByNameIgnoreCase(cleanName)) {
+            throw new ConflictException("Tên gói tập này đã tồn tại.");
+        }
 
         MembershipPlan plan = new MembershipPlan();
-        plan.setName(request.name().trim());
+        plan.setName(cleanName);
         plan.setPlanType(request.planType());
         plan.setPtLevel(request.ptLevel());
         plan.setDurationDays(request.durationDays());

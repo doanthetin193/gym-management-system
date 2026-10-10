@@ -11,6 +11,7 @@ import {
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ApiClientError } from '../../../shared/api/apiClient'
+import { localIsoDate } from '../../../shared/lib/date'
 import { createPayment, listDebts, listPayments } from '../api/paymentApi'
 import { PaymentFormModal } from '../components/PaymentFormModal'
 import { paymentMethodLabels } from '../types/payment'
@@ -85,7 +86,7 @@ export function PaymentsPage() {
   const stats = useMemo(() => {
     const totalRemaining = debts.reduce((sum, debt) => sum + debt.remainingAmount, 0)
     const paidToday = payments
-      .filter((payment) => payment.paymentDate === new Date().toISOString().slice(0, 10))
+      .filter((payment) => payment.paymentDate === localIsoDate())
       .reduce((sum, payment) => sum + payment.amount, 0)
 
     return {

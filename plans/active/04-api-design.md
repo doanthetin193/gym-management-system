@@ -1,6 +1,6 @@
-﻿# 04 - THIáº¾T Káº¾ API
+﻿# 04 - THIẾT KẾ API
 
-## 1. Quy Æ°á»›c chung
+## 1. Quy ước chung
 
 Base path:
 
@@ -8,15 +8,15 @@ Base path:
 /api/v1
 ```
 
-Chuáº©n:
+Chuẩn:
 
 - REST API.
 - JSON.
-- Auth báº±ng JWT.
-- API list cÃ³ pagination.
-- Backend luÃ´n kiá»ƒm tra quyá»n.
+- Auth bằng JWT.
+- API list có pagination.
+- Backend luôn kiểm tra quyền.
 
-Pagination response gá»£i Ã½:
+Pagination response gợi ý:
 
 ```json
 {
@@ -28,12 +28,12 @@ Pagination response gá»£i Ã½:
 }
 ```
 
-Error response gá»£i Ã½:
+Error response gợi ý:
 
 ```json
 {
   "code": "VALIDATION_ERROR",
-  "message": "Dá»¯ liá»‡u khÃ´ng há»£p lá»‡",
+  "message": "Dữ liệu không hợp lệ",
   "details": []
 }
 ```
@@ -101,13 +101,13 @@ Create member request:
 
 ```json
 {
-  "fullName": "Nguyá»…n VÄƒn A",
+  "fullName": "Nguyễn Văn A",
   "phone": "0900000000",
   "dateOfBirth": "1998-09-10",
   "gender": "MALE",
   "zaloPhone": "0900000000",
   "source": "WALK_IN",
-  "note": "KhÃ¡ch má»›i"
+  "note": "Khách mới"
 }
 ```
 
@@ -129,7 +129,7 @@ Create membership plan request:
 
 ```json
 {
-  "name": "PT má»›i 20 + 20",
+  "name": "PT mới 20 + 20",
   "planType": "PT",
   "ptLevel": "NEW",
   "durationDays": 90,
@@ -141,13 +141,13 @@ Create membership plan request:
 }
 ```
 
-Enum cáº§n thá»‘ng nháº¥t:
+Enum cần thống nhất:
 
 - `planType`: SELF_TRAINING, PT, GUIDANCE, OTHER.
-- `ptLevel`: MAIN, NEW. Chá»‰ dÃ¹ng cho gÃ³i PT.
-- GÃ³i GiÃ¡o Ã¡n/HÆ°á»›ng Dáº«n dÃ¹ng `planType = GUIDANCE` vÃ  `guidanceSessionCount` lÃ  30, 60 hoáº·c 90.
-- KhÃ´ng dÃ¹ng `STUDENT`; cá»™t `Sinh viÃªn` trong Excel cÅ© Ä‘Æ°á»£c hiá»ƒu lÃ  doanh thu/gÃ³i `PT má»›i`.
-- KhÃ´ng cÃ²n `contentAccessLevel` trong request/response vÃ¬ thÆ° viá»‡n TikTok public khÃ´ng phÃ¢n táº§ng premium.
+- `ptLevel`: MAIN, NEW. Chỉ dùng cho gói PT.
+- Gói Giáo án/Hướng Dẫn dùng `planType = GUIDANCE` và `guidanceSessionCount` là 30, 60 hoặc 90.
+- Không dùng `STUDENT`; cột `Sinh viên` trong Excel cũ được hiểu là doanh thu/gói `PT mới`.
+- Không còn `contentAccessLevel` trong request/response vì thư viện TikTok public không phân tầng premium.
 
 Create membership request:
 
@@ -162,25 +162,25 @@ Create membership request:
   "initialPaidAmount": 500000,
   "initialPaymentMethod": "BANK_TRANSFER",
   "initialPaymentDate": "2026-09-01",
-  "initialPaymentNote": "Thanh toÃ¡n má»™t pháº§n",
-  "note": "Thanh toÃ¡n má»™t pháº§n"
+  "initialPaymentNote": "Thanh toán một phần",
+  "note": "Thanh toán một phần"
 }
 ```
 
-Ghi chÃº:
+Ghi chú:
 
-- `soldByUserId` nullable. Náº¿u PT/chá»§ phÃ²ng trá»±c tiáº¿p sale gÃ³i, lÆ°u user Ä‘Ã³ Ä‘á»ƒ phase sau tÃ­nh hoa há»“ng sale.
-- `initialPaidAmount` lÃ  sá»‘ tiá»n tráº£ trÆ°á»›c khi táº¡o/gia háº¡n gÃ³i. Backend táº¡o payment, debt vÃ  income transaction trong cÃ¹ng transaction.
-- `initialPaymentMethod` báº¯t buá»™c khi `initialPaidAmount > 0`.
-- Hoa há»“ng sale phase sau tÃ­nh theo sá»‘ tiá»n khÃ¡ch thá»±c thanh toÃ¡n, nhÆ°ng ngÆ°á»i sale nÃªn Ä‘Æ°á»£c lÆ°u ngay tá»« lÃºc bÃ¡n/gia háº¡n gÃ³i.
+- `soldByUserId` nullable. Nếu PT/chủ phòng trực tiếp sale gói, lưu user đó để phase sau tính hoa hồng sale.
+- `initialPaidAmount` là số tiền trả trước khi tạo/gia hạn gói. Backend tạo payment, debt và income transaction trong cùng transaction.
+- `initialPaymentMethod` bắt buộc khi `initialPaidAmount > 0`.
+- Hoa hồng sale phase sau tính theo số tiền khách thực thanh toán, nhưng người sale nên được lưu ngay từ lúc bán/gia hạn gói.
 
-Response nÃªn cÃ³:
+Response nên có:
 
 ```json
 {
   "id": 10,
   "memberId": 5,
-  "planName": "Tá»± táº­p 3 thÃ¡ng",
+  "planName": "Tự tập 3 tháng",
   "startDate": "2026-09-01",
   "endDate": "2026-12-01",
   "actualPrice": 900000,
@@ -191,10 +191,10 @@ Response nÃªn cÃ³:
 }
 ```
 
-Quy táº¯c sau khi táº¡o membership:
+Quy tắc sau khi tạo membership:
 
-- Náº¿u plan lÃ  `PT`, backend táº¡o `pt_session_packages` vÃ  response tráº£ vá» `sessionPackageId`.
-- Náº¿u plan lÃ  `GUIDANCE`, khÃ´ng táº¡o `pt_session_packages`; check-in GiÃ¡o Ã¡n dÃ¹ng `POST /pt/members/{id}/activity-logs` vá»›i `activityType = GUIDANCE_CHECKIN`.
+- Nếu plan là `PT`, backend tạo `pt_session_packages` và response trả về `sessionPackageId`.
+- Nếu plan là `GUIDANCE`, không tạo `pt_session_packages`; check-in Giáo án dùng `POST /pt/members/{id}/activity-logs` với `activityType = GUIDANCE_CHECKIN`.
 
 ## 5. Finance API
 
@@ -219,11 +219,11 @@ Create payment:
   "amount": 500000,
   "paymentMethod": "BANK_TRANSFER",
   "revenueCategory": "SELF_TRAINING",
-  "description": "Thanh toÃ¡n gÃ³i 3 thÃ¡ng"
+  "description": "Thanh toán gói 3 tháng"
 }
 ```
 
-`revenueCategory` há»— trá»£:
+`revenueCategory` hỗ trợ:
 
 - SELF_TRAINING.
 - GUIDANCE.
@@ -231,11 +231,11 @@ Create payment:
 - PT_NEW.
 - OTHER_INCOME.
 
-Quy táº¯c Ä‘á»“ng bá»™ finance:
+Quy tắc đồng bộ finance:
 
-- `POST /payments` táº¡o payment nghiá»‡p vá»¥ vÃ  backend tá»± sinh `financial_transactions` loáº¡i INCOME tÆ°Æ¡ng á»©ng.
-- UI khÃ´ng cho nháº­p láº¡i khoáº£n thu khÃ¡ch hÃ ng Ä‘Ã³ báº±ng `POST /financial-transactions` Ä‘á»ƒ trÃ¡nh double-count.
-- `POST /financial-transactions` dÃ¹ng chá»§ yáº¿u cho expense vÃ  cÃ¡c khoáº£n thu khÃ¡c khÃ´ng gáº¯n vá»›i membership/payment.
+- `POST /payments` tạo payment nghiệp vụ và backend tự sinh `financial_transactions` loại INCOME tương ứng.
+- UI không cho nhập lại khoản thu khách hàng đó bằng `POST /financial-transactions` để tránh double-count.
+- `POST /financial-transactions` dùng chủ yếu cho expense và các khoản thu khác không gắn với membership/payment.
 
 Create expense:
 
@@ -245,7 +245,7 @@ Create expense:
   "categoryId": 3,
   "amount": 1200000,
   "transactionDate": "2026-09-11",
-  "description": "Tiá»n Ä‘iá»‡n"
+  "description": "Tiền điện"
 }
 ```
 
@@ -296,12 +296,12 @@ Create PT session:
   "sessionNumber": 5,
   "weight": 70.5,
   "status": "COMPLETED",
-  "content": "Ngá»±c, vai, tay sau",
-  "note": "Táº­p tá»‘t"
+  "content": "Ngực, vai, tay sau",
+  "note": "Tập tốt"
 }
 ```
 
-Create activity log cho Ã”n táº­p/GiÃ¡o Ã¡n:
+Create activity log cho Ôn tập/Giáo án:
 
 ```json
 {
@@ -311,15 +311,15 @@ Create activity log cho Ã”n táº­p/GiÃ¡o Ã¡n:
   "activityDate": "2026-09-12",
   "sessionNumber": 5,
   "weight": 70.2,
-  "note": "Ã”n láº¡i bÃ i ngá»±c vai"
+  "note": "Ôn lại bài ngực vai"
 }
 ```
 
-Quy táº¯c:
+Quy tắc:
 
-- `activityType = PRACTICE` dÃ¹ng cho buá»•i Ã”n táº­p Ä‘i kÃ¨m gÃ³i PT, nÃªn truyá»n `sessionPackageId`.
-- `activityType = GUIDANCE_CHECKIN` dÃ¹ng cho khÃ¡ch GiÃ¡o Ã¡n/HÆ°á»›ng Dáº«n, báº¯t buá»™c truyá»n `membershipId`, `sessionPackageId` cÃ³ thá»ƒ null.
-- KhÃ¡ch tá»± táº­p khÃ´ng dÃ¹ng activity log.
+- `activityType = PRACTICE` dùng cho buổi Ôn tập đi kèm gói PT, nên truyền `sessionPackageId`.
+- `activityType = GUIDANCE_CHECKIN` dùng cho khách Giáo án/Hướng Dẫn, bắt buộc truyền `membershipId`, `sessionPackageId` có thể null.
+- Khách tự tập không dùng activity log.
 
 Create body measurement:
 
@@ -334,15 +334,15 @@ Create body measurement:
   "hip": 96,
   "thigh": 55,
   "arm": 32,
-  "note": "Tuáº§n 2"
+  "note": "Tuần 2"
 }
 ```
 
 ## 7. Training Program API
 
-KhÃ´ng triá»ƒn khai trong Sprint 5.
+Không triển khai trong Sprint 5.
 
-Sprint 5 chá»‰ lÃ m thÆ° viá»‡n video TikTok public. Náº¿u phase sau cáº§n giÃ¡o Ã¡n cÃ¡ nhÃ¢n hÃ³a theo tuáº§n, API Training Program sáº½ Ä‘Æ°á»£c thiáº¿t káº¿ riÃªng dá»±a trÃªn nhu cáº§u tháº­t.
+Sprint 5 chỉ làm thư viện video TikTok public. Nếu phase sau cần giáo án cá nhân hóa theo tuần, API Training Program sẽ được thiết kế riêng dựa trên nhu cầu thật.
 
 ## 8. Public TikTok Exercise Library API
 
@@ -367,10 +367,10 @@ Create exercise:
 ```json
 {
   "categoryId": 1,
-  "title": "Bench Press cÆ¡ báº£n",
-  "description": "Video ngáº¯n hÆ°á»›ng dáº«n form Ä‘áº©y ngá»±c cho ngÆ°á»i má»›i",
-  "instruction": "Giá»¯ vai á»•n Ä‘á»‹nh, háº¡ táº¡ kiá»ƒm soÃ¡t.",
-  "commonMistakes": "Cong lÆ°ng quÃ¡ má»©c, khÃ³a khuá»·u tay.",
+  "title": "Bench Press cơ bản",
+  "description": "Video ngắn hướng dẫn form đẩy ngực cho người mới",
+  "instruction": "Giữ vai ổn định, hạ tạ kiểm soát.",
+  "commonMistakes": "Cong lưng quá mức, khóa khuỷu tay.",
   "level": "BEGINNER",
   "muscleGroup": "CHEST",
   "equipment": "BARBELL",
@@ -391,13 +391,13 @@ Public list filter:
 }
 ```
 
-NguyÃªn táº¯c:
+Nguyên tắc:
 
-- Public API khÃ´ng yÃªu cáº§u Ä‘Äƒng nháº­p.
-- Owner/admin API yÃªu cáº§u role OWNER.
-- KhÃ´ng há»— trá»£ provider video khÃ¡c trong Sprint 5.
-- Backend chá»‰ lÆ°u link TikTok/video id/thumbnail náº¿u láº¥y Ä‘Æ°á»£c, khÃ´ng upload video lÃªn VPS.
-- Náº¿u TikTok embed khÃ´ng hoáº¡t Ä‘á»™ng á»Ÿ frontend, ngÆ°á»i dÃ¹ng váº«n cÃ³ nÃºt má»Ÿ video trÃªn TikTok.
+- Public API không yêu cầu đăng nhập.
+- Owner/admin API yêu cầu role OWNER.
+- Không hỗ trợ provider video khác trong Sprint 5.
+- Backend chỉ lưu link TikTok/video id/thumbnail nếu lấy được, không upload video lên VPS.
+- Nếu TikTok embed không hoạt động ở frontend, người dùng vẫn có nút mở video trên TikTok.
 
 ## 9. Dashboard API
 
@@ -464,11 +464,11 @@ Create goal:
   "metricName": "REVENUE",
   "targetValue": 100000000,
   "unit": "VND",
-  "note": "Má»¥c tiÃªu doanh thu thÃ¡ng 9"
+  "note": "Mục tiêu doanh thu tháng 9"
 }
 ```
 
-Progress response cáº§n thá»ƒ hiá»‡n Ä‘Æ°á»£c cÃ¡c nhÃ³m tá»« Excel:
+Progress response cần thể hiện được các nhóm từ Excel:
 
 ```json
 {
@@ -503,7 +503,7 @@ GET   /notifications/unread-count
 
 ## 12. Import API
 
-Import dá»¯ liá»‡u cÅ© khÃ´ng náº±m trong MVP vÃ¬ chá»§ phÃ²ng Ä‘Ã£ chá»‘t báº¯t Ä‘áº§u vá»›i dá»¯ liá»‡u má»›i. Pháº§n nÃ y chá»‰ má»Ÿ láº¡i á»Ÿ phase sau náº¿u cÃ³ nhu cáº§u nháº­p lá»‹ch sá»­ Excel.
+Import dữ liệu cũ không nằm trong MVP vì chủ phòng đã chốt bắt đầu với dữ liệu mới. Phần này chỉ mở lại ở phase sau nếu có nhu cầu nhập lịch sử Excel.
 
 ```text
 POST /imports/members
@@ -512,41 +512,41 @@ POST /imports/payments
 GET  /imports/{batchId}
 ```
 
-YÃªu cáº§u:
+Yêu cầu:
 
-- CÃ³ preview/validate trÆ°á»›c khi import tháº­t náº¿u dá»¯ liá»‡u phá»©c táº¡p.
-- Tráº£ vá» sá»‘ dÃ²ng thÃ nh cÃ´ng/tháº¥t báº¡i.
-- KhÃ´ng import mÃ¹ dá»¯ liá»‡u tÃ i chÃ­nh náº¿u chÆ°a kiá»ƒm tra.
+- Có preview/validate trước khi import thật nếu dữ liệu phức tạp.
+- Trả về số dòng thành công/thất bại.
+- Không import mù dữ liệu tài chính nếu chưa kiểm tra.
 
-## 13. API chÆ°a lÃ m trong MVP
+## 13. API chưa làm trong MVP
 
 - Payroll API.
 - AI score API.
 - Payment online API.
 - Auto Zalo API.
-- Export PDF API server-side. Xuáº¥t `.xlsx` hiá»‡n Ä‘Ã£ xá»­ lÃ½ á»Ÿ frontend/report flow, khÃ´ng cÃ²n xáº¿p lÃ  API cháº·n MVP.
+- Export PDF API server-side. Xuất `.xlsx` hiện đã xử lý ở frontend/report flow, không còn xếp là API chặn MVP.
 - Import API.
 
-## 14. Quyá»n truy cáº­p API
+## 14. Quyền truy cập API
 
 OWNER:
 
-- ÄÆ°á»£c gá»i táº¥t cáº£ API quáº£n trá»‹.
+- Được gọi tất cả API quản trị.
 
 PT:
 
-- Chá»‰ gá»i API liÃªn quan khÃ¡ch Ä‘Æ°á»£c phÃ¢n cÃ´ng.
-- KhÃ´ng gá»i API finance tá»•ng.
+- Chỉ gọi API liên quan khách được phân công.
+- Không gọi API finance tổng.
 
 MEMBER:
 
-- Chá»‰ gá»i API `/member/me/*`.
+- Chỉ gọi API `/member/me/*`.
 
-## 15. Ghi chÃº triá»ƒn khai
+## 15. Ghi chú triển khai
 
-- CÃ¡c API táº¡o/sá»­a dá»¯ liá»‡u tÃ i chÃ­nh pháº£i ghi audit log.
-- CÃ¡c API list pháº£i pagination.
-- CÃ¡c API dashboard khÃ´ng nÃªn query quÃ¡ náº·ng; cÃ³ thá»ƒ tá»‘i Æ°u sau báº±ng cache.
+- Các API tạo/sửa dữ liệu tài chính phải ghi audit log.
+- Các API list phải pagination.
+- Các API dashboard không nên query quá nặng; có thể tối ưu sau bằng cache.
 
 ## 16. Cập nhật theo implementation hiện tại
 

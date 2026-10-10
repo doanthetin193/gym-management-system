@@ -283,6 +283,8 @@ public class DashboardService {
         List<NotificationResponse> ptLowSessions = ptSessionPackageRepository
             .findByStatusAndRemainingPtSessionsLessThanEqualOrderByRemainingPtSessionsAsc(SessionPackageStatus.ACTIVE, LOW_PT_SESSION_THRESHOLD)
             .stream()
+            .filter(sessionPackage -> sessionPackage.getMembership().getStatus() != MembershipStatus.CANCELLED)
+            .filter(sessionPackage -> !sessionPackage.getEndDate().isBefore(today))
             .map(sessionPackage -> notification(
                 "PT-LOW-" + sessionPackage.getId(),
                 "LOW_PT_SESSIONS",

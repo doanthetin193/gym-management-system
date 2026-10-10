@@ -125,6 +125,10 @@ public class TeamUserService {
             ensureNotLastActiveOwner(user);
         }
         user.setStatus(status);
+        ptProfileRepository.findByUserId(userId).ifPresent(profile -> {
+            profile.setActive(status == UserStatus.ACTIVE);
+            ptProfileRepository.save(profile);
+        });
         return TeamUserResponse.from(userRepository.save(user));
     }
 
@@ -133,23 +137,6 @@ public class TeamUserService {
         User user = findUser(userId);
         user.setPasswordHash(passwordEncoder.encode(newPassword.trim()));
         return TeamUserResponse.from(userRepository.save(user));
-    }
-
-    @Transactional
-    public void deleteTeamUser(Long userId, AuthenticatedUser currentUser) {
-        if (currentUser != null && currentUser.getId().equals(userId)) {
-            throw new BadRequestException("Bạn không thể xóa tài khoản của chính mình.");
-        }
-
-        User user = findUser(userId);
-        ensureNotLastActiveOwner(user);
-        ptProfileRepository.findByUserId(userId).ifPresent(ptProfile -> {
-            ptProfile.setActive(false);
-            ptProfileRepository.save(ptProfile);
-        });
-
-        user.setStatus(UserStatus.LOCKED);
-        userRepository.save(user);
     }
 
     private void ensureNotLastActiveOwner(User user) {

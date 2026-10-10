@@ -20,7 +20,6 @@ import { ApiClientError } from '../../../shared/api/apiClient'
 import { useAuth } from '../../auth/context/authContext'
 import {
   createTeamUser,
-  deleteTeamUser,
   listTeamUsers,
   resetTeamPassword,
   updateTeamRole,
@@ -224,26 +223,6 @@ export function SettingsPage() {
       setTeamUserError(errorMessage(err))
     } finally {
       setResetSubmitting(false)
-    }
-  }
-
-  async function handleDeleteTeamUser(account: TeamUser) {
-    const isSelf = currentUser && account.id === currentUser.id
-    if (isSelf) {
-      alert('Bạn không thể tự vô hiệu hóa tài khoản của chính mình.')
-      return
-    }
-    if (!window.confirm(`Vô hiệu hóa tài khoản nhân sự "${account.fullName}" (${account.email})? Tài khoản sẽ bị khóa nhưng lịch sử vận hành vẫn được giữ lại.`)) {
-      return
-    }
-
-    try {
-      await deleteTeamUser(account.id)
-      setTeamUserSuccess(`Đã vô hiệu hóa tài khoản "${account.fullName}" thành công!`)
-      setTimeout(() => setTeamUserSuccess(null), 3000)
-      await loadTeamUsers()
-    } catch (err) {
-      setTeamUserError(errorMessage(err))
     }
   }
 
@@ -527,16 +506,6 @@ export function SettingsPage() {
                                 <span>Đặt lại MK</span>
                               </button>
 
-                              {!isSelf && (
-                                <button
-                                  type="button"
-                                  onClick={() => void handleDeleteTeamUser(account)}
-                                  className="grid size-8 place-items-center rounded-lg border border-red-500/20 bg-red-500/10 text-red-400 hover:bg-red-500/20 transition"
-                                  title="Vô hiệu hóa tài khoản nhân viên"
-                                >
-                                  <Lock size={13} />
-                                </button>
-                              )}
                             </div>
                           </td>
                         </tr>

@@ -9,6 +9,7 @@ import com.gymduongdouble.backend.common.enums.PlanType;
 import com.gymduongdouble.backend.common.enums.PtLevel;
 import com.gymduongdouble.backend.common.enums.RevenueCategory;
 import com.gymduongdouble.backend.common.enums.SessionPackageStatus;
+import com.gymduongdouble.backend.common.enums.UserStatus;
 import com.gymduongdouble.backend.common.exception.BadRequestException;
 import com.gymduongdouble.backend.common.exception.ResourceNotFoundException;
 import com.gymduongdouble.backend.common.security.SecurityUtils;
@@ -30,6 +31,7 @@ import com.gymduongdouble.backend.membership.repository.MembershipPlanRepository
 import com.gymduongdouble.backend.membership.web.dto.CreateMemberMembershipRequest;
 import com.gymduongdouble.backend.membership.web.dto.MemberMembershipResponse;
 import com.gymduongdouble.backend.pt.domain.PtSessionPackage;
+import com.gymduongdouble.backend.pt.repository.PtProfileRepository;
 import com.gymduongdouble.backend.pt.repository.PtSessionPackageRepository;
 import com.gymduongdouble.backend.user.domain.User;
 import com.gymduongdouble.backend.user.repository.UserRepository;
@@ -52,6 +54,7 @@ public class MemberMembershipService {
     private final FinancialCategoryRepository financialCategoryRepository;
     private final FinancialTransactionRepository financialTransactionRepository;
     private final PtSessionPackageRepository ptSessionPackageRepository;
+    private final PtProfileRepository ptProfileRepository;
     private final UserRepository userRepository;
     private final MemberAccessService memberAccessService;
 
@@ -294,6 +297,12 @@ public class MemberMembershipService {
         User user = findUserOrNull(id);
         if (user != null && user.getRoles().stream().noneMatch(role -> "PT".equals(role.getCode()))) {
             throw new BadRequestException("Người phụ trách gói PT phải là tài khoản PT.");
+        }
+        if (user != null && user.getStatus() != UserStatus.ACTIVE) {
+            throw new BadRequestException("Người phụ trách gói PT phải là tài khoản PT đang hoạt động.");
+        }
+        if (user != null && ptProfileRepository.findByUserId(user.getId()).stream().noneMatch(profile -> profile.isActive())) {
+            throw new BadRequestException("Người phụ trách gói PT phải là tài khoản PT đang hoạt động.");
         }
         return user;
     }

@@ -1,6 +1,6 @@
 # 10 - Cập nhật kế hoạch theo implementation hiện tại
 
-Cập nhật ngày 08/10/2026.
+Cập nhật ngày 10/10/2026.
 
 Tài liệu này dùng để đồng bộ lại kế hoạch sau giai đoạn nâng cấp UI và bổ sung nghiệp vụ bằng Antigravity. Từ thời điểm này, nếu tài liệu cũ còn khác với code hiện tại thì ưu tiên tài liệu này làm nguồn chốt scope.
 
@@ -78,7 +78,7 @@ Logic hiện tại:
 - OWNER/PT/MEMBER dùng chung trang login, sau login điều hướng theo role.
 - Có trang hồ sơ cá nhân `/profile`, hỗ trợ đổi mật khẩu.
 - OWNER tạo/sửa/khoá/mở tài khoản PT tại `/settings`.
-- OWNER hoặc PT được phép tạo tài khoản portal nhanh cho hội viên tại trang chi tiết hội viên.
+- OWNER được phép tạo, khóa/mở và reset tài khoản portal nhanh cho hội viên tại trang chi tiết hội viên. PT chỉ xem trạng thái portal, không quản lý tài khoản đăng nhập của hội viên.
 - Mật khẩu tạm cho PT/member portal được nhập hoặc sinh ngẫu nhiên, không hard-code mật khẩu yếu trong UI.
 - Script local đọc `.env`, không commit credential thật vào repo.
 
@@ -286,6 +286,7 @@ Ghi chú: notification hiện tại là response/báo cáo tính động từ d�
 - Debt là phần còn phải thu, không thay thế payment.
 - VietQR không tự xác nhận đã thanh toán.
 - Google Sheet sync không được báo thành công nếu Apps Script không trả về trạng thái hợp lệ.
+- Các thao tác ngày giờ trên frontend dùng ngày local của trình duyệt, không dùng UTC `toISOString().slice(0, 10)` cho ngày nghiệp vụ.
 
 ## 13. Tiêu chí chốt giai đoạn hiện tại
 
@@ -324,3 +325,41 @@ Các chỉnh sửa ngày 08/10/2026 được xem là một phần của implemen
   - `backend`: `.\mvnw.cmd -q test` pass.
   - `frontend`: `npm run lint` pass.
   - `frontend`: `npm run build` pass, chỉ còn cảnh báo bundle size của Vite.
+
+## 15. Cập nhật hardening ngày 10/10/2026
+
+Các chỉnh sửa ngày 10/10/2026 chốt thêm lớp ổn định cho môi trường dev/MVP:
+
+- Chuẩn hóa xử lý ngày local ở frontend:
+  - thêm helper `localIsoDate` và `addDaysIso`;
+  - thay các chỗ dùng `toISOString().slice(0, 10)` trong form thanh toán, gán gói, nhắc việc, lịch PT, báo cáo;
+  - tránh lệch ngày khi máy chạy ở múi giờ Việt Nam nhưng JavaScript convert sang UTC.
+- Siết quyền portal hội viên:
+  - backend `POST /members/{id}/portal-account` chỉ cho `OWNER`;
+  - frontend ẩn thao tác tạo/khóa/reset portal account với tài khoản không phải OWNER;
+  - PT không còn được cấp tài khoản đăng nhập cho hội viên.
+- Siết nghiệp vụ PT:
+  - chỉ PT active và có `pt_profile` active mới được nhận assignment, lịch dạy hoặc mục tiêu PT;
+  - chặn gán PT với ngày kết thúc trước ngày bắt đầu;
+  - chặn lịch PT trùng khung giờ cho cùng PT hoặc cùng học viên;
+  - chặn ghi buổi tập, hoạt động hoặc chỉ số cơ thể ở ngày tương lai;
+  - chỉ lịch đang `SCHEDULED` mới được ghi nhận buổi tập.
+- Siết nghiệp vụ gói PT:
+  - khi bán/gán gói PT có `ptUserId`, backend kiểm tra user đó là PT active và có hồ sơ PT active;
+  - tránh gán nhầm OWNER/PT inactive hoặc user không có hồ sơ PT.
+- Siết thư viện TikTok:
+  - backend từ chối link TikTok rút gọn hoặc link không có dạng `/video/{id}`;
+  - mục tiêu là tránh lưu link không embed ổn định.
+- Dashboard/notification:
+  - cảnh báo gói PT còn ít buổi không tính gói đã hủy hoặc đã hết hạn.
+- Báo cáo:
+  - tách logic xuất `.xlsx` khỏi `ReportsPage` sang helper `features/reports/lib/xlsxExport.ts`;
+  - giảm độ phình của page report nhưng giữ nguyên luồng xuất file hiện tại.
+- Tài liệu:
+  - sửa các dòng mojibake còn lại trong `03-database-design.md`, `04-api-design.md`, `08-sprint-1-review.md`;
+  - cập nhật tài liệu này để phản ánh đúng logic đã triển khai.
+- Kiểm tra sau cập nhật:
+  - `backend`: `.\mvnw.cmd test` pass.
+  - `frontend`: `npm run lint` pass.
+  - `frontend`: `npm run build` pass, chỉ còn cảnh báo bundle size của Vite.
+  - `git diff --check` pass, chỉ có warning line ending CRLF/LF trên Windows.

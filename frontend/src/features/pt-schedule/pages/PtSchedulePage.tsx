@@ -28,6 +28,7 @@ import type { LucideIcon } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { Dispatch, FormEvent, SetStateAction } from 'react'
 import { ApiClientError } from '../../../shared/api/apiClient'
+import { addDaysIso, localIsoDate } from '../../../shared/lib/date'
 import { useAuth } from '../../auth/context/authContext'
 import { listMembers } from '../../members/api/memberApi'
 import type { MemberSummary } from '../../members/types/member'
@@ -79,7 +80,7 @@ function statusLabel(value: string | null | undefined, labels: Record<string, st
 }
 
 function todayIso() {
-  return new Date().toISOString().slice(0, 10)
+  return localIsoDate()
 }
 
 function formatDate(value: string | null | undefined) {
@@ -1959,9 +1960,7 @@ function SchedulePanel({
             <button
               type="button"
               onClick={() => {
-                const tomorrow = new Date()
-                tomorrow.setDate(tomorrow.getDate() + 1)
-                setForm((c) => ({ ...c, scheduleDate: tomorrow.toISOString().slice(0, 10) }))
+                setForm((c) => ({ ...c, scheduleDate: addDaysIso(1) }))
               }}
               className="shrink-0 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 px-2.5 py-1 text-xs font-black transition-all"
             >

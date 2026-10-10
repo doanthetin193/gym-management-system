@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ApiClientError } from '../../../shared/api/apiClient'
 import { buildZaloUrl } from '../../../shared/lib/zalo'
+import { useAuth } from '../../auth/context/authContext'
 import { listMembershipPlans } from '../../membership-plans/api/planApi'
 import type { MembershipPlan } from '../../membership-plans/types/membershipPlan'
 import { createPayment, listDebts, listPayments } from '../../payments/api/paymentApi'
@@ -71,6 +72,8 @@ function daysLeftLabel(detail: MemberDetail) {
 export function MemberDetailPage() {
   const { memberId } = useParams()
   const navigate = useNavigate()
+  const { user } = useAuth()
+  const canManagePortal = user?.roles.includes('OWNER') ?? false
   const parsedMemberId = Number(memberId)
   const [detail, setDetail] = useState<MemberDetail | null>(null)
   const [debts, setDebts] = useState<DebtRecord[]>([])
@@ -548,7 +551,11 @@ export function MemberDetailPage() {
               </div>
             ) : null}
 
-            {!detail.profile.userId ? (
+            {!canManagePortal ? (
+              <div className="rounded-[6px] border border-[var(--line)] bg-[var(--surface-muted)] p-3 text-xs font-semibold leading-relaxed text-[var(--text-muted)]">
+                Chỉ Chủ phòng được cấp, khóa hoặc đặt lại mật khẩu tài khoản Portal học viên.
+              </div>
+            ) : !detail.profile.userId ? (
               <div className="space-y-2 pt-1">
                 <p className="text-xs font-medium text-[var(--text-muted)] leading-relaxed">
                   Hội viên chưa có tài khoản. Chỉ cấp khi khách mua gói tập PT để xem số đo và lịch hẹn.

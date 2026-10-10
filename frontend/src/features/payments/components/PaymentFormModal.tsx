@@ -1,6 +1,7 @@
 import { Copy, QrCode, X } from 'lucide-react'
 import type { FormEvent } from 'react'
 import { useMemo, useState } from 'react'
+import { localIsoDate } from '../../../shared/lib/date'
 import { buildTransferContent, buildVietQrImageUrl } from '../../settings/lib/vietQr'
 import type { VietQrSetting } from '../../settings/types/settings'
 import type { DebtRecord, PaymentMethod, PaymentPayload } from '../types/payment'
@@ -20,10 +21,6 @@ const methodOptions: Array<{ value: PaymentMethod; label: string }> = [
   { value: 'BANK_TRANSFER', label: 'Chuyển khoản (VietQR)' },
 ]
 
-function todayIso() {
-  return new Date().toISOString().slice(0, 10)
-}
-
 function formatMoney(value: number | null | undefined) {
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(value ?? 0)
 }
@@ -40,7 +37,7 @@ export function PaymentFormModal({
   const [debtRecordId, setDebtRecordId] = useState(selectedDebt?.id.toString() ?? debts[0]?.id.toString() ?? '')
   const [amount, setAmount] = useState((selectedDebt?.remainingAmount ?? debts[0]?.remainingAmount ?? 0).toString())
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CASH')
-  const [paymentDate, setPaymentDate] = useState(todayIso())
+  const [paymentDate, setPaymentDate] = useState(localIsoDate())
   const [note, setNote] = useState('')
 
   const currentDebt = useMemo(

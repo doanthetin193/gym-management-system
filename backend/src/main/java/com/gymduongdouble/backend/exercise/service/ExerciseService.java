@@ -281,6 +281,9 @@ public class ExerciseService {
         if (url == null || !(url.contains("tiktok.com") || url.contains("vt.tiktok.com"))) {
             throw new BadRequestException("Vui lòng nhập đúng link TikTok.");
         }
+        if (extractTiktokVideoId(url) == null) {
+            throw new BadRequestException("Vui lòng dùng link TikTok đầy đủ có dạng /video/{id}; link rút gọn không thể nhúng ổn định.");
+        }
     }
 
     private String trimToNull(String value) {

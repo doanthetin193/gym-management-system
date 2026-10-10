@@ -2,6 +2,7 @@ import { CalendarDays, CreditCard, Dumbbell, X } from 'lucide-react'
 import type { FormEvent } from 'react'
 import type { ReactNode } from 'react'
 import { useMemo, useState } from 'react'
+import { localIsoDate } from '../../../shared/lib/date'
 import type { MembershipPlan } from '../../membership-plans/types/membershipPlan'
 import type { PaymentMethod } from '../../payments/types/payment'
 import type { MemberMembershipPayload } from '../types/member'
@@ -26,10 +27,6 @@ const methodOptions: Array<{ value: PaymentMethod; label: string }> = [
   { value: 'BANK_TRANSFER', label: 'Chuyển khoản (VietQR)' },
 ]
 
-function todayIso() {
-  return new Date().toISOString().slice(0, 10)
-}
-
 function formatMoney(value: number | null | undefined) {
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(value ?? 0)
 }
@@ -45,7 +42,7 @@ export function MembershipAssignmentModal({
   const activePlans = useMemo(() => plans.filter((plan) => plan.active), [plans])
   const firstPlan = activePlans[0]
   const [planId, setPlanId] = useState(firstPlan?.id.toString() ?? '')
-  const [startDate, setStartDate] = useState(todayIso())
+  const [startDate, setStartDate] = useState(localIsoDate())
   const [actualPrice, setActualPrice] = useState((firstPlan?.defaultPrice ?? 0).toString())
   const [discountAmount, setDiscountAmount] = useState('0')
   const [paidAmount, setPaidAmount] = useState((firstPlan?.defaultPrice ?? 0).toString())

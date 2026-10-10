@@ -14,7 +14,6 @@ import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -68,13 +67,6 @@ public class TeamUserController {
         @Valid @RequestBody ResetTeamPasswordRequest request
     ) {
         return ApiResponse.ok(teamUserService.resetPassword(id, request.newPassword()));
-    }
-
-    @DeleteMapping("/{id}")
-    public ApiResponse<Void> deleteTeamUser(@PathVariable Long id) {
-        AuthenticatedUser currentUser = currentUser();
-        teamUserService.deleteTeamUser(id, currentUser);
-        return ApiResponse.ok(null);
     }
 
     private AuthenticatedUser currentUser() {

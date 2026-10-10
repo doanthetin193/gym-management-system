@@ -1,4 +1,4 @@
-import { apiDelete, apiGet, apiPost, apiPut } from '../../../shared/api/apiClient'
+import { apiGet, apiPost, apiPut } from '../../../shared/api/apiClient'
 import type { CreateTeamUserPayload, TeamUser, TeamUserRole } from '../types/teamUser'
 
 export function listTeamUsers() {
@@ -19,8 +19,4 @@ export function updateTeamStatus(userId: number, status: 'ACTIVE' | 'LOCKED') {
 
 export function resetTeamPassword(userId: number, newPassword?: string) {
   return apiPost<TeamUser>(`/v1/settings/team-users/${userId}/reset-password`, { newPassword })
-}
-
-export function deleteTeamUser(userId: number) {
-  return apiDelete<void>(`/v1/settings/team-users/${userId}`)
 }

@@ -8,10 +8,12 @@ import com.gymduongdouble.backend.common.enums.PtAssignmentStatus;
 import com.gymduongdouble.backend.common.enums.PtSessionStatus;
 import com.gymduongdouble.backend.common.enums.ScheduleStatus;
 import com.gymduongdouble.backend.common.enums.SessionPackageStatus;
+import com.gymduongdouble.backend.common.enums.UserStatus;
 import com.gymduongdouble.backend.common.exception.BadRequestException;
 import com.gymduongdouble.backend.common.exception.ResourceNotFoundException;
 import com.gymduongdouble.backend.common.security.AuthenticatedUser;
 import com.gymduongdouble.backend.common.security.SecurityUtils;
+import com.gymduongdouble.backend.common.time.AppClock;
 import com.gymduongdouble.backend.member.domain.Member;
 import com.gymduongdouble.backend.member.service.MemberService;
 import com.gymduongdouble.backend.member.web.dto.MemberResponse;
@@ -53,7 +55,6 @@ import com.gymduongdouble.backend.user.domain.User;
 import com.gymduongdouble.backend.user.repository.UserRepository;
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
 import java.util.List;
@@ -65,8 +66,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class PtService {
-
-    private static final ZoneId VIETNAM_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
 
     private final PtProfileRepository ptProfileRepository;
     private final PtAssignmentRepository ptAssignmentRepository;
@@ -116,8 +115,9 @@ public class PtService {
     @Transactional
     public PtAssignmentResponse assignMember(PtAssignmentRequest request) {
         User ptUser = findUser(request.ptUserId());
-        ensureUserHasRole(ptUser, "PT", "Người phụ trách phải là tài khoản PT.");
+        ensureActivePtUser(ptUser, "Người phụ trách phải là tài khoản PT đang hoạt động.");
         ensureCanManagePtUser(ptUser.getId());
+        ensureAssignmentDates(request.startDate(), request.endDate());
         Member member = memberService.findEntity(request.memberId());
         ensureMemberHasAssignablePtPackage(member.getId());
         ensureMemberHasNoActivePtAssignment(member.getId(), request.startDate());
@@ -152,19 +152,19 @@ public class PtService {
     @Transactional
     public PtScheduleResponse createSchedule(PtScheduleRequest request) {
         User ptUser = findUser(request.ptUserId());
-        ensureUserHasRole(ptUser, "PT", "Lịch dạy phải gắn với tài khoản PT.");
+        ensureActivePtUser(ptUser, "Lịch dạy phải gắn với tài khoản PT đang hoạt động.");
         Member member = request.memberId() == null ? null : memberService.findEntity(request.memberId());
         ensureCanManagePtUser(ptUser.getId());
         if (member != null) {
             ensureCanAccessMember(member.getId());
         }
 
-        LocalDate today = LocalDate.now(VIETNAM_ZONE);
+        LocalDate today = AppClock.today();
         if (request.scheduleDate().isBefore(today)) {
             throw new BadRequestException("Không thể đặt lịch dạy cho ngày trong quá khứ (" + request.scheduleDate() + ").");
         }
         if (request.scheduleDate().isEqual(today)) {
-            LocalTime now = LocalTime.now(VIETNAM_ZONE);
+            LocalTime now = LocalTime.now(AppClock.zone());
             LocalTime nowMinusGrace = now.minusMinutes(2);
             if (request.startTime().isBefore(nowMinusGrace)) {
                 String currentTimeStr = now.format(DateTimeFormatter.ofPattern("HH:mm"));
@@ -174,6 +174,7 @@ public class PtService {
         if (request.endTime() != null && !request.endTime().isAfter(request.startTime())) {
             throw new BadRequestException("Giờ kết thúc phải sau giờ bắt đầu.");
         }
+        ensureScheduleDoesNotOverlap(ptUser.getId(), member == null ? null : member.getId(), request);
 
         PtSchedule schedule = new PtSchedule();
         schedule.setPtUser(ptUser);
@@ -202,7 +203,7 @@ public class PtService {
 
     @Transactional(readOnly = true)
     public List<PtScheduleResponse> listSchedules(Long ptUserId, LocalDate fromDate, LocalDate toDate) {
-        LocalDate start = fromDate == null ? LocalDate.now() : fromDate;
+        LocalDate start = fromDate == null ? AppClock.today() : fromDate;
         LocalDate end = toDate == null ? start.plusDays(7) : toDate;
         Long resolvedPtUserId = resolveVisiblePtUserId(ptUserId);
 
@@ -247,6 +248,7 @@ public class PtService {
     @Transactional
     public PtSessionLogResponse createSessionLog(Long memberId, PtSessionLogRequest request) {
         ensureCanAccessMember(memberId);
+        ensureNotFuture(request.sessionDate(), "Ngày tập");
         PtSessionPackage sessionPackage = findSessionPackage(request.sessionPackageId());
         if (!sessionPackage.getMember().getId().equals(memberId)) {
             throw new BadRequestException("Gói buổi PT không thuộc khách hàng này.");
@@ -286,6 +288,7 @@ public class PtService {
     @Transactional
     public MemberActivityLogResponse createActivityLog(Long memberId, MemberActivityLogRequest request) {
         ensureCanAccessMember(memberId);
+        ensureNotFuture(request.activityDate(), "Ngày hoạt động");
         Member member = memberService.findEntity(memberId);
         MemberMembership membership = request.membershipId() == null ? null : findMembership(request.membershipId());
         PtSessionPackage sessionPackage = request.sessionPackageId() == null ? null : findSessionPackage(request.sessionPackageId());
@@ -323,12 +326,13 @@ public class PtService {
     @Transactional
     public BodyMeasurementResponse createBodyMeasurement(Long memberId, BodyMeasurementRequest request) {
         ensureCanAccessMember(memberId);
+        ensureNotFuture(request.recordedAt(), "Ngày đo");
         Member member = memberService.findEntity(memberId);
 
         BodyMeasurement measurement = new BodyMeasurement();
         measurement.setMember(member);
         measurement.setRecordedBy(currentUserEntityOrNull());
-        measurement.setRecordedAt(request.recordedAt().atStartOfDay(VIETNAM_ZONE).toInstant());
+        measurement.setRecordedAt(request.recordedAt().atStartOfDay(AppClock.zone()).toInstant());
         measurement.setHeight(request.height());
         measurement.setWeight(request.weight());
         measurement.setChest(request.chest());
@@ -347,9 +351,10 @@ public class PtService {
         Member member = memberService.findEntity(memberId);
         User ptUser = request.ptUserId() == null ? currentPtUserOrNull() : findUser(request.ptUserId());
         if (ptUser != null) {
-            ensureUserHasRole(ptUser, "PT", "Mục tiêu PT phải gắn với tài khoản PT.");
+            ensureActivePtUser(ptUser, "Mục tiêu PT phải gắn với tài khoản PT đang hoạt động.");
             ensureCanManagePtUser(ptUser.getId());
         }
+        ensureGoalDates(request.startDate(), request.targetDate());
 
         PtGoal goal = new PtGoal();
         goal.setMember(member);
@@ -382,7 +387,7 @@ public class PtService {
     }
 
     private List<PtSessionPackage> activePtPackages(Long memberId) {
-        LocalDate today = LocalDate.now(VIETNAM_ZONE);
+        LocalDate today = AppClock.today();
         return ptSessionPackageRepository.findByMemberIdOrderByStartDateDesc(memberId).stream()
             .filter(sessionPackage -> sessionPackage.getStatus() == SessionPackageStatus.ACTIVE)
             .filter(sessionPackage -> sessionPackage.getMembership().getStatus() != MembershipStatus.CANCELLED)
@@ -392,7 +397,43 @@ public class PtService {
             .toList();
     }
 
+    private void ensureScheduleDoesNotOverlap(Long ptUserId, Long memberId, PtScheduleRequest request) {
+        boolean ptHasConflict = ptScheduleRepository
+            .findByPtUserIdAndScheduleDateBetween(ptUserId, request.scheduleDate(), request.scheduleDate())
+            .stream()
+            .filter(this::isBlockingSchedule)
+            .anyMatch(schedule -> overlaps(schedule.getStartTime(), schedule.getEndTime(), request.startTime(), request.endTime()));
+        if (ptHasConflict) {
+            throw new BadRequestException("PT đã có lịch trùng khung giờ này.");
+        }
+
+        if (memberId == null) {
+            return;
+        }
+        boolean memberHasConflict = ptScheduleRepository
+            .findByMemberIdAndScheduleDateBetween(memberId, request.scheduleDate(), request.scheduleDate())
+            .stream()
+            .filter(this::isBlockingSchedule)
+            .anyMatch(schedule -> overlaps(schedule.getStartTime(), schedule.getEndTime(), request.startTime(), request.endTime()));
+        if (memberHasConflict) {
+            throw new BadRequestException("Học viên đã có lịch PT trùng khung giờ này.");
+        }
+    }
+
+    private boolean isBlockingSchedule(PtSchedule schedule) {
+        return schedule.getStatus() == ScheduleStatus.SCHEDULED;
+    }
+
+    private boolean overlaps(LocalTime existingStart, LocalTime existingEnd, LocalTime nextStart, LocalTime nextEnd) {
+        LocalTime safeExistingEnd = existingEnd == null ? existingStart.plusHours(1) : existingEnd;
+        LocalTime safeNextEnd = nextEnd == null ? nextStart.plusHours(1) : nextEnd;
+        return nextStart.isBefore(safeExistingEnd) && safeNextEnd.isAfter(existingStart);
+    }
+
     private void ensureScheduleCanBeLogged(PtSchedule schedule, PtSessionPackage sessionPackage, Long memberId, LocalDate sessionDate) {
+        if (schedule.getStatus() != ScheduleStatus.SCHEDULED) {
+            throw new BadRequestException("Chỉ lịch đang chờ dạy mới được ghi nhận buổi tập.");
+        }
         if (schedule.getMember() == null || !schedule.getMember().getId().equals(memberId)) {
             throw new BadRequestException("Lịch PT không thuộc khách hàng này.");
         }
@@ -514,6 +555,36 @@ public class PtService {
         boolean hasRole = user.getRoles().stream().anyMatch(role -> roleCode.equals(role.getCode()));
         if (!hasRole) {
             throw new BadRequestException(message);
+        }
+    }
+
+    private void ensureActivePtUser(User user, String message) {
+        ensureUserHasRole(user, "PT", message);
+        if (user.getStatus() != UserStatus.ACTIVE) {
+            throw new BadRequestException(message);
+        }
+        PtProfile profile = ptProfileRepository.findByUserId(user.getId())
+            .orElseThrow(() -> new BadRequestException(message));
+        if (!profile.isActive()) {
+            throw new BadRequestException(message);
+        }
+    }
+
+    private void ensureAssignmentDates(LocalDate startDate, LocalDate endDate) {
+        if (endDate != null && endDate.isBefore(startDate)) {
+            throw new BadRequestException("Ngày kết thúc phân công phải sau hoặc bằng ngày bắt đầu.");
+        }
+    }
+
+    private void ensureGoalDates(LocalDate startDate, LocalDate targetDate) {
+        if (startDate != null && targetDate != null && targetDate.isBefore(startDate)) {
+            throw new BadRequestException("Ngày mục tiêu phải sau hoặc bằng ngày bắt đầu.");
+        }
+    }
+
+    private void ensureNotFuture(LocalDate date, String fieldName) {
+        if (date != null && date.isAfter(AppClock.today())) {
+            throw new BadRequestException(fieldName + " không được ở tương lai.");
         }
     }
 

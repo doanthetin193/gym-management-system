@@ -1,42 +1,42 @@
-﻿# 03 - THIáº¾T Káº¾ DATABASE
+﻿# 03 - THIẾT KẾ DATABASE
 
-## 1. Má»¥c tiÃªu thiáº¿t káº¿
+## 1. Mục tiêu thiết kế
 
-Database cá»§a há»‡ thá»‘ng khÃ´ng sao chÃ©p nguyÃªn cÃ¡c file Excel hiá»‡n táº¡i.  
-CÃ¡c báº£ng Excel/phiáº¿u giáº¥y Ä‘Æ°á»£c phÃ¢n tÃ­ch Ä‘á»ƒ tÃ¬m ra dá»¯ liá»‡u nguá»“n tháº­t, sau Ä‘Ã³ chuáº©n hÃ³a thÃ nh entity.
+Database của hệ thống không sao chép nguyên các file Excel hiện tại.
+Các bảng Excel/phiếu giấy được phân tích để tìm ra dữ liệu nguồn thật, sau đó chuẩn hóa thành entity.
 
-Má»¥c tiÃªu:
+Mục tiêu:
 
-- Äá»§ dá»¯ liá»‡u Ä‘á»ƒ thay tháº¿ cÃ¡ch quáº£n lÃ½ thá»§ cÃ´ng hiá»‡n táº¡i.
-- KhÃ´ng táº¡o quÃ¡ nhiá»u báº£ng dÆ° thá»«a.
-- KhÃ´ng lÆ°á»£c bá» cÃ¡c nghiá»‡p vá»¥ quan trá»ng cá»§a chá»§ phÃ²ng.
-- BÃ¡o cÃ¡o Ä‘Æ°á»£c tá»± tÃ­nh tá»« dá»¯ liá»‡u nguá»“n.
-- LÆ°u lá»‹ch sá»­ gia háº¡n, thanh toÃ¡n, buá»•i táº­p vÃ  tiáº¿n Ä‘á»™.
-- Chá»«a Ä‘Æ°á»ng cho payroll, import Excel vÃ  AI sau nÃ y.
+- Đủ dữ liệu để thay thế cách quản lý thủ công hiện tại.
+- Không tạo quá nhiều bảng dư thừa.
+- Không lược bỏ các nghiệp vụ quan trọng của chủ phòng.
+- Báo cáo được tự tính từ dữ liệu nguồn.
+- Lưu lịch sử gia hạn, thanh toán, buổi tập và tiến độ.
+- Chừa đường cho payroll, import Excel và AI sau này.
 
-NguyÃªn táº¯c:
+Nguyên tắc:
 
-- `Entity/Table`: báº£ng tháº­t trong database.
-- `Enum/Code`: giÃ¡ trá»‹ cá»‘ Ä‘á»‹nh xá»­ lÃ½ trong code, khÃ´ng táº¡o báº£ng náº¿u khÃ´ng cáº§n quáº£n trá»‹ Ä‘á»™ng.
-- `Report/View`: dá»¯ liá»‡u tá»•ng há»£p, Æ°u tiÃªn tÃ­nh tá»« báº£ng nguá»“n.
+- `Entity/Table`: bảng thật trong database.
+- `Enum/Code`: giá trị cố định xử lý trong code, không tạo bảng nếu không cần quản trị động.
+- `Report/View`: dữ liệu tổng hợp, ưu tiên tính từ bảng nguồn.
 
-## 2. Quy mÃ´ báº£ng Ä‘á» xuáº¥t
+## 2. Quy mô bảng đề xuất
 
-MVP tá»‘i Æ°u nhÆ°ng Ä‘á»§ nghÄ©a:
+MVP tối ưu nhưng đủ nghĩa:
 
 ```text
-Khoáº£ng 24-26 báº£ng
+Khoảng 24-26 bảng
 ```
 
 Full phase sau:
 
 ```text
-Khoáº£ng 34-42 báº£ng
+Khoảng 34-42 bảng
 ```
 
-LÃ½ do MVP active nhiá»u hÆ¡n báº£n siÃªu gá»n: dá»¯ liá»‡u tá»« 10 áº£nh cho tháº¥y há»‡ thá»‘ng khÃ´ng chá»‰ cÃ³ member/gÃ³i táº­p, mÃ  cÃ²n cÃ³ thu chi, lá»‹ch PT, check-in chÆ°Æ¡ng trÃ¬nh, chá»‰ sá»‘ cÆ¡ thá»ƒ, má»¥c tiÃªu táº­p luyá»‡n vÃ  má»¥c tiÃªu thÃ¡ng.
+Lý do MVP active nhiều hơn bản siêu gọn: dữ liệu từ 10 ảnh cho thấy hệ thống không chỉ có member/gói tập, mà còn có thu chi, lịch PT, check-in chương trình, chỉ số cơ thể, mục tiêu tập luyện và mục tiêu tháng.
 
-## 3. NhÃ³m báº£ng MVP Ä‘á» xuáº¥t
+## 3. Nhóm bảng MVP đề xuất
 
 ```text
 users
@@ -73,22 +73,22 @@ audit_logs
 system_settings
 ```
 
-Tá»•ng: khoáº£ng 25 báº£ng.
+Tổng: khoảng 25 bảng.
 
-Náº¿u cáº§n giáº£m scope MVP, Æ°u tiÃªn hoÃ£n UI/bÃ¡o cÃ¡o nÃ¢ng cao chá»© khÃ´ng bá» dá»¯ liá»‡u nguá»“n cá»‘t lÃµi:
+Nếu cần giảm scope MVP, ưu tiên hoãn UI/báo cáo nâng cao chứ không bỏ dữ liệu nguồn cốt lõi:
 
-- KhÃ´ng nÃªn bá» `member_activity_logs` vÃ¬ báº£ng nÃ y giá»¯ buá»•i Ã”n táº­p vÃ  check-in GiÃ¡o Ã¡n/HÆ°á»›ng Dáº«n.
-- KhÃ´ng lÃ m `training_programs`/`training_program_weeks` trong Sprint 5 vÃ¬ nhu cáº§u thá»±c táº¿ hiá»‡n táº¡i lÃ  thÆ° viá»‡n video TikTok public, khÃ´ng pháº£i LMS/giÃ¡o Ã¡n theo tuáº§n.
-- CÃ³ thá»ƒ lÃ m `business_goals` á»Ÿ cuá»‘i MVP.
-- Notification nÃ¢ng cao cÃ³ thá»ƒ hoÃ£n. Náº¿u chÆ°a lÃ m báº£ng `notifications` ngay, dashboard váº«n pháº£i hiá»ƒn thá»‹ danh sÃ¡ch sáº¯p háº¿t háº¡n, sinh nháº­t, cÃ´ng ná»£ vÃ  khÃ¡ch PT cÃ²n Ã­t buá»•i tá»« dá»¯ liá»‡u nguá»“n.
+- Không nên bỏ `member_activity_logs` vì bảng này giữ buổi Ôn tập và check-in Giáo án/Hướng Dẫn.
+- Không làm `training_programs`/`training_program_weeks` trong Sprint 5 vì nhu cầu thực tế hiện tại là thư viện video TikTok public, không phải LMS/giáo án theo tuần.
+- Có thể làm `business_goals` ở cuối MVP.
+- Notification nâng cao có thể hoãn. Nếu chưa làm bảng `notifications` ngay, dashboard vẫn phải hiển thị danh sách sắp hết hạn, sinh nhật, công nợ và khách PT còn ít buổi từ dữ liệu nguồn.
 
-NhÆ°ng khÃ´ng nÃªn bá» háº³n khá»i thiáº¿t káº¿ vÃ¬ cÃ¡c báº£ng nÃ y pháº£n Ã¡nh Ä‘Ãºng dá»¯ liá»‡u chá»§ phÃ²ng Ä‘ang dÃ¹ng.
+Nhưng không nên bỏ hẳn khỏi thiết kế vì các bảng này phản ánh đúng dữ liệu chủ phòng đang dùng.
 
-## 4. Auth vÃ  phÃ¢n quyá»n
+## 4. Auth và phân quyền
 
 ### 4.1 `users`
 
-TÃ i khoáº£n Ä‘Äƒng nháº­p cho OWNER, PT, MEMBER.
+Tài khoản đăng nhập cho OWNER, PT, MEMBER.
 
 ```text
 users
@@ -116,7 +116,7 @@ roles
   name
 ```
 
-Dá»¯ liá»‡u ban Ä‘áº§u:
+Dữ liệu ban đầu:
 
 - OWNER.
 - PT.
@@ -130,11 +130,11 @@ user_roles
   role_id
 ```
 
-## 5. Member vÃ  ghi chÃº khÃ¡ch hÃ ng
+## 5. Member và ghi chú khách hàng
 
 ### 5.1 `members`
 
-LÆ°u há»“ sÆ¡ khÃ¡ch hÃ ng.
+Lưu hồ sơ khách hàng.
 
 ```text
 members
@@ -153,10 +153,10 @@ members
   updated_at
 ```
 
-Ghi chÃº:
+Ghi chú:
 
-- `user_id` nullable vÃ¬ khÃ´ng pháº£i member nÃ o cÅ©ng cáº§n tÃ i khoáº£n Ä‘Äƒng nháº­p ngay.
-- `zalo_phone` phá»¥c vá»¥ má»Ÿ nhanh Zalo/chat sau nÃ y.
+- `user_id` nullable vì không phải member nào cũng cần tài khoản đăng nhập ngay.
+- `zalo_phone` phục vụ mở nhanh Zalo/chat sau này.
 
 Enum/code:
 
@@ -165,7 +165,7 @@ Enum/code:
 
 ### 5.2 `member_notes`
 
-LÆ°u ghi chÃº theo dÃ²ng thá»i gian.
+Lưu ghi chú theo dòng thời gian.
 
 ```text
 member_notes
@@ -181,11 +181,11 @@ Enum/code:
 
 - `NoteType`: GENERAL, RENEWAL, DEBT, PT_PROGRESS, CUSTOMER_CARE.
 
-## 6. GÃ³i táº­p vÃ  lá»‹ch sá»­ gia háº¡n
+## 6. Gói tập và lịch sử gia hạn
 
 ### 6.1 `membership_plans`
 
-Danh má»¥c gÃ³i táº­p.
+Danh mục gói tập.
 
 ```text
 membership_plans
@@ -210,26 +210,26 @@ Enum/code:
 - `PlanType`: SELF_TRAINING, PT, GUIDANCE, OTHER.
 - `PtLevel`: MAIN, NEW.
 
-Ghi chÃº:
+Ghi chú:
 
-- `pt_level` chá»‰ dÃ¹ng khi `plan_type = PT`.
-- `pt_session_count` lÃ  sá»‘ buá»•i PT cÃ³ PT trá»±c tiáº¿p.
-- `practice_session_count` lÃ  sá»‘ buá»•i Ã”n táº­p Ä‘i kÃ¨m gÃ³i PT, khÃ¡ch tá»± Ã´n bÃ i khÃ´ng cÃ³ PT trá»±c tiáº¿p.
-- `guidance_session_count` dÃ¹ng cho gÃ³i GiÃ¡o Ã¡n/HÆ°á»›ng Dáº«n 30, 60, 90 buá»•i.
-- `price_ratio` há»— trá»£ cáº¥u hÃ¬nh gÃ³i PT má»›i báº±ng khoáº£ng 65% gÃ³i PT chÃ­nh náº¿u cáº§n.
-- Scope hiá»‡n táº¡i khÃ´ng cÃ²n `content_access_level`; thÆ° viá»‡n TikTok lÃ  public, khÃ´ng lÃ m premium content/LMS.
-- KhÃ´ng táº¡o `PlanType.STUDENT`. Cá»™t `Sinh viÃªn` trong Excel cÅ© thá»±c cháº¥t lÃ  khoáº£n thu cá»§a gÃ³i PT má»›i.
+- `pt_level` chỉ dùng khi `plan_type = PT`.
+- `pt_session_count` là số buổi PT có PT trực tiếp.
+- `practice_session_count` là số buổi Ôn tập đi kèm gói PT, khách tự ôn bài không có PT trực tiếp.
+- `guidance_session_count` dùng cho gói Giáo án/Hướng Dẫn 30, 60, 90 buổi.
+- `price_ratio` hỗ trợ cấu hình gói PT mới bằng khoảng 65% gói PT chính nếu cần.
+- Scope hiện tại không còn `content_access_level`; thư viện TikTok là public, không làm premium content/LMS.
+- Không tạo `PlanType.STUDENT`. Cột `Sinh viên` trong Excel cũ thực chất là khoản thu của gói PT mới.
 
-VÃ­ dá»¥ plan:
+Ví dụ plan:
 
-- `Tá»± táº­p 1 thÃ¡ng`: `plan_type = SELF_TRAINING`.
-- `PT chÃ­nh 20 + 20`: `plan_type = PT`, `pt_level = MAIN`, `pt_session_count = 20`, `practice_session_count = 20`.
-- `PT má»›i 20 + 20`: `plan_type = PT`, `pt_level = NEW`, `pt_session_count = 20`, `practice_session_count = 20`, `price_ratio = 0.65`.
-- `GiÃ¡o Ã¡n 30 buá»•i`: `plan_type = GUIDANCE`, `guidance_session_count = 30`.
+- `Tự tập 1 tháng`: `plan_type = SELF_TRAINING`.
+- `PT chính 20 + 20`: `plan_type = PT`, `pt_level = MAIN`, `pt_session_count = 20`, `practice_session_count = 20`.
+- `PT mới 20 + 20`: `plan_type = PT`, `pt_level = NEW`, `pt_session_count = 20`, `practice_session_count = 20`, `price_ratio = 0.65`.
+- `Giáo án 30 buổi`: `plan_type = GUIDANCE`, `guidance_session_count = 30`.
 
 ### 6.2 `member_memberships`
 
-LÆ°u tá»«ng láº§n khÃ¡ch Ä‘Äƒng kÃ½/gia háº¡n.
+Lưu từng lần khách đăng ký/gia hạn.
 
 ```text
 member_memberships
@@ -254,20 +254,20 @@ Enum/code:
 
 - `MembershipStatus`: ACTIVE, EXPIRED, CANCELLED, PENDING_PAYMENT.
 
-Quy táº¯c:
+Quy tắc:
 
-- Gia háº¡n táº¡o record má»›i.
-- KhÃ´ng ghi Ä‘Ã¨ gÃ³i cÅ©.
-- Tráº¡ng thÃ¡i sáº¯p háº¿t háº¡n cÃ³ thá»ƒ tÃ­nh tá»« `end_date`, khÃ´ng nháº¥t thiáº¿t lÆ°u thÃ nh field.
-- `sold_by_user_id` nullable, dÃ¹ng Ä‘á»ƒ ghi nháº­n ai sale/phá»¥ trÃ¡ch bÃ¡n gÃ³i. Field nÃ y phá»¥c vá»¥ hoa há»“ng sale PT á»Ÿ phase payroll sau nÃ y.
-- Náº¿u plan lÃ  `PT`, backend táº¡o/cáº­p nháº­t `pt_session_packages` tÆ°Æ¡ng á»©ng Ä‘á»ƒ quáº£n lÃ½ sá»‘ buá»•i PT vÃ  Ã”n táº­p.
-- Náº¿u plan lÃ  `GUIDANCE`, khÃ´ng táº¡o `pt_session_packages`; sá»‘ buá»•i GiÃ¡o Ã¡n Ä‘Ã£ dÃ¹ng Ä‘Æ°á»£c tÃ­nh tá»« `member_activity_logs` theo `membership_id`.
+- Gia hạn tạo record mới.
+- Không ghi đè gói cũ.
+- Trạng thái sắp hết hạn có thể tính từ `end_date`, không nhất thiết lưu thành field.
+- `sold_by_user_id` nullable, dùng để ghi nhận ai sale/phụ trách bán gói. Field này phục vụ hoa hồng sale PT ở phase payroll sau này.
+- Nếu plan là `PT`, backend tạo/cập nhật `pt_session_packages` tương ứng để quản lý số buổi PT và Ôn tập.
+- Nếu plan là `GUIDANCE`, không tạo `pt_session_packages`; số buổi Giáo án đã dùng được tính từ `member_activity_logs` theo `membership_id`.
 
-## 7. Thanh toÃ¡n, thu chi, cÃ´ng ná»£
+## 7. Thanh toán, thu chi, công nợ
 
 ### 7.1 `payments`
 
-Ghi nháº­n tiá»n khÃ¡ch tráº£.
+Ghi nhận tiền khách trả.
 
 ```text
 payments
@@ -288,21 +288,21 @@ Enum/code:
 - `PaymentMethod`: CASH, BANK_TRANSFER, CARD, OTHER.
 - `RevenueCategory`: SELF_TRAINING, GUIDANCE, PT_MAIN, PT_NEW, OTHER_INCOME.
 
-Mapping tá»« Excel `Tá»”NG THU`:
+Mapping từ Excel `TỔNG THU`:
 
-- Tá»± táº­p -> SELF_TRAINING.
-- GiÃ¡o Ã¡n -> GUIDANCE.
-- Sinh viÃªn -> PT_NEW.
-- PT -> PT_MAIN hoáº·c PT_NEW tÃ¹y gÃ³i/nhÃ¢n sá»± phá»¥ trÃ¡ch.
+- Tự tập -> SELF_TRAINING.
+- Giáo án -> GUIDANCE.
+- Sinh viên -> PT_NEW.
+- PT -> PT_MAIN hoặc PT_NEW tùy gói/nhân sự phụ trách.
 
-Ghi chÃº:
+Ghi chú:
 
-- `Sinh viÃªn` khÃ´ng cÃ²n Ä‘Æ°á»£c dÃ¹ng nhÆ° category nghiá»‡p vá»¥ má»›i. ÄÃ¢y lÃ  tÃªn cá»™t Excel cÅ© cá»§a khoáº£n thu gÃ³i PT má»›i.
-- Náº¿u sau nÃ y cÃ³ gÃ³i giáº£m giÃ¡ tháº­t cho sinh viÃªn, nÃªn xá»­ lÃ½ báº±ng discount trÃªn `member_memberships`, khÃ´ng táº¡o láº«n vá»›i revenue category hiá»‡n táº¡i.
+- `Sinh viên` không còn được dùng như category nghiệp vụ mới. Đây là tên cột Excel cũ của khoản thu gói PT mới.
+- Nếu sau này có gói giảm giá thật cho sinh viên, nên xử lý bằng discount trên `member_memberships`, không tạo lẫn với revenue category hiện tại.
 
 ### 7.2 `financial_categories`
 
-Danh má»¥c thu/chi cÃ³ thá»ƒ quáº£n trá»‹.
+Danh mục thu/chi có thể quản trị.
 
 ```text
 financial_categories
@@ -317,7 +317,7 @@ Enum/code:
 
 - `FinancialCategoryType`: INCOME, EXPENSE.
 
-VÃ­ dá»¥ expense category:
+Ví dụ expense category:
 
 - RENT.
 - MARKETING.
@@ -333,18 +333,18 @@ VÃ­ dá»¥ expense category:
 - MKT.
 - OTHER_EXPENSE.
 
-Ghi chÃº:
+Ghi chú:
 
-- CÃ¡c khoáº£n chi cÃ³ thá»ƒ phÃ¡t sinh linh hoáº¡t, khÃ´ng hard-code trong code.
-- `Kiá»‡t` lÃ  tÃªn nhÃ¢n sá»±/PT.
-- `TiÃªn PT` lÃ  khoáº£n liÃªn quan chá»‹ TiÃªn vá»›i vai trÃ² PT.
-- `TiÃªn MKT` lÃ  khoáº£n liÃªn quan chá»‹ TiÃªn vá»›i vai trÃ² marketing.
-- MVP cho OWNER tá»± táº¡o/sá»­a/áº©n danh má»¥c chi trong `financial_categories`, vÃ­ dá»¥ `Kiá»‡t`, `TiÃªn PT`, `TiÃªn MKT`, `ThÆ°á»Ÿng lá»…`.
-- Phase sau náº¿u lÃ m payroll/nhÃ¢n sá»± chuáº©n hÆ¡n thÃ¬ cÃ¡c khoáº£n theo tÃªn ngÆ°á»i cÃ³ thá»ƒ liÃªn káº¿t sang employee/PT thay vÃ¬ chá»‰ lÃ  category.
+- Các khoản chi có thể phát sinh linh hoạt, không hard-code trong code.
+- `Kiệt` là tên nhân sự/PT.
+- `Tiên PT` là khoản liên quan chị Tiên với vai trò PT.
+- `Tiên MKT` là khoản liên quan chị Tiên với vai trò marketing.
+- MVP cho OWNER tự tạo/sửa/ẩn danh mục chi trong `financial_categories`, ví dụ `Kiệt`, `Tiên PT`, `Tiên MKT`, `Thưởng lễ`.
+- Phase sau nếu làm payroll/nhân sự chuẩn hơn thì các khoản theo tên người có thể liên kết sang employee/PT thay vì chỉ là category.
 
 ### 7.3 `financial_transactions`
 
-Ghi nháº­n giao dá»‹ch thu/chi tá»•ng quÃ¡t.
+Ghi nhận giao dịch thu/chi tổng quát.
 
 ```text
 financial_transactions
@@ -366,18 +366,18 @@ Enum/code:
 
 - `FinancialTransactionType`: INCOME, EXPENSE.
 
-Ghi chÃº:
+Ghi chú:
 
-- Payment cÃ³ thá»ƒ tá»± sinh transaction loáº¡i INCOME.
-- Chi phÃ­ tá»« Excel `Tá»”NG CHI` táº¡o transaction loáº¡i EXPENSE.
-- `TÃ i chÃ­nh nÄƒm` lÃ  report tá»« báº£ng nÃ y.
-- Äá»ƒ trÃ¡nh tÃ­nh trÃ¹ng doanh thu, bÃ¡o cÃ¡o tÃ i chÃ­nh nÃªn dÃ¹ng `financial_transactions` lÃ m nguá»“n tá»•ng há»£p chÃ­nh.
-- `payments` lÃ  báº£ng nghiá»‡p vá»¥ thanh toÃ¡n cá»§a khÃ¡ch; khi táº¡o/sá»­a payment pháº£i Ä‘á»“ng bá»™ má»™t transaction INCOME cÃ³ `payment_id`.
-- Transaction INCOME sinh tá»« payment khÃ´ng nháº­p tay láº§n ná»¯a trÃªn UI.
+- Payment có thể tự sinh transaction loại INCOME.
+- Chi phí từ Excel `TỔNG CHI` tạo transaction loại EXPENSE.
+- `Tài chính nĒm` là report từ bảng này.
+- Để tránh tính trùng doanh thu, báo cáo tài chính nên dùng `financial_transactions` làm nguồn tổng hợp chính.
+- `payments` là bảng nghiệp vụ thanh toán của khách; khi tạo/sửa payment phải đồng bộ một transaction INCOME có `payment_id`.
+- Transaction INCOME sinh từ payment không nhập tay lần nữa trên UI.
 
 ### 7.4 `debt_records`
 
-Theo dÃµi cÃ´ng ná»£ rÃµ rÃ ng.
+Theo dõi công nợ rõ ràng.
 
 ```text
 debt_records
@@ -398,11 +398,11 @@ Enum/code:
 
 - `DebtStatus`: OPEN, PARTIALLY_PAID, PAID, CANCELLED.
 
-## 8. PT, lá»‹ch dáº¡y vÃ  gÃ¡n khÃ¡ch
+## 8. PT, lịch dạy và gán khách
 
 ### 8.1 `pt_profiles`
 
-ThÃ´ng tin riÃªng cá»§a PT.
+Thông tin riêng của PT.
 
 ```text
 pt_profiles
@@ -423,16 +423,16 @@ Enum/code:
 
 - `PtLevel`: MAIN, NEW.
 
-Ghi chÃº:
+Ghi chú:
 
-- `MAIN` lÃ  PT chÃ­nh theo báº£ng giÃ¡ chuáº©n cá»§a phÃ²ng; hiá»‡n lÃ  chá»§ phÃ²ng.
-- `NEW` lÃ  PT má»›i/há»c viá»‡c, gÃ³i bÃ¡n báº±ng khoáº£ng 65% giÃ¡ PT chÃ­nh; hiá»‡n lÃ  Kiá»‡t.
-- `teaching_rate` máº·c Ä‘á»‹nh cÃ³ thá»ƒ lÃ  `0.30` theo cÃ´ng thá»©c lÆ°Æ¡ng dáº¡y Ä‘Ã£ chá»‘t.
-- `sales_commission_rate` máº·c Ä‘á»‹nh cÃ³ thá»ƒ lÃ  `0.10` theo cÃ´ng thá»©c hoa há»“ng sale Ä‘Ã£ chá»‘t.
+- `MAIN` là PT chính theo bảng giá chuẩn của phòng; hiện là chủ phòng.
+- `NEW` là PT mới/học việc, gói bán bằng khoảng 65% giá PT chính; hiện là Kiệt.
+- `teaching_rate` mặc định có thể là `0.30` theo công thức lương dạy đã chốt.
+- `sales_commission_rate` mặc định có thể là `0.10` theo công thức hoa hồng sale đã chốt.
 
 ### 8.2 `pt_assignments`
 
-GÃ¡n PT phá»¥ trÃ¡ch khÃ¡ch.
+Gán PT phụ trách khách.
 
 ```text
 pt_assignments
@@ -453,7 +453,7 @@ Enum/code:
 
 ### 8.3 `pt_schedules`
 
-Sá»‘ hÃ³a báº£ng `Lá»ŠCH Dáº Y TUáº¦N`.
+Số hóa bảng `LỊCH DẠY TUẦN`.
 
 ```text
 pt_schedules
@@ -474,16 +474,16 @@ Enum/code:
 
 - `ScheduleStatus`: SCHEDULED, COMPLETED, CANCELLED, MISSED, RESCHEDULED.
 
-Ghi chÃº:
+Ghi chú:
 
-- Excel hiá»ƒn thá»‹ dáº¡ng ma tráº­n giá» x thá»©.
-- Database lÆ°u má»—i lá»‹ch lÃ  má»™t dÃ²ng.
+- Excel hiển thị dạng ma trận giờ x thứ.
+- Database lưu mỗi lịch là một dòng.
 
-## 9. PT session, check-in vÃ  hoáº¡t Ä‘á»™ng
+## 9. PT session, check-in và hoạt động
 
 ### 9.1 `pt_session_packages`
 
-Theo dÃµi gÃ³i PT theo sá»‘ buá»•i.
+Theo dõi gói PT theo số buổi.
 
 ```text
 pt_session_packages
@@ -508,15 +508,15 @@ Enum/code:
 
 - `SessionPackageStatus`: ACTIVE, COMPLETED, CANCELLED, EXPIRED.
 
-Ghi chÃº:
+Ghi chú:
 
-- GÃ³i PT hiá»‡n táº¡i cÃ³ 3 máº«u chÃ­nh: `20 PT + 20 Ã”n táº­p`, `40 PT + 40 Ã”n táº­p`, `60 PT + 60 Ã”n táº­p`.
-- LÆ°Æ¡ng dáº¡y PT chá»‰ tÃ­nh theo `used_pt_sessions`, khÃ´ng tÃ­nh `used_practice_sessions`.
-- Phiáº¿u `CHECK IN` 24 dÃ²ng chá»‰ lÃ  máº«u in sáºµn, khÃ´ng dÃ¹ng Ä‘á»ƒ cá»‘ Ä‘á»‹nh sá»‘ buá»•i trong database.
+- Gói PT hiện tại có 3 mẫu chính: `20 PT + 20 Ôn tập`, `40 PT + 40 Ôn tập`, `60 PT + 60 Ôn tập`.
+- Lương dạy PT chỉ tính theo `used_pt_sessions`, không tính `used_practice_sessions`.
+- Phiếu `CHECK IN` 24 dòng chỉ là mẫu in sẵn, không dùng để cố định số buổi trong database.
 
 ### 9.2 `pt_session_logs`
 
-Ghi nháº­n tá»«ng buá»•i PT.
+Ghi nhận từng buổi PT.
 
 ```text
 pt_session_logs
@@ -540,15 +540,15 @@ Enum/code:
 
 - `PtSessionStatus`: COMPLETED, CANCELLED, MISSED, RESCHEDULED.
 
-Mapping tá»« phiáº¿u `CHECK IN`:
+Mapping từ phiếu `CHECK IN`:
 
-- Táº­p PT ngÃ y -> `session_date`.
-- Táº­p PT cÃ¢n náº·ng -> `weight`.
+- Tập PT ngày -> `session_date`.
+- Tập PT cân nặng -> `weight`.
 - STT -> `session_number`.
 
 ### 9.3 `member_activity_logs`
 
-DÃ¹ng cho buá»•i Ã”n táº­p Ä‘i kÃ¨m gÃ³i PT vÃ  check-in GiÃ¡o Ã¡n/HÆ°á»›ng Dáº«n.
+Dùng cho buổi Ôn tập đi kèm gói PT và check-in Giáo án/Hướng Dẫn.
 
 ```text
 member_activity_logs
@@ -569,22 +569,22 @@ Enum/code:
 
 - `ActivityType`: PRACTICE, GUIDANCE_CHECKIN.
 
-Ghi chÃº:
+Ghi chú:
 
-- Báº£ng nÃ y pháº£n Ã¡nh cá»™t `Ã”n táº­p` trong phiáº¿u check-in.
-- KhÃ¡ch GiÃ¡o Ã¡n/HÆ°á»›ng Dáº«n cÅ©ng check-in táº¡i Ä‘Ã¢y vá»›i `activity_type = GUIDANCE_CHECKIN`.
-- KhÃ¡ch tá»± táº­p khÃ´ng check-in, nÃªn khÃ´ng sinh dá»¯ liá»‡u á»Ÿ báº£ng nÃ y.
-- `membership_id` giÃºp tÃ­nh sá»‘ buá»•i GiÃ¡o Ã¡n Ä‘Ã£ dÃ¹ng/cÃ²n láº¡i theo Ä‘Ãºng gÃ³i 30, 60, 90.
-- `session_package_id` nullable, dÃ¹ng khi log lÃ  buá»•i Ã”n táº­p Ä‘i kÃ¨m má»™t gÃ³i PT cá»¥ thá»ƒ.
-- Vá»›i `PRACTICE`, há»‡ thá»‘ng cáº­p nháº­t `used_practice_sessions/remaining_practice_sessions` trÃªn `pt_session_packages`.
-- Vá»›i `GUIDANCE_CHECKIN`, há»‡ thá»‘ng tÃ­nh sá»‘ buá»•i Ä‘Ã£ dÃ¹ng báº±ng sá»‘ log theo `membership_id`.
-- Náº¿u cáº§n MVP gá»n hÆ¡n, cÃ³ thá»ƒ táº¡m hoÃ£n UI nhÆ°ng váº«n nÃªn giá»¯ trong thiáº¿t káº¿.
+- Bảng này phản ánh cột `Ôn tập` trong phiếu check-in.
+- Khách Giáo án/Hướng Dẫn cũng check-in tại đây với `activity_type = GUIDANCE_CHECKIN`.
+- Khách tự tập không check-in, nên không sinh dữ liệu ở bảng này.
+- `membership_id` giúp tính số buổi Giáo án đã dùng/còn lại theo đúng gói 30, 60, 90.
+- `session_package_id` nullable, dùng khi log là buổi Ôn tập đi kèm một gói PT cụ thể.
+- Với `PRACTICE`, hệ thống cập nhật `used_practice_sessions/remaining_practice_sessions` trên `pt_session_packages`.
+- Với `GUIDANCE_CHECKIN`, hệ thống tính số buổi đã dùng bằng số log theo `membership_id`.
+- Nếu cần MVP gọn hơn, có thể tạm hoãn UI nhưng vẫn nên giữ trong thiết kế.
 
-## 10. Chá»‰ sá»‘ cÆ¡ thá»ƒ
+## 10. Chỉ số cơ thể
 
 ### 10.1 `body_measurements`
 
-Sá»‘ hÃ³a phiáº¿u `THEO DÃ•I KHÃCH HÃ€NG`.
+Số hóa phiếu `THEO DÕI KHÁCH HÀNG`.
 
 ```text
 body_measurements
@@ -607,19 +607,19 @@ body_measurements
 Mapping:
 
 - Cao -> `height`.
-- Náº·ng -> `weight`.
+- Nặng -> `weight`.
 - V1 -> `chest`.
 - Eo -> `waist`.
-- Bá»¥ng -> `abdomen`.
+- Bụng -> `abdomen`.
 - V3 -> `hip`.
-- ÄÃ¹i -> `thigh`.
+- Đùi -> `thigh`.
 - Tay -> `arm`.
 
-## 11. Má»¥c tiÃªu vÃ  chÆ°Æ¡ng trÃ¬nh táº­p
+## 11. Mục tiêu và chương trình tập
 
 ### 11.1 `pt_goals`
 
-LÆ°u má»¥c tiÃªu ban Ä‘áº§u cá»§a khÃ¡ch PT/chÆ°Æ¡ng trÃ¬nh.
+Lưu mục tiêu ban đầu của khách PT/chương trình.
 
 ```text
 pt_goals
@@ -643,19 +643,19 @@ Enum/code:
 
 - `GoalType`: FAT_LOSS, MUSCLE_GAIN, STRENGTH, FITNESS, HEALTH, OTHER.
 
-### 11.2 Training Program theo tuáº§n
+### 11.2 Training Program theo tuần
 
-KhÃ´ng triá»ƒn khai trong Sprint 5.
+Không triển khai trong Sprint 5.
 
-LÃ½ do:
+Lý do:
 
-- Chá»§ phÃ²ng hiá»‡n khÃ´ng cáº§n quáº£n lÃ½ khÃ³a há»c/giÃ¡o Ã¡n theo tuáº§n trÃªn web.
-- PT/chá»§ phÃ²ng khÃ´ng cÃ³ thá»i gian nháº­p chi tiáº¿t tá»«ng tuáº§n nhÆ° LMS.
-- Tiáº¿n Ä‘á»™ PT hiá»‡n Ä‘Ã£ Ä‘á»§ dá»¯ liá»‡u cá»‘t lÃµi qua `pt_session_logs`, `member_activity_logs`, `body_measurements` vÃ  `pt_goals`.
+- Chủ phòng hiện không cần quản lý khóa học/giáo án theo tuần trên web.
+- PT/chủ phòng không có thời gian nhập chi tiết từng tuần như LMS.
+- Tiến độ PT hiện đã đủ dữ liệu cốt lõi qua `pt_session_logs`, `member_activity_logs`, `body_measurements` và `pt_goals`.
 
-Phase sau chá»‰ má»Ÿ láº¡i náº¿u cÃ³ nhu cáº§u tháº­t vá» giÃ¡o Ã¡n cÃ¡ nhÃ¢n hÃ³a theo tuáº§n cho tá»«ng khÃ¡ch PT.
+Phase sau chỉ mở lại nếu có nhu cầu thật về giáo án cá nhân hóa theo tuần cho từng khách PT.
 
-## 12. ThÆ° viá»‡n bÃ i táº­p/video TikTok public
+## 12. Thư viện bài tập/video TikTok public
 
 ### 12.1 `exercise_categories`
 
@@ -674,7 +674,7 @@ exercise_categories
 
 ### 12.2 `exercises`
 
-Má»—i dÃ²ng lÃ  má»™t bÃ i táº­p/chá»§ Ä‘á» hÆ°á»›ng dáº«n cÃ³ thá»ƒ gáº¯n má»™t video TikTok chÃ­nh.
+Mỗi dòng là một bài tập/chủ đề hướng dẫn có thể gắn một video TikTok chính.
 
 ```text
 exercises
@@ -704,20 +704,20 @@ Enum/code:
 
 - `ExerciseLevel`: BEGINNER, INTERMEDIATE, ADVANCED.
 
-NguyÃªn táº¯c:
+Nguyên tắc:
 
-- Sprint 5 chá»‰ dÃ¹ng TikTok, khÃ´ng há»— trá»£ provider video khÃ¡c.
-- ThÆ° viá»‡n bÃ i táº­p lÃ  public; khÃ´ng dÃ¹ng `MEMBER_ONLY`/`PREMIUM` trong sprint nÃ y.
-- KhÃ´ng cáº§n báº£ng `exercise_media` trong Sprint 5 náº¿u má»—i bÃ i táº­p chá»‰ gáº¯n má»™t video TikTok chÃ­nh.
-- Náº¿u phase sau cáº§n nhiá»u áº£nh/video cho má»™t bÃ i táº­p, má»›i tÃ¡ch thÃªm báº£ng media riÃªng.
-- KhÃ´ng upload/stream video báº±ng VPS.
-- Frontend Æ°u tiÃªn TikTok embed; náº¿u embed bá»‹ cháº·n hoáº·c khÃ´ng táº£i Ä‘Æ°á»£c thÃ¬ hiá»ƒn thá»‹ thumbnail/nÃºt má»Ÿ TikTok.
+- Sprint 5 chỉ dùng TikTok, không hỗ trợ provider video khác.
+- Thư viện bài tập là public; không dùng `MEMBER_ONLY`/`PREMIUM` trong sprint này.
+- Không cần bảng `exercise_media` trong Sprint 5 nếu mỗi bài tập chỉ gắn một video TikTok chính.
+- Nếu phase sau cần nhiều ảnh/video cho một bài tập, mới tách thêm bảng media riêng.
+- Không upload/stream video bằng VPS.
+- Frontend ưu tiên TikTok embed; nếu embed bị chặn hoặc không tải được thì hiển thị thumbnail/nút mở TikTok.
 
-## 13. Má»¥c tiÃªu kinh doanh, notification vÃ  audit
+## 13. Mục tiêu kinh doanh, notification và audit
 
 ### 13.1 `business_goals`
 
-Sá»‘ hÃ³a báº£ng `Má»¤C TIÃŠU THÃNG`.
+Số hóa bảng `MỤC TIÊU THÁNG`.
 
 ```text
 business_goals
@@ -739,16 +739,16 @@ Enum/code:
 - `BusinessGoalCategory`: FINANCE, SELF_TRAINING_MEMBER, GUIDED_CUSTOMER, NEW_PT_CUSTOMER, MAIN_PT_CUSTOMER, OTHER.
 - `BusinessGoalMetric`: REVENUE, PROFIT, CUSTOMER_COUNT, NEW_CUSTOMER_COUNT, PT_CUSTOMER_COUNT.
 
-Mapping tá»« Excel `Má»¤C TIÃŠU THÃNG`:
+Mapping từ Excel `MỤC TIÊU THÁNG`:
 
-- TÃ i chÃ­nh / Doanh thu -> category FINANCE, metric REVENUE.
-- TÃ i chÃ­nh / Lá»£i nhuáº­n -> category FINANCE, metric PROFIT.
-- Sá»‘ khÃ¡ch Member / KhÃ¡ch tá»± táº­p -> category SELF_TRAINING_MEMBER.
-- KhÃ¡ch HÆ°á»›ng Dáº«n/GiÃ¡o Ã¡n -> category GUIDED_CUSTOMER.
-- KhÃ¡ch PT Má»›i -> category NEW_PT_CUSTOMER, tÃ­nh tá»« gÃ³i PT cÃ³ `pt_level = NEW`.
-- KhÃ¡ch PT ChÃ­nh -> category MAIN_PT_CUSTOMER, tÃ­nh tá»« gÃ³i PT cÃ³ `pt_level = MAIN`.
+- Tài chính / Doanh thu -> category FINANCE, metric REVENUE.
+- Tài chính / Lợi nhuận -> category FINANCE, metric PROFIT.
+- Số khách Member / Khách tự tập -> category SELF_TRAINING_MEMBER.
+- Khách Hướng Dẫn/Giáo án -> category GUIDED_CUSTOMER.
+- Khách PT Mới -> category NEW_PT_CUSTOMER, tính từ gói PT có `pt_level = NEW`.
+- Khách PT Chính -> category MAIN_PT_CUSTOMER, tính từ gói PT có `pt_level = MAIN`.
 
-KhÃ¡ch HÆ°á»›ng Dáº«n lÃ  khÃ¡ch mua giÃ¡o Ã¡n sau giai Ä‘oáº¡n táº­p PT; nhÃ³m nÃ y cÃ³ thá»ƒ check-in theo gÃ³i 30, 60, 90 buá»•i.
+Khách Hướng Dẫn là khách mua giáo án sau giai đoạn tập PT; nhóm này có thể check-in theo gói 30, 60, 90 buổi.
 
 ### 13.2 `notifications`
 
@@ -786,14 +786,14 @@ audit_logs
   created_at
 ```
 
-Cáº§n log:
+Cần log:
 
-- Táº¡o/sá»­a member.
-- Gia háº¡n gÃ³i.
-- Ghi nháº­n/sá»­a thanh toÃ¡n.
-- Ghi nháº­n/sá»­a chi phÃ­.
-- Sá»­a buá»•i PT.
-- Sá»­a dá»¯ liá»‡u lÆ°Æ¡ng sau nÃ y.
+- Tạo/sửa member.
+- Gia hạn gói.
+- Ghi nhận/sửa thanh toán.
+- Ghi nhận/sửa chi phí.
+- Sửa buổi PT.
+- Sửa dữ liệu lương sau này.
 
 ### 13.4 `system_settings`
 
@@ -805,22 +805,22 @@ system_settings
   updated_at
 ```
 
-VÃ­ dá»¥:
+Ví dụ:
 
 - `membership.expiring_soon_days = 7`.
 - `notification.birthday_time = 06:00`.
 
-## 14. Báº£ng phase sau
+## 14. Bảng phase sau
 
-### Import dá»¯ liá»‡u cÅ©
+### Import dữ liệu cũ
 
 ```text
 member_import_batches
 ```
 
-Chá»‰ dÃ¹ng náº¿u phase sau muá»‘n nháº­p dá»¯ liá»‡u lá»‹ch sá»­. MVP hiá»‡n táº¡i khÃ´ng cáº§n import dá»¯ liá»‡u cÅ© vÃ¬ chá»§ phÃ²ng Ä‘Ã£ chá»‘t báº¯t Ä‘áº§u vá»›i dá»¯ liá»‡u má»›i.
+Chỉ dùng nếu phase sau muốn nhập dữ liệu lịch sử. MVP hiện tại không cần import dữ liệu cũ vì chủ phòng đã chốt bắt đầu với dữ liệu mới.
 
-Náº¿u import dá»¯ liá»‡u tÃ i chÃ­nh/khÃ¡ch/PT sau nÃ y, cÃ³ thá»ƒ má»Ÿ rá»™ng thÃªm:
+Nếu import dữ liệu tài chính/khách/PT sau này, có thể mở rộng thêm:
 
 ```text
 import_rows
@@ -832,9 +832,9 @@ import_rows
   error_message
 ```
 
-KhÃ´ng Ä‘Æ°a `member_import_batches` vÃ  `import_rows` vÃ o schema MVP náº¿u chÆ°a triá»ƒn khai import.
+Không đưa `member_import_batches` và `import_rows` vào schema MVP nếu chưa triển khai import.
 
-### Payroll/lÆ°Æ¡ng PT
+### Payroll/lương PT
 
 ```text
 salary_periods
@@ -842,21 +842,21 @@ salary_items
 commission_rules
 ```
 
-Mapping tá»« Excel `LÆ¯Æ NG PT`:
+Mapping từ Excel `LƯƠNG PT`:
 
-- LÆ°Æ¡ng cá»‘ Ä‘á»‹nh -> `salary_periods.base_salary`.
-- LÆ°Æ¡ng dáº¡y khÃ¡ch -> `salary_items` type TEACHING_COMMISSION.
-- LÆ°Æ¡ng sale -> `salary_items` type SALES_COMMISSION.
-- ThÆ°á»Ÿng -> `salary_items` type BONUS.
-- Pháº¡t -> `salary_items` type PENALTY.
+- Lương cố định -> `salary_periods.base_salary`.
+- Lương dạy khách -> `salary_items` type TEACHING_COMMISSION.
+- Lương sale -> `salary_items` type SALES_COMMISSION.
+- Thưởng -> `salary_items` type BONUS.
+- Phạt -> `salary_items` type PENALTY.
 
-Quy táº¯c Ä‘Ã£ chá»‘t Ä‘á»ƒ triá»ƒn khai á»Ÿ phase sau:
+Quy tắc đã chốt để triển khai ở phase sau:
 
-- LÆ°Æ¡ng dáº¡y PT chá»‰ tÃ­nh trÃªn sá»‘ buá»•i PT thá»±c dáº¡y, láº¥y tá»« `pt_session_logs`.
-- KhÃ´ng tÃ­nh lÆ°Æ¡ng dáº¡y cho buá»•i Ã”n táº­p vÃ¬ Ä‘Ã¢y lÃ  buá»•i khÃ¡ch tá»± táº­p láº¡i.
-- CÃ´ng thá»©c lÆ°Æ¡ng dáº¡y: `sá»‘ buá»•i PT Ä‘Ã£ dáº¡y * 30% * (giÃ¡ gÃ³i / tá»•ng sá»‘ buá»•i PT cá»§a gÃ³i)`.
-- Hoa há»“ng sale: `10% * sá»‘ tiá»n khÃ¡ch Ä‘Ã£ thanh toÃ¡n`.
-- Náº¿u khÃ¡ch thanh toÃ¡n nhiá»u Ä‘á»£t, hoa há»“ng sale phÃ¡t sinh theo sá»‘ tiá»n thá»±c nháº­n tá»«ng Ä‘á»£t.
+- Lương dạy PT chỉ tính trên số buổi PT thực dạy, lấy từ `pt_session_logs`.
+- Không tính lương dạy cho buổi Ôn tập vì đây là buổi khách tự tập lại.
+- Công thức lương dạy: `số buổi PT đã dạy * 30% * (giá gói / tổng số buổi PT của gói)`.
+- Hoa hồng sale: `10% * số tiền khách đã thanh toán`.
+- Nếu khách thanh toán nhiều đợt, hoa hồng sale phát sinh theo số tiền thực nhận từng đợt.
 
 ### AI/Analytics
 
@@ -865,16 +865,16 @@ customer_ai_scores
 ai_score_runs
 ```
 
-DÃ¹ng cho:
+Dùng cho:
 
 - PT Progress.
 - PT Drop-off Risk.
 - Renewal Risk.
 - Customer Segment.
 
-## 15. Báº£ng nÃ o lÃ  dá»¯ liá»‡u nguá»“n, báº£ng nÃ o lÃ  bÃ¡o cÃ¡o?
+## 15. Bảng nào là dữ liệu nguồn, bảng nào là báo cáo?
 
-### Dá»¯ liá»‡u nguá»“n cáº§n lÆ°u
+### Dữ liệu nguồn cần lưu
 
 - `members`.
 - `membership_plans`.
@@ -889,19 +889,19 @@ DÃ¹ng cho:
 - `exercise_categories`.
 - `exercises`.
 
-### BÃ¡o cÃ¡o nÃªn tá»± tÃ­nh
+### Báo cáo nên tự tính
 
-- Tá»•ng thu ngÃ y/thÃ¡ng/nÄƒm.
-- Tá»•ng chi ngÃ y/thÃ¡ng/nÄƒm.
-- Lá»£i nhuáº­n.
-- TÃ i chÃ­nh nÄƒm.
-- Sá»‘ khÃ¡ch má»›i/cÅ©.
-- Sá»‘ khÃ¡ch tÃ¡i tá»¥c/gia háº¡n theo thÃ¡ng.
-- KhÃ¡ch sáº¯p háº¿t háº¡n.
-- % hoÃ n thÃ nh má»¥c tiÃªu thÃ¡ng.
-- Báº£ng lÆ°Æ¡ng PT cuá»‘i thÃ¡ng.
+- Tổng thu ngày/tháng/năm.
+- Tổng chi ngày/tháng/năm.
+- Lợi nhuận.
+- Tài chính nĒm.
+- Số khách mới/cũ.
+- Số khách tái tục/gia hạn theo tháng.
+- Khách sắp hết hạn.
+- % hoàn thành mục tiêu tháng.
+- Bảng lương PT cuối tháng.
 
-## 16. Index quan trá»ng
+## 16. Index quan trọng
 
 ```text
 users.phone
@@ -930,25 +930,25 @@ notifications.recipient_user_id
 notifications.status
 ```
 
-## 17. RÃ ng buá»™c dá»¯ liá»‡u
+## 17. Ràng buộc dữ liệu
 
-- GÃ³i Ä‘Ã£ tá»«ng bÃ¡n khÃ´ng xÃ³a cá»©ng, chá»‰ inactive.
-- Thanh toÃ¡n Ä‘Ã£ ghi nháº­n khÃ´ng xÃ³a cá»©ng tÃ¹y tiá»‡n.
-- Sá»­a dá»¯ liá»‡u tÃ i chÃ­nh pháº£i cÃ³ audit log.
-- Gia háº¡n táº¡o dÃ²ng má»›i trong `member_memberships`.
-- PT chá»‰ xem khÃ¡ch Ä‘Æ°á»£c phÃ¢n cÃ´ng.
-- MEMBER chá»‰ xem dá»¯ liá»‡u cá»§a mÃ¬nh.
-- BÃ¡o cÃ¡o tÃ i chÃ­nh sinh tá»« transaction, khÃ´ng nháº­p tay báº£ng tá»•ng.
+- Gói đã từng bán không xóa cứng, chỉ inactive.
+- Thanh toán đã ghi nhận không xóa cứng tùy tiện.
+- Sửa dữ liệu tài chính phải có audit log.
+- Gia hạn tạo dòng mới trong `member_memberships`.
+- PT chỉ xem khách được phân công.
+- MEMBER chỉ xem dữ liệu của mình.
+- Báo cáo tài chính sinh từ transaction, không nhập tay bảng tổng.
 
-## 18. Káº¿t luáº­n
+## 18. Kết luận
 
-Thiáº¿t káº¿ nÃ y lÃ  báº£n tá»‘i Æ°u tá»‘i thiá»ƒu nhÆ°ng Ä‘á»§ Ã½ nghÄ©a nghiá»‡p vá»¥:
+Thiết kế này là bản tối ưu tối thiểu nhưng đủ ý nghĩa nghiệp vụ:
 
-- KhÃ´ng quÃ¡ nhiá»u báº£ng dÆ°.
-- KhÃ´ng lÆ°á»£c bá» PT tracking, body measurement, check-in, thÆ° viá»‡n bÃ i táº­p/video TikTok public vÃ  finance.
-- Giá»¯ Ä‘Ãºng cÃ¡c nhu cáº§u chá»§ phÃ²ng Ä‘ang lÃ m báº±ng Excel/phiáº¿u giáº¥y.
-- CÃ³ thá»ƒ triá»ƒn khai MVP theo tá»«ng sprint.
-- CÃ³ Ä‘Æ°á»ng má»Ÿ rá»™ng sang payroll, import Excel vÃ  AI sau nÃ y.
+- Không quá nhiều bảng dư.
+- Không lược bỏ PT tracking, body measurement, check-in, thư viện bài tập/video TikTok public và finance.
+- Giữ đúng các nhu cầu chủ phòng đang làm bằng Excel/phiếu giấy.
+- Có thể triển khai MVP theo từng sprint.
+- Có đường mở rộng sang payroll, import Excel và AI sau này.
 
 ## 19. Cập nhật theo implementation hiện tại
 

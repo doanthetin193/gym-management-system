@@ -1,30 +1,30 @@
 ﻿# 08 - Review Sprint 1 Backend
 
-NgÃ y chá»‘t: 22/09/2026
+Ngày chốt: 22/09/2026
 
-## 1. Pháº¡m vi Ä‘Ã£ hoÃ n thÃ nh
+## 1. Phạm vi đã hoàn thành
 
-Sprint 1 backend Ä‘Ã£ hoÃ n thÃ nh pháº§n ná»n táº£ng Ä‘á»ƒ há»‡ thá»‘ng cÃ³ thá»ƒ cháº¡y API end-to-end vá»›i PostgreSQL local.
+Sprint 1 backend đã hoàn thành phần nền tảng để hệ thống có thể chạy API end-to-end với PostgreSQL local.
 
-CÃ¡c pháº§n chÃ­nh Ä‘Ã£ cÃ³:
+Các phần chính đã có:
 
-- Chuáº©n hÃ³a response API báº±ng `ApiResponse` vÃ  `ApiError`.
-- Xá»­ lÃ½ lá»—i táº­p trung báº±ng `GlobalExceptionHandler`.
-- Authentication báº±ng email/password.
+- Chuẩn hóa response API bằng `ApiResponse` và `ApiError`.
+- Xử lý lỗi tập trung bằng `GlobalExceptionHandler`.
+- Authentication bằng email/password.
 - JWT access token.
 - Spring Security stateless.
-- RBAC cÆ¡ báº£n vá»›i role `OWNER`, `PT`, `MEMBER`.
-- Seed dá»¯ liá»‡u ná»n táº£ng: roles, tÃ i khoáº£n OWNER, danh má»¥c tÃ i chÃ­nh, system settings.
-- API quáº£n lÃ½ gÃ³i táº­p.
-- API quáº£n lÃ½ há»™i viÃªn.
-- API Ä‘Äƒng kÃ½ gÃ³i cho há»™i viÃªn.
-- Tá»± sinh cÃ´ng ná»£ khi há»™i viÃªn Ä‘Äƒng kÃ½ gÃ³i.
-- API ghi nháº­n thanh toÃ¡n.
-- Äá»“ng bá»™ `paidAmount` vÃ  `debtAmount` sau thanh toÃ¡n.
-- Tá»± táº¡o financial transaction khi ghi nháº­n payment.
-- Ká»‹ch báº£n kiá»ƒm thá»­ thá»§ cÃ´ng báº±ng `backend/http/sprint1.http`.
+- RBAC cơ bản với role `OWNER`, `PT`, `MEMBER`.
+- Seed dữ liệu nền tảng: roles, tài khoản OWNER, danh mục tài chính, system settings.
+- API quản lý gói tập.
+- API quản lý hội viên.
+- API đăng ký gói cho hội viên.
+- Tự sinh công nợ khi hội viên đăng ký gói.
+- API ghi nhận thanh toán.
+- Đồng bộ `paidAmount` và `debtAmount` sau thanh toán.
+- Tự tạo financial transaction khi ghi nhận payment.
+- Kịch bản kiểm thử thủ công bằng `backend/http/sprint1.http`.
 
-## 2. API hiá»‡n cÃ³
+## 2. API hiện có
 
 Base URL local:
 
@@ -61,85 +61,85 @@ Payment:
 
 - `POST /v1/payments`
 
-## 3. TÃ i khoáº£n test local
+## 3. Tài khoản test local
 
-TÃ i khoáº£n OWNER Ä‘Æ°á»£c seed khi cháº¡y backend:
+Tài khoản OWNER được seed khi chạy backend:
 
 ```text
 email: owner@gymduongdouble.local
 password: change_me
 ```
 
-Ghi chÃº báº£o máº­t:
+Ghi chú bảo mật:
 
-- `change_me` chá»‰ lÃ  máº­t kháº©u seed cho mÃ´i trÆ°á»ng local/dev.
-- Production báº¯t buá»™c override báº±ng biáº¿n mÃ´i trÆ°á»ng `OWNER_PASSWORD`.
-- `JWT_SECRET` production pháº£i dÃ¹ng chuá»—i bÃ­ máº­t Ä‘á»§ máº¡nh, khÃ´ng dÃ¹ng giÃ¡ trá»‹ dev.
+- `change_me` chỉ là mật khẩu seed cho môi trường local/dev.
+- Production bắt buộc override bằng biến môi trường `OWNER_PASSWORD`.
+- `JWT_SECRET` production phải dùng chuỗi bí mật đủ mạnh, không dùng giá trị dev.
 
-## 4. Káº¿t quáº£ kiá»ƒm thá»­
+## 4. Kết quả kiểm thử
 
-ÄÃ£ cháº¡y kiá»ƒm thá»­ API thá»±c táº¿ trÃªn server local:
+Đã chạy kiểm thử API thực tế trên server local:
 
 ```text
 ALL SPRINT 1 API TESTS PASSED: 36 checks
 ```
 
-CÃ¡c nhÃ³m Ä‘Ã£ test:
+Các nhóm đã test:
 
 - Health check.
-- Login Ä‘Ãºng.
-- Login sai máº­t kháº©u.
+- Login đúng.
+- Login sai mật khẩu.
 - Login Sai email.
-- Láº¥y thÃ´ng tin user hiá»‡n táº¡i.
-- Thiáº¿u token.
+- Lấy thông tin user hiện tại.
+- Thiếu token.
 - Token sai.
-- Táº¡o gÃ³i self-training.
-- Táº¡o gÃ³i giÃ¡o Ã¡n/hÆ°á»›ng dáº«n.
-- Táº¡o gÃ³i PT chÃ­nh.
-- GÃ³i inactive khÃ´ng xuáº¥t hiá»‡n trong danh sÃ¡ch active.
-- Táº¡o gÃ³i PT thiáº¿u `ptLevel` bá»‹ cháº·n.
-- Táº¡o há»™i viÃªn.
-- Cháº·n trÃ¹ng sá»‘ Ä‘iá»‡n thoáº¡i.
-- Xem chi tiáº¿t há»™i viÃªn.
-- TÃ¬m há»™i viÃªn theo tÃªn.
-- TÃ¬m há»™i viÃªn theo sá»‘ Ä‘iá»‡n thoáº¡i.
-- Há»™i viÃªn khÃ´ng tá»“n táº¡i tráº£ 404.
-- ÄÄƒng kÃ½ gÃ³i cho há»™i viÃªn.
-- Cháº·n Ä‘Äƒng kÃ½ gÃ³i inactive.
-- Cháº·n Ä‘Äƒng kÃ½ gÃ³i khÃ´ng tá»“n táº¡i.
-- Xem lá»‹ch sá»­ gÃ³i cá»§a há»™i viÃªn.
-- Thanh toÃ¡n Ä‘á»§ gÃ³i tá»± táº­p.
-- Thanh toÃ¡n má»™t pháº§n gÃ³i giÃ¡o Ã¡n.
-- Thanh toÃ¡n gÃ³i PT chÃ­nh.
-- Cháº·n thanh toÃ¡n khi membership khÃ´ng thuá»™c member.
-- Cháº·n payment amount báº±ng 0.
+- Tạo gói self-training.
+- Tạo gói giáo án/hướng dẫn.
+- Tạo gói PT chính.
+- Gói inactive không xuất hiện trong danh sách active.
+- Tạo gói PT thiếu `ptLevel` bị chặn.
+- Tạo hội viên.
+- Chặn trùng số điện thoại.
+- Xem chi tiết hội viên.
+- Tìm hội viên theo tên.
+- Tìm hội viên theo số điện thoại.
+- Hội viên không tồn tại trả 404.
+- Đăng ký gói cho hội viên.
+- Chặn đăng ký gói inactive.
+- Chặn đăng ký gói không tồn tại.
+- Xem lịch sử gói của hội viên.
+- Thanh toán đủ gói tự tập.
+- Thanh toán một phần gói giáo án.
+- Thanh toán gói PT chính.
+- Chặn thanh toán khi membership không thuộc member.
+- Chặn payment amount bằng 0.
 
-## 5. Nhá»¯ng Ä‘iá»ƒm Ä‘Ã£ Ä‘iá»u chá»‰nh trong quÃ¡ trÃ¬nh test
+## 5. Những điểm đã điều chỉnh trong quá trình test
 
-- Sá»­a seed OWNER Ä‘á»ƒ Hibernate khÃ´ng lá»—i khi merge quan há»‡ role.
-- Chuáº©n hÃ³a lá»—i login Sai email thÃ nh `401 BAD_CREDENTIALS`.
-- Cho phÃ©p tÃ¬m há»™i viÃªn theo cáº£ tÃªn vÃ  sá»‘ Ä‘iá»‡n thoáº¡i.
-- Set UTF-8 cho cÃ¡c response lá»—i security Ä‘á»ƒ Postman/curl khÃ´ng lá»—i dáº¥u tiáº¿ng Viá»‡t.
-- Bá»• sung `sprint1.http` thÃ nh ká»‹ch báº£n test Ä‘áº§y Ä‘á»§ hÆ¡n, khÃ´ng chá»‰ happy path.
+- Sửa seed OWNER để Hibernate không lỗi khi merge quan hệ role.
+- Chuẩn hóa lỗi login Sai email thành `401 BAD_CREDENTIALS`.
+- Cho phép tìm hội viên theo cả tên và số điện thoại.
+- Set UTF-8 cho các response lỗi security để Postman/curl không lỗi dấu tiếng Việt.
+- Bổ sung `sprint1.http` thành kịch bản test đầy đủ hơn, không chỉ happy path.
 
-## 6. Giá»›i háº¡n hiá»‡n táº¡i
+## 6. Giới hạn hiện tại
 
-- ChÆ°a cÃ³ frontend React.
-- ChÆ°a cÃ³ API cáº­p nháº­t há»™i viÃªn.
-- ChÆ°a cÃ³ API cáº­p nháº­t gÃ³i táº­p.
-- ChÆ°a cÃ³ API lá»c khÃ¡ch sáº¯p háº¿t háº¡n/háº¿t háº¡n.
-- ChÆ°a cÃ³ flow gia háº¡n riÃªng; hiá»‡n táº¡i Ä‘Äƒng kÃ½/gia háº¡n Ä‘Æ°á»£c biá»ƒu diá»…n báº±ng viá»‡c táº¡o thÃªm `member_memberships`.
-- ChÆ°a cÃ³ dashboard.
-- Flyway Ä‘Ã£ cÃ³ dependency nhÆ°ng dev profile Ä‘ang táº¯t Ä‘á»ƒ dÃ¹ng Hibernate `ddl-auto: update` trong giai Ä‘oáº¡n dá»±ng entity/API ban Ä‘áº§u.
+- Chưa có frontend React.
+- Chưa có API cập nhật hội viên.
+- Chưa có API cập nhật gói tập.
+- Chưa có API lọc khách sắp hết hạn/hết hạn.
+- Chưa có flow gia hạn riêng; hiện tại đăng ký/gia hạn được biểu diễn bằng việc tạo thêm `member_memberships`.
+- Chưa có dashboard.
+- Flyway đã có dependency nhưng dev profile đang tắt để dùng Hibernate `ddl-auto: update` trong giai đoạn dựng entity/API ban đầu.
 
-## 7. HÆ°á»›ng tiáº¿p theo
+## 7. Hướng tiếp theo
 
-Sau khi commit/push má»‘c nÃ y, bÆ°á»›c tiáº¿p theo nÃªn lÃ  Sprint 2 backend:
+Sau khi commit/push mốc này, bước tiếp theo nên là Sprint 2 backend:
 
-- HoÃ n thiá»‡n quáº£n lÃ½ há»™i viÃªn.
-- Bá»• sung cáº­p nháº­t thÃ´ng tin há»™i viÃªn.
-- Bá»• sung filter khÃ¡ch theo tráº¡ng thÃ¡i gÃ³i.
-- Bá»• sung danh sÃ¡ch khÃ¡ch sáº¯p háº¿t háº¡n/háº¿t háº¡n.
-- Chuáº©n hÃ³a flow gia háº¡n gÃ³i.
-- LÃ m rÃµ API phá»¥c vá»¥ mÃ n hÃ¬nh member list/member detail cá»§a frontend.
+- Hoàn thiện quản lý hội viên.
+- Bổ sung cập nhật thông tin hội viên.
+- Bổ sung filter khách theo trạng thái gói.
+- Bổ sung danh sách khách sắp hết hạn/hết hạn.
+- Chuẩn hóa flow gia hạn gói.
+- Làm rõ API phục vụ màn hình member list/member detail của frontend.
 
