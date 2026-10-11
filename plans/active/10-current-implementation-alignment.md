@@ -363,3 +363,38 @@ Các chỉnh sửa ngày 10/10/2026 chốt thêm lớp ổn định cho môi tr�
   - `frontend`: `npm run lint` pass.
   - `frontend`: `npm run build` pass, chỉ còn cảnh báo bundle size của Vite.
   - `git diff --check` pass, chỉ có warning line ending CRLF/LF trên Windows.
+
+## 16. Cập nhật hardening ngày 11/10/2026
+
+Các chỉnh sửa ngày 11/10/2026 tiếp tục chốt ổn định nghiệp vụ MVP sau khi rà soát logic toàn hệ thống:
+
+- Chuẩn hóa ngày hiệu lực gói:
+  - gói hội viên chỉ được xem là active khi `startDate <= today <= endDate`;
+  - danh sách hội viên, dashboard và portal hội viên không còn tính gói bắt đầu trong tương lai là đang active;
+  - API summary hội viên trả thêm `startDate` để frontend có đủ dữ liệu phân loại trạng thái.
+- Chuẩn hóa doanh thu khi bán/gia hạn gói:
+  - nếu có tiền trả trước mà không nhập ngày thu, hệ thống dùng ngày hiện tại theo `AppClock.today()`;
+  - không còn mặc định ngày thu bằng ngày bắt đầu gói, tránh doanh thu bị đẩy sang tháng tương lai khi gói được queue sau gói cũ.
+- Siết PT check-in và chống ghi trùng:
+  - không cho ghi buổi PT, buổi ôn tập hoặc buổi hướng dẫn trước ngày bắt đầu gói;
+  - ghi lịch có `scheduleId` vẫn dùng rule chống trùng theo lịch;
+  - ghi tay không qua lịch được chặn trùng theo gói/ngày hoặc số buổi để tránh double-submit làm trừ buổi nhiều lần;
+  - chỉ các trạng thái tiêu hao buổi (`COMPLETED`, `MISSED`) mới tham gia rule chống trùng/trừ buổi.
+- Siết tạo lịch PT:
+  - `POST /pt/schedules` luôn tạo lịch ở trạng thái `SCHEDULED`;
+  - client không còn được gửi trạng thái lịch khi tạo mới, tránh tạo trực tiếp lịch `COMPLETED`, `MISSED`, `CANCELLED` sai luồng.
+- Siết validation số liệu PT:
+  - `sessionNumber` phải lớn hơn 0;
+  - cân nặng, chỉ số cơ thể và mục tiêu cơ thể nếu nhập phải lớn hơn 0;
+  - frontend thêm `min="0.1"` cho các input số liên quan để giảm nhập sai từ UI, backend vẫn là lớp chặn chính.
+- Báo cáo member tháng:
+  - không tính gói `CANCELLED` vào khách mới, khách gia hạn/quay lại hoặc nhóm khách theo loại gói;
+  - lịch sử trước tháng cũng bỏ qua gói đã hủy khi xác định khách mới/gia hạn.
+- Seed dev:
+  - bỏ default seed credential khỏi annotation trong `DataInitializer`;
+  - mật khẩu demo member chuyển sang cấu hình `app.seed.demo.member-password` trong `application.yml`;
+  - prod profile vẫn tắt demo seed.
+- Kiểm tra sau cập nhật:
+  - `backend`: `.\mvnw.cmd test` pass.
+  - `frontend`: `npm run lint` pass.
+  - `frontend`: `npm run build` pass, chỉ còn cảnh báo bundle size của Vite.

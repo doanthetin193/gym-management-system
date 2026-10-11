@@ -19,6 +19,7 @@ public record MemberSummaryResponse(
     String currentPlanName,
     PlanType currentPlanType,
     MembershipStatus currentMembershipStatus,
+    LocalDate startDate,
     LocalDate endDate,
     Long daysUntilExpiration
 ) {
@@ -38,6 +39,7 @@ public record MemberSummaryResponse(
             membership == null ? null : membership.getPlan().getName(),
             membership == null ? null : membership.getPlan().getPlanType(),
             membership == null ? null : membership.getStatus(),
+            membership == null ? null : membership.getStartDate(),
             membership == null ? null : membership.getEndDate(),
             daysUntilExpiration
         );

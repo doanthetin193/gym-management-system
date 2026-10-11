@@ -156,20 +156,23 @@ public class MemberService {
     }
 
     private boolean isActiveMembership(MemberMembership membership, LocalDate today) {
-        return membership.getStatus() != MembershipStatus.CANCELLED && !membership.getEndDate().isBefore(today);
+        return membership.getStatus() != MembershipStatus.CANCELLED
+            && !membership.getStartDate().isAfter(today)
+            && !membership.getEndDate().isBefore(today);
     }
 
     private boolean matchesFilter(MemberSummaryResponse summary, MemberListFilter filter, LocalDate today) {
         if (filter == MemberListFilter.ALL) {
             return true;
         }
-        if (summary.endDate() == null) {
+        if (summary.startDate() == null || summary.endDate() == null) {
             return false;
         }
 
         return switch (filter) {
-            case ACTIVE -> !summary.endDate().isBefore(today);
-            case EXPIRING_SOON -> !summary.endDate().isBefore(today)
+            case ACTIVE -> !summary.startDate().isAfter(today) && !summary.endDate().isBefore(today);
+            case EXPIRING_SOON -> !summary.startDate().isAfter(today)
+                && !summary.endDate().isBefore(today)
                 && !summary.endDate().isAfter(today.plusDays(EXPIRING_SOON_DAYS));
             case EXPIRED -> summary.endDate().isBefore(today);
             case ALL -> true;

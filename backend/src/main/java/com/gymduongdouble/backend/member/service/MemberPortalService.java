@@ -94,6 +94,8 @@ public class MemberPortalService {
     }
 
     private boolean isActiveMembership(MemberMembership membership, LocalDate today) {
-        return membership.getStatus() != MembershipStatus.CANCELLED && !membership.getEndDate().isBefore(today);
+        return membership.getStatus() != MembershipStatus.CANCELLED
+            && !membership.getStartDate().isAfter(today)
+            && !membership.getEndDate().isBefore(today);
     }
 }

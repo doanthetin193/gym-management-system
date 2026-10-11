@@ -287,6 +287,25 @@ POST   /pt/members/{id}/body-measurements
 POST   /pt/members/{id}/goals
 ```
 
+Create PT schedule:
+
+```json
+{
+  "ptUserId": 2,
+  "memberId": 5,
+  "scheduleDate": "2026-10-12",
+  "startTime": "17:00",
+  "endTime": "18:00",
+  "note": "Buổi thân trên"
+}
+```
+
+Quy tắc:
+
+- Lịch mới luôn được tạo với trạng thái `SCHEDULED`.
+- Client không gửi `status` khi tạo lịch mới.
+- Backend chặn lịch trong quá khứ và chặn trùng khung giờ của cùng PT hoặc cùng học viên.
+
 Create PT session:
 
 ```json
@@ -320,6 +339,9 @@ Quy tắc:
 - `activityType = PRACTICE` dùng cho buổi Ôn tập đi kèm gói PT, nên truyền `sessionPackageId`.
 - `activityType = GUIDANCE_CHECKIN` dùng cho khách Giáo án/Hướng Dẫn, bắt buộc truyền `membershipId`, `sessionPackageId` có thể null.
 - Khách tự tập không dùng activity log.
+- `sessionNumber`, cân nặng, chỉ số cơ thể và mục tiêu cơ thể nếu nhập phải lớn hơn 0.
+- Không ghi được buổi PT/ôn tập/hướng dẫn trước ngày bắt đầu gói hoặc sau ngày hết hạn gói.
+- Ghi trùng cùng buổi/ngày bị chặn để tránh trừ buổi nhiều lần.
 
 Create body measurement:
 

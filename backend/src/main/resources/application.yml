@@ -51,6 +51,7 @@ app:
       phone: ${OWNER_PHONE:0965193907}
     demo:
       enabled: ${DEMO_SEED_ENABLED:true}
+      member-password: ${DEMO_MEMBER_PASSWORD:Member@2026}
   cors:
     allowed-origins:
       - http://localhost:5173

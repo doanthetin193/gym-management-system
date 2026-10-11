@@ -110,20 +110,23 @@ public class DataInitializer implements ApplicationRunner {
     private final BusinessGoalRepository businessGoalRepository;
     private final PasswordEncoder passwordEncoder;
 
-    @Value("${app.seed.owner.email:owner@gymduongdouble.local}")
+    @Value("${app.seed.owner.email}")
     private String ownerEmail;
 
-    @Value("${app.seed.owner.password:ChangeMe@2026}")
+    @Value("${app.seed.owner.password}")
     private String ownerPassword;
 
-    @Value("${app.seed.owner.full-name:Đoàn Thế Tín}")
+    @Value("${app.seed.owner.full-name}")
     private String ownerFullName;
 
-    @Value("${app.seed.owner.phone:0965193907}")
+    @Value("${app.seed.owner.phone}")
     private String ownerPhone;
 
-    @Value("${app.seed.demo.enabled:true}")
+    @Value("${app.seed.demo.enabled}")
     private boolean demoSeedEnabled;
+
+    @Value("${app.seed.demo.member-password}")
+    private String demoMemberPassword;
 
     @Override
     @Transactional
@@ -346,7 +349,7 @@ public class DataInitializer implements ApplicationRunner {
             User memberUser = userRepository.findByEmail("duy.member@gymduongdouble.local").orElseGet(() -> {
                 User user = new User();
                 user.setEmail("duy.member@gymduongdouble.local");
-                user.setPasswordHash(passwordEncoder.encode("Member@2026"));
+                user.setPasswordHash(passwordEncoder.encode(demoMemberPassword));
                 return user;
             });
             memberUser.setFullName(member.getFullName());

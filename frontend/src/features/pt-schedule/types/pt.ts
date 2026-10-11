@@ -68,7 +68,6 @@ export type PtSchedulePayload = {
   scheduleDate: string
   startTime: string
   endTime?: string | null
-  status?: ScheduleStatus | null
   note?: string | null
 }
 

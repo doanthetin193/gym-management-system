@@ -51,6 +51,7 @@ export type MemberSummary = {
   currentPlanName: string | null
   currentPlanType: MembershipPlan['planType'] | null
   currentMembershipStatus: MembershipStatus | null
+  startDate: string | null
   endDate: string | null
   daysUntilExpiration: number | null
 }

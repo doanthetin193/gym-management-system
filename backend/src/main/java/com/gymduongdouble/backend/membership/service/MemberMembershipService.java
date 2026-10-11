@@ -13,6 +13,7 @@ import com.gymduongdouble.backend.common.enums.UserStatus;
 import com.gymduongdouble.backend.common.exception.BadRequestException;
 import com.gymduongdouble.backend.common.exception.ResourceNotFoundException;
 import com.gymduongdouble.backend.common.security.SecurityUtils;
+import com.gymduongdouble.backend.common.time.AppClock;
 import com.gymduongdouble.backend.finance.domain.DebtRecord;
 import com.gymduongdouble.backend.finance.domain.FinancialCategory;
 import com.gymduongdouble.backend.finance.domain.FinancialTransaction;
@@ -179,7 +180,7 @@ public class MemberMembershipService {
         payment.setMember(membership.getMember());
         payment.setMembership(membership);
         payment.setDebtRecord(debtRecord);
-        payment.setPaymentDate(request.initialPaymentDate() == null ? membership.getStartDate() : request.initialPaymentDate());
+        payment.setPaymentDate(request.initialPaymentDate() == null ? AppClock.today() : request.initialPaymentDate());
         payment.setAmount(amount);
         payment.setPaymentMethod(request.initialPaymentMethod() == null ? PaymentMethod.CASH : request.initialPaymentMethod());
         payment.setRevenueCategory(inferRevenueCategory(membership));

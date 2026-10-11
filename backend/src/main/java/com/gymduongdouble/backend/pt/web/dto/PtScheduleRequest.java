@@ -1,6 +1,5 @@
 package com.gymduongdouble.backend.pt.web.dto;
 
-import com.gymduongdouble.backend.common.enums.ScheduleStatus;
 import jakarta.validation.constraints.NotNull;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -18,7 +17,6 @@ public record PtScheduleRequest(
     LocalTime startTime,
 
     LocalTime endTime,
-    ScheduleStatus status,
     String note
 ) {
 }

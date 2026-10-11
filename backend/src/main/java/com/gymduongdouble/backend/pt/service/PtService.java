@@ -67,6 +67,11 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class PtService {
 
+    private static final List<PtSessionStatus> CONSUMING_PT_SESSION_STATUSES = List.of(
+        PtSessionStatus.COMPLETED,
+        PtSessionStatus.MISSED
+    );
+
     private final PtProfileRepository ptProfileRepository;
     private final PtAssignmentRepository ptAssignmentRepository;
     private final PtScheduleRepository ptScheduleRepository;
@@ -182,7 +187,7 @@ public class PtService {
         schedule.setScheduleDate(request.scheduleDate());
         schedule.setStartTime(request.startTime());
         schedule.setEndTime(request.endTime());
-        schedule.setStatus(request.status() == null ? ScheduleStatus.SCHEDULED : request.status());
+        schedule.setStatus(ScheduleStatus.SCHEDULED);
         schedule.setNote(request.note());
         schedule.setCreatedBy(currentUserEntityOrNull());
         return PtScheduleResponse.from(ptScheduleRepository.save(schedule));
@@ -258,6 +263,8 @@ public class PtService {
         if (schedule != null) {
             ensureScheduleCanBeLogged(schedule, sessionPackage, memberId, request.sessionDate());
         }
+        PtSessionStatus status = request.status() == null ? PtSessionStatus.COMPLETED : request.status();
+        ensureNoDuplicateSessionLog(sessionPackage, request, status);
         User ptUser = schedule != null
             ? schedule.getPtUser()
             : sessionPackage.getPtUser() == null ? currentPtUserOrNull() : sessionPackage.getPtUser();
@@ -270,7 +277,7 @@ public class PtService {
         log.setSessionDate(request.sessionDate());
         log.setSessionNumber(request.sessionNumber());
         log.setWeight(request.weight());
-        log.setStatus(request.status() == null ? PtSessionStatus.COMPLETED : request.status());
+        log.setStatus(status);
         log.setContent(request.content());
         log.setNote(request.note());
         log.setCreatedBy(currentUserEntityOrNull());
@@ -304,10 +311,12 @@ public class PtService {
         }
         if (request.activityType() == ActivityType.PRACTICE) {
             ensureUsableSessionPackage(sessionPackage, request.activityDate(), false);
+            ensureNoDuplicatePracticeLog(sessionPackage, request.activityDate());
             usePracticeSession(sessionPackage);
         }
         if (request.activityType() == ActivityType.GUIDANCE_CHECKIN) {
             ensureGuidanceMembershipCanBeLogged(membership, memberId, request.activityDate());
+            ensureNoDuplicateGuidanceLog(membership, request.activityDate());
         }
 
         MemberActivityLog log = new MemberActivityLog();
@@ -449,7 +458,7 @@ public class PtService {
     }
 
     private boolean shouldConsumePtSession(PtSessionStatus status) {
-        return status == PtSessionStatus.COMPLETED || status == PtSessionStatus.MISSED;
+        return CONSUMING_PT_SESSION_STATUSES.contains(status);
     }
 
     private ScheduleStatus scheduleStatusFor(PtSessionStatus status) {
@@ -467,6 +476,9 @@ public class PtService {
         }
         if (sessionPackage.getMembership().getStatus() == MembershipStatus.CANCELLED) {
             throw new BadRequestException("Lượt đăng ký gói PT đã bị hủy.");
+        }
+        if (activityDate.isBefore(sessionPackage.getStartDate())) {
+            throw new BadRequestException("Gói PT chưa đến ngày bắt đầu sử dụng.");
         }
         if (sessionPackage.getEndDate().isBefore(activityDate)) {
             throw new BadRequestException("Gói PT đã hết hạn sử dụng.");
@@ -486,7 +498,9 @@ public class PtService {
         if (membership.getPlan().getPlanType() != PlanType.GUIDANCE) {
             throw new BadRequestException("Chỉ gói hướng dẫn/trị liệu mới được ghi buổi hướng dẫn.");
         }
-        if (membership.getStatus() == MembershipStatus.CANCELLED || membership.getEndDate().isBefore(activityDate)) {
+        if (membership.getStatus() == MembershipStatus.CANCELLED
+            || activityDate.isBefore(membership.getStartDate())
+            || membership.getEndDate().isBefore(activityDate)) {
             throw new BadRequestException("Gói hướng dẫn/trị liệu đã hết hiệu lực.");
         }
         Integer totalGuidanceSessions = membership.getPlan().getGuidanceSessionCount();
@@ -495,6 +509,48 @@ public class PtService {
             if (used >= totalGuidanceSessions) {
                 throw new BadRequestException("Gói hướng dẫn/trị liệu đã dùng hết số buổi.");
             }
+        }
+    }
+
+    private void ensureNoDuplicateSessionLog(PtSessionPackage sessionPackage, PtSessionLogRequest request, PtSessionStatus status) {
+        if (request.scheduleId() != null || !shouldConsumePtSession(status)) {
+            return;
+        }
+        boolean duplicated = request.sessionNumber() != null
+            ? ptSessionLogRepository.existsBySessionPackageIdAndSessionNumberAndStatusIn(
+                sessionPackage.getId(),
+                request.sessionNumber(),
+                CONSUMING_PT_SESSION_STATUSES
+            )
+            : ptSessionLogRepository.existsBySessionPackageIdAndSessionDateAndStatusIn(
+                sessionPackage.getId(),
+                request.sessionDate(),
+                CONSUMING_PT_SESSION_STATUSES
+            );
+        if (duplicated) {
+            throw new BadRequestException("Buổi PT này đã được ghi nhận, không thể trừ buổi lần nữa.");
+        }
+    }
+
+    private void ensureNoDuplicatePracticeLog(PtSessionPackage sessionPackage, LocalDate activityDate) {
+        boolean duplicated = memberActivityLogRepository.existsBySessionPackageIdAndActivityDateAndActivityType(
+            sessionPackage.getId(),
+            activityDate,
+            ActivityType.PRACTICE
+        );
+        if (duplicated) {
+            throw new BadRequestException("Buổi ôn tập này đã được ghi nhận, không thể trừ buổi lần nữa.");
+        }
+    }
+
+    private void ensureNoDuplicateGuidanceLog(MemberMembership membership, LocalDate activityDate) {
+        boolean duplicated = memberActivityLogRepository.existsByMembershipIdAndActivityDateAndActivityType(
+            membership.getId(),
+            activityDate,
+            ActivityType.GUIDANCE_CHECKIN
+        );
+        if (duplicated) {
+            throw new BadRequestException("Buổi hướng dẫn/trị liệu này đã được ghi nhận.");
         }
     }
 

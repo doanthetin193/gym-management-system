@@ -2109,6 +2109,7 @@ function CheckinPanel({
             <label className="text-[11px] font-bold text-[var(--text-muted)] block mb-1">Cân nặng trước buổi tập (kg)</label>
             <input
               type="number"
+              min="0.1"
               step="0.1"
               value={sessionForm.weight}
               onChange={(e) => setSessionForm((c) => ({ ...c, weight: e.target.value }))}
@@ -2182,6 +2183,7 @@ function CheckinPanel({
             <label className="text-[11px] font-bold text-[var(--text-muted)] block mb-1">Cân nặng (kg)</label>
             <input
               type="number"
+              min="0.1"
               step="0.1"
               value={activityForm.weight}
               onChange={(e) => setActivityForm((c) => ({ ...c, weight: e.target.value }))}
@@ -2314,6 +2316,7 @@ function MeasurementPanel({
             <label className="text-[11px] font-bold text-[var(--text-muted)] block mb-1">Cân nặng (kg)</label>
             <input
               type="number"
+              min="0.1"
               step="0.1"
               value={form.weight}
               onChange={(e) => setForm((c) => ({ ...c, weight: e.target.value }))}
@@ -2325,6 +2328,7 @@ function MeasurementPanel({
             <label className="text-[11px] font-bold text-[var(--text-muted)] block mb-1">Vòng ngực (cm)</label>
             <input
               type="number"
+              min="0.1"
               step="0.1"
               value={form.chest}
               onChange={(e) => setForm((c) => ({ ...c, chest: e.target.value }))}
@@ -2339,6 +2343,7 @@ function MeasurementPanel({
             <label className="text-[11px] font-bold text-[var(--text-muted)] block mb-1">Vòng eo (cm)</label>
             <input
               type="number"
+              min="0.1"
               step="0.1"
               value={form.waist}
               onChange={(e) => setForm((c) => ({ ...c, waist: e.target.value }))}
@@ -2350,6 +2355,7 @@ function MeasurementPanel({
             <label className="text-[11px] font-bold text-[var(--text-muted)] block mb-1">Vòng bụng (cm)</label>
             <input
               type="number"
+              min="0.1"
               step="0.1"
               value={form.abdomen}
               onChange={(e) => setForm((c) => ({ ...c, abdomen: e.target.value }))}
@@ -2361,6 +2367,7 @@ function MeasurementPanel({
             <label className="text-[11px] font-bold text-[var(--text-muted)] block mb-1">Vòng mông (cm)</label>
             <input
               type="number"
+              min="0.1"
               step="0.1"
               value={form.hip}
               onChange={(e) => setForm((c) => ({ ...c, hip: e.target.value }))}
@@ -2372,6 +2379,7 @@ function MeasurementPanel({
             <label className="text-[11px] font-bold text-[var(--text-muted)] block mb-1">Bắp tay (cm)</label>
             <input
               type="number"
+              min="0.1"
               step="0.1"
               value={form.arm}
               onChange={(e) => setForm((c) => ({ ...c, arm: e.target.value }))}
@@ -2573,6 +2581,7 @@ function GoalPanel({
             <label className="text-[11px] font-bold text-[var(--text-muted)] block mb-1">Cân nặng mục tiêu (kg)</label>
             <input
               type="number"
+              min="0.1"
               step="0.1"
               value={form.targetWeight}
               onChange={(e) => setForm((c) => ({ ...c, targetWeight: e.target.value }))}
@@ -2584,6 +2593,7 @@ function GoalPanel({
             <label className="text-[11px] font-bold text-[var(--text-muted)] block mb-1">Vòng eo mục tiêu (cm)</label>
             <input
               type="number"
+              min="0.1"
               step="0.1"
               value={form.targetWaist}
               onChange={(e) => setForm((c) => ({ ...c, targetWaist: e.target.value }))}

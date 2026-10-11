@@ -132,6 +132,8 @@ OWNER là tài khoản toàn quyền. Chủ phòng phải quản lý được h�
   - Dữ liệu PT hiển thị đúng.
   - Chỉ số cơ thể dùng cho hội viên PT, không bắt buộc hội viên tự tập.
   - Khi có chỉ số mới, portal hội viên hiển thị biểu đồ và tiến độ mục tiêu.
+  - Không ghi được buổi PT/ôn tập/hướng dẫn trước ngày bắt đầu gói.
+  - Ghi trùng cùng buổi/ngày không làm số buổi bị trừ lần thứ hai.
 
 ### Kịch bản 10: Báo cáo
 
@@ -142,6 +144,8 @@ OWNER là tài khoản toàn quyền. Chủ phòng phải quản lý được h�
 - Kết quả mong đợi:
   - Biểu đồ hiển thị rõ.
   - Số liệu khớp tương đối với hội viên, thanh toán và công nợ hiện có.
+  - Gói đã hủy không được tính vào khách mới, khách gia hạn hoặc nhóm khách theo loại gói.
+  - Doanh thu trả trước khi bán/gia hạn gói được ghi theo ngày thu thực tế, không bị đẩy sang ngày bắt đầu gói tương lai.
   - Chức năng xuất file không lỗi.
 
 ### Kịch bản 11: Hồ sơ cá nhân và đổi mật khẩu
@@ -233,6 +237,8 @@ PT là người hỗ trợ vận hành tại phòng gym nhỏ: xem/tạo/sửa h
   - Log/chỉ số được lưu đúng.
   - Portal hội viên cập nhật biểu đồ/chỉ số mới.
   - Số buổi PT còn lại không bị trừ sai.
+  - Form/API từ chối số buổi, cân nặng hoặc chỉ số cơ thể nhỏ hơn hoặc bằng 0.
+  - Tạo lịch PT mới luôn là lịch đang chờ dạy (`SCHEDULED`), không tạo thẳng trạng thái đã hoàn tất/hủy.
 
 ## 3. Hội viên MEMBER
 

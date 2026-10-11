@@ -184,7 +184,9 @@ public class DashboardService {
         LocalDate start = period.atDay(1);
         LocalDate end = period.atEndOfMonth();
         LocalDate today = AppClock.today();
-        List<MemberMembership> monthMemberships = memberMembershipRepository.findByStartDateBetween(start, end);
+        List<MemberMembership> monthMemberships = memberMembershipRepository.findByStartDateBetween(start, end).stream()
+            .filter(membership -> membership.getStatus() != MembershipStatus.CANCELLED)
+            .toList();
 
         Set<Long> newMembers = new HashSet<>();
         Set<Long> renewedMembers = new HashSet<>();
@@ -347,11 +349,14 @@ public class DashboardService {
 
     private boolean hasMembershipBefore(Long memberId, LocalDate date) {
         return memberMembershipRepository.findByMemberIdOrderByStartDateDesc(memberId).stream()
+            .filter(membership -> membership.getStatus() != MembershipStatus.CANCELLED)
             .anyMatch(membership -> membership.getStartDate().isBefore(date));
     }
 
     private boolean isActiveMembership(MemberMembership membership, LocalDate today) {
-        return membership.getStatus() != MembershipStatus.CANCELLED && !membership.getEndDate().isBefore(today);
+        return membership.getStatus() != MembershipStatus.CANCELLED
+            && !membership.getStartDate().isAfter(today)
+            && !membership.getEndDate().isBefore(today);
     }
 
     private List<MemberMembership> currentMembershipsByMember() {
