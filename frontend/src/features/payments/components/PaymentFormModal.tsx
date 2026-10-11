@@ -34,10 +34,11 @@ export function PaymentFormModal({
   onClose,
   onSubmit,
 }: PaymentFormModalProps) {
+  const today = localIsoDate()
   const [debtRecordId, setDebtRecordId] = useState(selectedDebt?.id.toString() ?? debts[0]?.id.toString() ?? '')
   const [amount, setAmount] = useState((selectedDebt?.remainingAmount ?? debts[0]?.remainingAmount ?? 0).toString())
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CASH')
-  const [paymentDate, setPaymentDate] = useState(localIsoDate())
+  const [paymentDate, setPaymentDate] = useState(today)
   const [note, setNote] = useState('')
 
   const currentDebt = useMemo(
@@ -152,6 +153,7 @@ export function PaymentFormModal({
                     value={paymentDate}
                     onChange={(event) => setPaymentDate(event.target.value)}
                     type="date"
+                    max={today}
                     className="mt-1.5 h-10 w-full rounded-xl border border-[var(--line)] bg-[var(--input-bg)] px-3 text-xs font-semibold text-[var(--text-strong)] outline-none transition focus:border-amber-500"
                     required
                   />

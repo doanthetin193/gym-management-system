@@ -70,8 +70,8 @@ export function ProfilePage() {
       return
     }
 
-    if (newPassword.length < 6) {
-      setError('Mật khẩu mới phải có ít nhất 6 ký tự.')
+    if (newPassword.length < 8) {
+      setError('Mật khẩu mới phải có ít nhất 8 ký tự.')
       return
     }
 
@@ -233,8 +233,8 @@ export function ProfilePage() {
                     value={newPassword}
                     onChange={(event) => setNewPassword(event.target.value)}
                     className="h-10 w-full rounded-xl border border-[var(--line)] bg-[var(--input-bg)] pl-3 pr-10 text-xs sm:text-sm font-semibold outline-none focus:border-amber-400 transition-all placeholder:text-[var(--text-muted)]/50"
-                    placeholder="Tối thiểu 6 ký tự"
-                    minLength={6}
+                    placeholder="Tối thiểu 8 ký tự"
+                    minLength={8}
                     required
                   />
                   <button
@@ -259,7 +259,7 @@ export function ProfilePage() {
                     onChange={(event) => setConfirmPassword(event.target.value)}
                     className="h-10 w-full rounded-xl border border-[var(--line)] bg-[var(--input-bg)] pl-3 pr-10 text-xs sm:text-sm font-semibold outline-none focus:border-amber-400 transition-all placeholder:text-[var(--text-muted)]/50"
                     placeholder="Nhập lại mật khẩu mới"
-                    minLength={6}
+                    minLength={8}
                     required
                   />
                   <button

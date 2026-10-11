@@ -50,6 +50,7 @@ public class MemberAccessService {
     private boolean isActive(PtAssignment assignment) {
         LocalDate today = AppClock.today();
         return assignment.getStatus() == PtAssignmentStatus.ACTIVE
+            && (assignment.getStartDate() == null || !assignment.getStartDate().isAfter(today))
             && (assignment.getEndDate() == null || !assignment.getEndDate().isBefore(today));
     }
 }

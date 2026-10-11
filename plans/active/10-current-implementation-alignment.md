@@ -362,7 +362,6 @@ Các chỉnh sửa ngày 10/10/2026 chốt thêm lớp ổn định cho môi tr�
   - `backend`: `.\mvnw.cmd test` pass.
   - `frontend`: `npm run lint` pass.
   - `frontend`: `npm run build` pass, chỉ còn cảnh báo bundle size của Vite.
-  - `git diff --check` pass, chỉ có warning line ending CRLF/LF trên Windows.
 
 ## 16. Cập nhật hardening ngày 11/10/2026
 
@@ -398,3 +397,20 @@ Các chỉnh sửa ngày 11/10/2026 tiếp tục chốt ổn định nghiệp v�
   - `backend`: `.\mvnw.cmd test` pass.
   - `frontend`: `npm run lint` pass.
   - `frontend`: `npm run build` pass, chỉ còn cảnh báo bundle size của Vite.
+
+### Bổ sung chốt rà soát cuối ngày 11/10/2026
+
+- Thanh toán và doanh thu:
+  - frontend không còn gửi `initialPaymentDate` bằng ngày bắt đầu gói khi bán/gia hạn gói;
+  - backend chặn `paymentDate` và `initialPaymentDate` ở tương lai để tránh doanh thu bị ghi lệch tháng;
+  - form thu nợ giới hạn ngày lập phiếu không vượt quá ngày hiện tại.
+- Phân quyền PT:
+  - assignment PT chỉ được tính active khi đã tới ngày bắt đầu và chưa quá ngày kết thúc;
+  - PT không bị cấp quyền sớm với khách có assignment bắt đầu ở tương lai.
+- Đổi mật khẩu cá nhân:
+  - UI profile và member portal thống nhất rule mật khẩu mới tối thiểu 8 ký tự với backend.
+- Kiểm tra sau cập nhật:
+  - `backend`: `.\mvnw.cmd test` pass.
+  - `frontend`: `npm run lint` pass.
+  - `frontend`: `npm run build` pass, chỉ còn cảnh báo bundle size của Vite.
+  - `git diff --check` pass, chỉ có warning line ending CRLF/LF trên Windows.

@@ -93,8 +93,8 @@ export function MemberPortalPage() {
       setPasswordError('Mật khẩu mới và xác nhận mật khẩu không khớp.')
       return
     }
-    if (newPassword.length < 6) {
-      setPasswordError('Mật khẩu mới phải có tối thiểu 6 ký tự.')
+    if (newPassword.length < 8) {
+      setPasswordError('Mật khẩu mới phải có tối thiểu 8 ký tự.')
       return
     }
 
@@ -414,11 +414,12 @@ export function MemberPortalPage() {
 
               <div>
                 <label className="text-xs font-bold text-[var(--text-strong)] block mb-1">
-                  Mật khẩu mới (tối thiểu 6 ký tự) <span className="text-amber-400">*</span>
+                  Mật khẩu mới (tối thiểu 8 ký tự) <span className="text-amber-400">*</span>
                 </label>
                 <input
                   type="password"
                   required
+                  minLength={8}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   placeholder="Nhập mật khẩu mới..."
@@ -433,6 +434,7 @@ export function MemberPortalPage() {
                 <input
                   type="password"
                   required
+                  minLength={8}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="Nhập lại mật khẩu mới..."

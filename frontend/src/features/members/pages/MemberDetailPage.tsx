@@ -189,7 +189,6 @@ export function MemberDetailPage() {
         ...payload.membership,
         initialPaidAmount: payload.paidAmount,
         initialPaymentMethod: payload.paidAmount > 0 ? payload.paymentMethod : null,
-        initialPaymentDate: payload.membership.startDate,
         initialPaymentNote: payload.membership.note,
       })
       setMembershipModalOpen(false)

@@ -32,8 +32,8 @@ import com.gymduongdouble.backend.user.domain.User;
 import com.gymduongdouble.backend.user.repository.UserRepository;
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import lombok.RequiredArgsConstructor;
 import java.util.List;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -74,12 +74,13 @@ public class PaymentService {
         RevenueCategory revenueCategory = request.revenueCategory() == null
             ? inferRevenueCategory(membership)
             : request.revenueCategory();
+        LocalDate paymentDate = resolvePaymentDate(request.paymentDate());
 
         Payment payment = new Payment();
         payment.setMember(member);
         payment.setMembership(membership);
         payment.setDebtRecord(debtRecord);
-        payment.setPaymentDate(request.paymentDate() == null ? AppClock.today() : request.paymentDate());
+        payment.setPaymentDate(paymentDate);
         payment.setAmount(request.amount());
         payment.setPaymentMethod(request.paymentMethod());
         payment.setRevenueCategory(revenueCategory);
@@ -91,6 +92,14 @@ public class PaymentService {
         createIncomeTransaction(savedPayment, revenueCategory);
 
         return PaymentResponse.from(savedPayment);
+    }
+
+    private LocalDate resolvePaymentDate(LocalDate requestedDate) {
+        LocalDate paymentDate = requestedDate == null ? AppClock.today() : requestedDate;
+        if (paymentDate.isAfter(AppClock.today())) {
+            throw new BadRequestException("Ngày lập phiếu thu không được ở tương lai.");
+        }
+        return paymentDate;
     }
 
     @Transactional(readOnly = true)

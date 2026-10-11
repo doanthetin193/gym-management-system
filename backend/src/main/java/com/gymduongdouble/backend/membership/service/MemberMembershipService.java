@@ -175,12 +175,13 @@ public class MemberMembershipService {
         if (debtRecord == null) {
             throw new BadRequestException("Gói này không còn khoản cần thu.");
         }
+        LocalDate paymentDate = resolveInitialPaymentDate(request.initialPaymentDate());
 
         Payment payment = new Payment();
         payment.setMember(membership.getMember());
         payment.setMembership(membership);
         payment.setDebtRecord(debtRecord);
-        payment.setPaymentDate(request.initialPaymentDate() == null ? AppClock.today() : request.initialPaymentDate());
+        payment.setPaymentDate(paymentDate);
         payment.setAmount(amount);
         payment.setPaymentMethod(request.initialPaymentMethod() == null ? PaymentMethod.CASH : request.initialPaymentMethod());
         payment.setRevenueCategory(inferRevenueCategory(membership));
@@ -190,6 +191,14 @@ public class MemberMembershipService {
 
         syncDebtAndMembership(debtRecord, membership, amount);
         createIncomeTransaction(savedPayment);
+    }
+
+    private LocalDate resolveInitialPaymentDate(LocalDate requestedDate) {
+        LocalDate paymentDate = requestedDate == null ? AppClock.today() : requestedDate;
+        if (paymentDate.isAfter(AppClock.today())) {
+            throw new BadRequestException("Ngày thu tiền ban đầu không được ở tương lai.");
+        }
+        return paymentDate;
     }
 
     private void createPtPackageIfNeeded(MemberMembership membership, Long ptUserId) {
