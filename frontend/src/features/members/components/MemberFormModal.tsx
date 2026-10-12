@@ -1,6 +1,7 @@
 import { UserPlus, Users, X } from 'lucide-react'
 import { useState } from 'react'
 import type { FormEvent } from 'react'
+import { DatePartsSelect } from '../../../shared/components/DatePartsSelect'
 import type { Gender, MemberPayload, MemberProfile, MemberSource, MemberStatus } from '../types/member'
 
 type MemberFormModalProps = {
@@ -144,17 +145,16 @@ export function MemberFormModal({
               />
             </label>
 
-            <label className="block">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-gray-400">
-                Ngày sinh
-              </span>
-              <input
-                type="date"
-                value={form.dateOfBirth}
-                onChange={(event) => setForm((current) => ({ ...current, dateOfBirth: event.target.value }))}
-                className="mt-1.5 h-10 w-full rounded-xl border border-slate-200 bg-slate-50/70 px-3.5 text-xs md:text-sm font-semibold text-slate-900 outline-none transition focus:border-[#087ec1] focus:bg-white focus:ring-2 focus:ring-[#087ec1]/15 dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-[#ffcc08] dark:focus:bg-[#0c1017]"
-              />
-            </label>
+            <DatePartsSelect
+              label="Ngày sinh"
+              value={form.dateOfBirth}
+              onChange={(value) => setForm((current) => ({ ...current, dateOfBirth: value }))}
+              allowEmpty
+              yearBack={80}
+              yearForward={0}
+              labelClassName="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-gray-400"
+              selectClassName="h-10 w-full rounded-xl border border-slate-200 bg-slate-50/70 px-2 text-xs md:text-sm font-semibold text-slate-900 outline-none transition focus:border-[#087ec1] focus:bg-white focus:ring-2 focus:ring-[#087ec1]/15 dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-[#ffcc08] dark:focus:bg-[#0c1017]"
+            />
 
             <label className="block">
               <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-gray-400">

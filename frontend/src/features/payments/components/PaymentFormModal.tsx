@@ -1,6 +1,7 @@
 import { Copy, QrCode, X } from 'lucide-react'
 import type { FormEvent } from 'react'
 import { useMemo, useState } from 'react'
+import { DatePartsSelect } from '../../../shared/components/DatePartsSelect'
 import { localIsoDate } from '../../../shared/lib/date'
 import { buildTransferContent, buildVietQrImageUrl } from '../../settings/lib/vietQr'
 import type { VietQrSetting } from '../../settings/types/settings'
@@ -146,19 +147,17 @@ export function PaymentFormModal({
                 />
               </label>
 
-              <div className="grid grid-cols-2 gap-3">
-                <label className="block text-xs font-bold text-[var(--text-strong)]">
-                  Ngày lập phiếu *
-                  <input
-                    value={paymentDate}
-                    onChange={(event) => setPaymentDate(event.target.value)}
-                    type="date"
-                    max={today}
-                    className="mt-1.5 h-10 w-full rounded-xl border border-[var(--line)] bg-[var(--input-bg)] px-3 text-xs font-semibold text-[var(--text-strong)] outline-none transition focus:border-amber-500"
-                    required
-                  />
-                </label>
-
+              <div className="grid gap-3 sm:grid-cols-2">
+                <DatePartsSelect
+                  label="Ngày lập phiếu"
+                  value={paymentDate}
+                  onChange={setPaymentDate}
+                  maxIso={today}
+                  required
+                  helperText="Có thể chọn ngày thu cũ để doanh thu về đúng tháng."
+                  labelClassName="text-xs font-bold text-[var(--text-strong)]"
+                  selectClassName="h-10 w-full rounded-xl border border-[var(--line)] bg-[var(--input-bg)] px-2 text-xs font-semibold text-[var(--text-strong)] outline-none transition focus:border-amber-500"
+                />
                 <label className="block text-xs font-bold text-[var(--text-strong)]">
                   Phương thức *
                   <select

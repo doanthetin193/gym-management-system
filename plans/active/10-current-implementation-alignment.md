@@ -1,261 +1,228 @@
-# 10 - Cập nhật kế hoạch theo implementation hiện tại
+# 10 - Current Implementation Alignment
 
-Cập nhật ngày 10/10/2026.
+Cập nhật lần cuối: 12/10/2026.
 
-Tài liệu này dùng để đồng bộ lại kế hoạch sau giai đoạn nâng cấp UI và bổ sung nghiệp vụ bằng Antigravity. Từ thời điểm này, nếu tài liệu cũ còn khác với code hiện tại thì ưu tiên tài liệu này làm nguồn chốt scope.
+Tài liệu này là nguồn đối chiếu hiện trạng implementation. Nếu tài liệu kế hoạch cũ khác với code hiện tại, ưu tiên file này và `07-development-roadmap.md` bản đã cập nhật.
 
-## 1. Phạm vi chốt hiện tại
+## 1. Scope chốt hiện tại
 
-Hệ thống hiện đã chốt theo mô hình phòng gym nhỏ 50-70 hội viên, chỉ có chủ phòng và PT vận hành. Không còn role `STAFF`, không làm lễ tân riêng, không làm Sprint 7 trong giai đoạn hiện tại.
+Project hiện là MVP quản lý phòng gym nhỏ DUONG DOUBLE, chạy local dev, chưa deploy production.
 
-Phạm vi đủ dùng hiện tại:
+Đã implement:
 
-- Web public giới thiệu phòng gym, bảng giá, cơ sở vật chất và thư viện video TikTok.
-- Vùng quản trị cho OWNER.
-- Vùng vận hành cho PT.
-- Portal hội viên cho MEMBER xem tiến trình cá nhân.
-- Quản lý member, gói tập, thanh toán, công nợ, VietQR, nhắc việc Zalo thủ công, lịch PT, chỉ số cơ thể, mục tiêu, báo cáo và xuất dữ liệu.
+- Web public giới thiệu phòng gym, bảng giá, thư viện TikTok.
+- Vùng quản trị OWNER.
+- Vùng vận hành PT.
+- Portal MEMBER `/my-progress`.
+- Quản lý hội viên, gói tập, thanh toán, công nợ, VietQR.
+- Quản lý khách PT, lịch PT, check-in buổi tập, chỉ số cơ thể, mục tiêu.
+- Nhắc việc Zalo thủ công.
+- Báo cáo, biểu đồ, export `.xlsx`, đồng bộ Google Sheet thủ công.
+- Cài đặt tài khoản PT, portal hội viên và thông tin thanh toán.
 
-Ngoài scope hiện tại:
+Không làm trong MVP hiện tại:
 
+- Sprint 7/deploy production.
 - Payroll/lương PT đầy đủ.
-- Import dữ liệu Excel cũ.
-- Thanh toán online tự động xác nhận.
-- Auto Zalo/API gửi tin tự động.
+- AI/forecast.
+- Import Excel/CSV tự động.
+- Thanh toán online/webhook ngân hàng.
+- Zalo API tự gửi tin.
 - LMS/training program theo tuần.
-- AI/ML/forecast nâng cao.
+- YouTube exercise library.
 - Mobile native app.
 
 ## 2. Role và quyền
 
 ### OWNER
 
-Chủ phòng có toàn quyền:
-
-- Quản lý hội viên, gói tập, thanh toán, công nợ.
+- Toàn quyền hệ thống.
+- Quản lý hội viên, gói tập, thanh toán, công nợ, VietQR.
 - Quản lý tài khoản PT và tài khoản portal hội viên.
-- Quản lý VietQR, báo cáo, mục tiêu tháng, thư viện TikTok.
-- Xem toàn bộ PT, lịch PT, chỉ số, mục tiêu và dashboard.
+- Quản lý thư viện TikTok.
+- Xem dashboard, báo cáo, mục tiêu, lịch PT và toàn bộ dữ liệu.
 
 ### PT
 
-PT là người vận hành tại phòng khi chủ không trực:
-
-- Tạo/sửa hội viên cơ bản.
-- Gán/gia hạn gói và thu tiền cho hội viên trong phạm vi được phép.
-- Tự gán khách PT chưa có PT phụ trách cho chính mình khi khách đăng ký gói PT.
-- Xem khách được phân công và khách chưa có assignment để xử lý đăng ký mới.
-- Cập nhật lịch PT, log buổi tập, buổi ôn tập, chỉ số cơ thể, mục tiêu.
-- Không vào được báo cáo chủ phòng, mục tiêu kinh doanh, cài đặt hệ thống và quản lý thư viện admin.
+- Vận hành khách gói PT.
+- Tạo/sửa thông tin hội viên cơ bản trong phạm vi cho phép.
+- Gán chính mình cho khách gói PT chưa có PT phụ trách.
+- Xem khách được phân công và khách PT chưa có assignment để xử lý đăng ký mới.
+- Đặt lịch, ghi buổi PT, ghi buổi tự ôn/hướng dẫn, cập nhật chỉ số và mục tiêu.
+- Không vào báo cáo OWNER, mục tiêu kinh doanh, cài đặt hệ thống hoặc quản lý thư viện admin.
 
 ### MEMBER
 
-Hội viên chỉ có quyền xem:
-
-- Gói hiện tại, hạn gói, công nợ.
-- Buổi PT còn lại nếu có gói PT.
-- Chỉ số cơ thể, biểu đồ tiến trình, mục tiêu cá nhân.
-- Lịch PT gần nhất và lịch sử thanh toán.
-- Bảng giá và liên hệ Zalo phòng gym.
-
-MEMBER không tự kích hoạt gói, không tự xác nhận thanh toán, không tự chỉnh dữ liệu quản trị.
+- Chỉ xem dữ liệu cá nhân tại `/my-progress`.
+- Xem gói, hạn gói, công nợ, lịch sử thanh toán, lịch PT, buổi PT còn lại, chỉ số cơ thể, mục tiêu.
+- Không tự mua/gia hạn gói.
+- Không tự xác nhận thanh toán.
+- Không chỉnh dữ liệu quản trị.
 
 ### Khách vãng lai
 
-Khách không đăng nhập được xem:
+- Xem trang giới thiệu.
+- Xem bảng giá.
+- Xem thư viện video TikTok public.
+- Xem thông tin liên hệ/Zalo.
 
-- Trang giới thiệu.
-- Bảng giá public.
-- Thư viện video TikTok public.
-- Thông tin liên hệ/Zalo.
-
-## 3. Auth, tài khoản và bảo mật
-
-Logic hiện tại:
+## 3. Auth và tài khoản
 
 - Đăng nhập bằng email/password.
-- `rememberMe` được gửi từ frontend sang backend để backend cấp thời hạn token phù hợp.
-- OWNER/PT/MEMBER dùng chung trang login, sau login điều hướng theo role.
-- Có trang hồ sơ cá nhân `/profile`, hỗ trợ đổi mật khẩu.
-- OWNER tạo/sửa/khoá/mở tài khoản PT tại `/settings`.
-- OWNER được phép tạo, khóa/mở và reset tài khoản portal nhanh cho hội viên tại trang chi tiết hội viên. PT chỉ xem trạng thái portal, không quản lý tài khoản đăng nhập của hội viên.
-- Mật khẩu tạm cho PT/member portal được nhập hoặc sinh ngẫu nhiên, không hard-code mật khẩu yếu trong UI.
-- Script local đọc `.env`, không commit credential thật vào repo.
-
-API liên quan:
-
-- `POST /api/v1/auth/login`
-- `GET /api/v1/auth/me`
-- `POST /api/v1/auth/change-password`
-- `GET/POST /api/v1/settings/team-users`
-- `PUT /api/v1/settings/team-users/{id}/role`
-- `PUT /api/v1/settings/team-users/{id}/status`
-- `POST /api/v1/settings/team-users/{id}/reset-password`
-- `DELETE /api/v1/settings/team-users/{id}`
-- `POST /api/v1/members/{id}/portal-account`
-- `PUT /api/v1/members/{id}/portal-account/status`
-- `POST /api/v1/members/{id}/portal-account/reset-password`
-- `DELETE /api/v1/members/{id}/portal-account`
+- JWT auth.
+- `rememberMe` được frontend gửi xuống backend để cấp thời hạn token phù hợp.
+- OWNER/PT/MEMBER dùng chung trang login và điều hướng theo role.
+- Có `/profile` để xem hồ sơ và đổi mật khẩu.
+- OWNER tạo/khoá/mở/reset tài khoản PT tại `/settings`.
+- OWNER tạo/khoá/mở/reset tài khoản portal cho hội viên tại trang chi tiết hội viên.
+- PT không quản lý tài khoản đăng nhập của hội viên.
+- Không hard-code credential thật trong code.
 
 ## 4. Hội viên, gói tập và bảng giá
 
-Logic hiện tại:
-
-- Hệ thống seed đủ 21 gói chuẩn theo file `plans/drafts/draft_specs/02_DANH_SACH_21_GOI_TAP_CHUAN_HOA.md`.
-- OWNER quản lý toàn bộ 21 gói ở `/membership-plans`.
-- Mỗi gói có trạng thái active/inactive.
-- Dropdown gán/gia hạn gói chỉ hiển thị gói đang active.
-- Không xóa cứng gói đã dùng; nếu không bán nữa thì tắt active.
-- Tạo hội viên trước, sau đó vào chi tiết hội viên để gán/gia hạn/đổi gói và ghi nhận thanh toán.
-- Khi bán gói:
-  - Trả đủ: tạo payment, công nợ bằng 0.
-  - Trả thiếu: tạo payment phần đã thu và tạo/cập nhật debt phần còn lại.
-- Nếu hội viên còn hạn, gói gia hạn tự nối tiếp sau ngày hết hạn cũ để không mất ngày.
+- Seed đủ 21 gói chuẩn theo `plans/drafts/draft_specs/02_DANH_SACH_21_GOI_TAP_CHUAN_HOA.md`.
+- Gói tập có trạng thái active/inactive.
+- Gói inactive không hiện trong dropdown bán/gia hạn.
+- Không xoá cứng gói đã có lịch sử; nếu không bán nữa thì tắt active.
+- Tạo hội viên trước, sau đó vào chi tiết hội viên để gán/gia hạn/đổi gói.
+- Nếu hội viên còn hạn, gói mới tự nối tiếp sau gói cũ để không mất ngày.
 - Nếu hội viên hết hạn hoặc chưa có gói, ngày bắt đầu theo ngày kích hoạt mới.
+- Danh sách hội viên cho phép tìm kiếm, lọc trạng thái và vào chi tiết bằng cách chọn dòng.
 
-Luồng UI chính:
+## 5. Thanh toán, công nợ và ngày thu tiền
 
-- `/members`: danh sách hội viên, tìm kiếm/lọc, bấm vào dòng để vào chi tiết.
-- `/members/:memberId`: chi tiết hội viên, gán gói, thanh toán/công nợ, VietQR, tài khoản portal, lịch sử gói.
-- `/membership-plans`: bảng giá 21 gói, lọc theo 5 nhóm chương trình, bật/tắt active.
-
-## 5. Thanh toán, công nợ và VietQR
-
-Logic hiện tại:
+Nguồn dữ liệu tài chính:
 
 - `payments` là dòng tiền thực thu.
 - `debt_records` là khoản còn phải thu.
-- Thu nợ từng phần được phép; mỗi lần thu tạo payment mới và giảm nợ.
-- Khi thu đủ, debt chuyển sang trạng thái đã thanh toán.
-- Trang chi tiết hội viên hiển thị QR VietQR theo cấu hình hiện tại nếu hội viên còn nợ hoặc cần thanh toán.
-- VietQR chỉ là hỗ trợ chuyển khoản thủ công, hệ thống không tự xác nhận giao dịch ngân hàng.
+- `financial_transactions` được đồng bộ từ payment để làm nguồn tổng hợp báo cáo.
+- Không double-count doanh thu.
+
+Luồng bán/gia hạn gói:
+
+- Form gán/gia hạn có `Ngày bắt đầu gói` và `Ngày thu tiền` riêng.
+- `Ngày thu tiền` mặc định là hôm nay để nhập khách hiện tại nhanh.
+- Khi nhập khách/gói cũ, người dùng chọn lại `Ngày thu tiền` theo ngày đã thu thật.
+- Nếu `paidAmount > 0`, frontend gửi `initialPaymentDate` xuống backend.
+- Backend tạo payment ban đầu theo `initialPaymentDate`.
+- Nếu `paidAmount = 0`, không tạo payment ban đầu; số còn lại thành công nợ.
+- Backend chặn ngày thu tiền tương lai.
+
+Ý nghĩa nghiệp vụ:
+
+- Khách mới đóng hôm nay: để mặc định `Ngày thu tiền = hôm nay`.
+- Khách cũ đã đóng tháng trước: chọn đúng ngày thu cũ để doanh thu về đúng tháng cũ.
+- Khách đóng hôm nay nhưng bắt đầu gói sau: doanh thu vẫn ghi hôm nay vì tiền đã thu hôm nay.
+
+Thu công nợ:
+
+- Thu từng phần được phép.
+- Mỗi lần thu tạo payment mới.
+- Debt giảm theo số tiền đã thu.
+- Thu đủ thì debt chuyển trạng thái đã thanh toán.
+- Form thu nợ có ngày lập phiếu riêng và cũng chặn ngày tương lai.
+
+VietQR:
+
 - OWNER cấu hình ngân hàng, số tài khoản, tên chủ tài khoản và tiền tố nội dung chuyển khoản tại `/settings`.
-- Public site hoặc trang chi tiết chỉ đọc cấu hình QR qua public endpoint, không được sửa.
+- QR hiển thị ở chi tiết hội viên khi cần thu tiền.
+- VietQR chỉ hỗ trợ chuyển khoản thủ công, không tự xác nhận giao dịch ngân hàng.
 
-API liên quan:
+## 6. Bộ chọn ngày/tháng/năm
 
-- `GET/POST /api/v1/payments`
-- `GET /api/v1/debts`
-- `GET /api/v1/settings/vietqr` cho OWNER.
-- `PUT /api/v1/settings/vietqr` cho OWNER.
-- `GET /api/v1/public/vietqr-setting` cho public/member detail.
+Đã thay các ô ngày native bằng component chọn nhanh ngày/tháng/năm để thao tác nhanh và ổn định hơn khi nhập dữ liệu dev/test.
 
-## 6. PT, lịch tập, check-in và chỉ số
+Áp dụng cho:
 
-Logic hiện tại:
+- Thêm/sửa hội viên: ngày sinh.
+- Gán/gia hạn gói: ngày bắt đầu gói, ngày thu tiền.
+- Thu công nợ: ngày lập phiếu.
+- Lịch PT: ngày tập.
+- Ghi buổi PT, ghi buổi tự ôn/hướng dẫn.
+- Cập nhật chỉ số cơ thể.
+- Tạo mục tiêu PT.
 
-- Chỉ hội viên có gói PT mới xuất hiện trong vùng gán khách PT.
-- Hội viên tự tập không xuất hiện trong dropdown gán khách PT.
-- Hội viên đã có PT active vẫn hiện để tham khảo nhưng bị disable, không chọn lại được.
-- OWNER có thể chọn PT bằng dropdown và tìm hội viên theo tên/số điện thoại để gán.
-- PT đăng nhập tài khoản riêng có thể tự gán khách gói PT chưa có PT phụ trách cho chính mình.
-- PT assignment active là căn cứ phân quyền dữ liệu.
-- PT log buổi tập phải khớp với member/session package/schedule hợp lệ.
-- Trạng thái buổi tập hỗ trợ completed/cancelled/no-show/missed theo nghiệp vụ. Buổi no-show/missed có thể bị tính trừ buổi theo chính sách hiện tại.
-- Body measurement dùng chủ yếu cho khách PT hoặc khách có theo dõi cá nhân, không bắt buộc cho hội viên tự tập.
-- Portal hội viên hiển thị biểu đồ tiến trình để thấy thay đổi cân nặng, vòng eo, vòng ngực, vòng mông và các chỉ số mới nhất.
+## 7. PT, lịch tập và chỉ số
 
-API liên quan:
+- Chỉ khách có gói PT mới xuất hiện trong luồng gán PT.
+- Khách tự tập không xuất hiện trong dropdown gán PT.
+- Khách đã có PT active vẫn có thể hiển thị để tham khảo nhưng bị disable, không chọn lại được.
+- OWNER chọn PT phụ trách bằng dropdown.
+- PT có thể tự nhận khách gói PT chưa có PT phụ trách.
+- Assignment active dựa trên trạng thái, ngày bắt đầu và ngày kết thúc.
+- PT chỉ xem/thao tác khách được phân công hoặc khách PT chưa có assignment.
+- Ghi buổi PT phải khớp với member/session package/schedule hợp lệ.
+- Không cho ghi buổi trước ngày bắt đầu gói, sau ngày hết hạn gói hoặc khi hết số buổi cần trừ.
+- Chặn ghi trùng theo lịch/gói/ngày để tránh double-submit.
+- Body measurement và mục tiêu chủ yếu phục vụ khách PT, không bắt buộc cho khách tự tập.
 
-- `GET /api/v1/pt/profiles`
-- `POST /api/v1/pt/profiles`
-- `GET /api/v1/pt/my-members`
-- `POST /api/v1/pt/assignments`
-- `GET/POST /api/v1/pt/schedules`
-- `DELETE /api/v1/pt/schedules/{scheduleId}`
-- `GET /api/v1/pt/session-packages`
-- `GET /api/v1/pt/members/{memberId}`
-- `POST /api/v1/pt/members/{memberId}/session-logs`
-- `POST /api/v1/pt/members/{memberId}/activity-logs`
-- `POST /api/v1/pt/members/{memberId}/body-measurements`
-- `POST /api/v1/pt/members/{memberId}/goals`
+## 8. Portal hội viên
 
-## 7. Portal hội viên
-
-Logic hiện tại:
-
-- Portal nằm ở `/my-progress`.
+- Route: `/my-progress`.
 - Chỉ role MEMBER vào được.
-- Tài khoản MEMBER phải liên kết với một member cụ thể.
-- Portal không phải kênh đăng ký online; chỉ là nơi xem thông tin và gửi yêu cầu thủ công qua Zalo.
-- Hội viên xem được công nợ nhưng không tự xác nhận thanh toán.
-- Hội viên xem được biểu đồ chỉ số nếu có dữ liệu body measurement.
+- Tài khoản MEMBER liên kết với đúng một hội viên.
+- Hiển thị gói hiện tại, hạn gói, công nợ, lịch sử thanh toán.
+- Hiển thị buổi PT, lịch PT, chỉ số cơ thể, biểu đồ tiến trình và mục tiêu nếu có dữ liệu.
+- Có liên hệ Zalo phòng gym thủ công.
+- Không cho hội viên tự kích hoạt gói hoặc xác nhận thanh toán.
 
-API liên quan:
+## 9. Nhắc việc Zalo thủ công
 
-- `GET /api/v1/member-portal/me`
+Trang `/reminders` gom:
 
-## 8. Nhắc việc Zalo thủ công
+- Khách sắp hết hạn/đã hết hạn.
+- Khách còn nợ.
+- Sinh nhật.
 
-Logic hiện tại:
+Hệ thống sinh mẫu tin nhắn tương ứng. Người dùng có thể copy tin nhắn hoặc copy và mở Zalo theo số điện thoại/Zalo của hội viên. Không tự gửi tin qua Zalo API.
 
-- Trang `/reminders` gom các nhóm việc cần chăm sóc:
-  - Sắp hết hạn/đã hết hạn.
-  - Còn nợ.
-  - Sinh nhật.
-- Hệ thống sinh mẫu tin nhắn tương ứng từng loại.
-- Người dùng có thể copy tin nhắn hoặc copy và mở Zalo theo số zalo/phone của hội viên.
-- Đây là luồng bán tự động, không gửi tin tự động qua API Zalo.
+## 10. Báo cáo, mục tiêu và xuất dữ liệu
 
-## 9. Báo cáo, mục tiêu và xuất dữ liệu
+Dashboard OWNER:
 
-Logic hiện tại:
+- Tổng hội viên.
+- Hội viên đang hoạt động.
+- Hết hạn/sắp hết hạn.
+- Tổng công nợ.
+- Việc cần xử lý.
+- Tổng quan tài chính.
 
-- `/dashboard` cho OWNER xem nhanh số vận hành.
-- `/reports` cho OWNER xem:
-  - Tổng hội viên.
-  - Tổng doanh thu.
-  - Tổng nợ phải thu.
-  - Lượt đăng ký/gia hạn.
-  - Biểu đồ phân bổ trạng thái hội viên.
-  - Biểu đồ doanh thu 6 tháng gần nhất.
-  - Thu chuyển khoản/tiền mặt tháng hiện tại.
-  - Số gói đang niêm yết.
-- `/reports` hỗ trợ xuất `.xlsx`:
-  - Danh sách hội viên.
-  - Lịch sử thanh toán.
-  - Công nợ hội viên.
-  - Bảng giá gói tập.
-  - Full backup nhiều sheet.
-- `/reports` hỗ trợ đồng bộ Google Sheet qua Apps Script Web App URL và token bảo mật.
-- Đồng bộ Google Sheet phải đọc được phản hồi HTTP thật; nếu Apps Script lỗi hoặc từ chối, UI báo lỗi thật thay vì báo thành công giả.
-- `/goals` quản lý mục tiêu tháng, actual/progress theo dữ liệu hiện có hoặc nhập thủ công khi chưa tự tính được.
+Reports:
 
-API liên quan:
+- Tổng hội viên.
+- Tổng doanh thu.
+- Tổng nợ phải thu.
+- Lượt đăng ký/gia hạn.
+- Biểu đồ trạng thái hội viên.
+- Biểu đồ doanh thu 6 tháng gần nhất.
+- Thu chuyển khoản/tiền mặt tháng hiện tại.
+- Số gói đang niêm yết.
 
-- `GET /api/v1/dashboard/owner`
-- `GET/POST/PUT /api/v1/business-goals`
-- `GET /api/v1/business-goals/progress`
-- `GET /api/v1/reports/finance`
-- `GET /api/v1/reports/members`
-- `GET /api/v1/notifications`
-- `PATCH /api/v1/notifications/{id}/read`
+Export:
 
-## 10. Public home và thư viện TikTok
+- Xuất `.xlsx` danh sách hội viên.
+- Xuất `.xlsx` lịch sử thanh toán.
+- Xuất `.xlsx` công nợ hội viên.
+- Xuất `.xlsx` bảng giá gói tập.
+- Xuất full backup nhiều sheet.
+- Đồng bộ Google Sheet qua Apps Script Web App URL + token.
+- Nếu Apps Script lỗi hoặc từ chối, UI báo lỗi thật.
 
-Logic hiện tại:
+Goals:
 
-- `/` là trang giới thiệu public, có thông tin phòng gym, bảng giá, triết lý, cơ sở vật chất, liên hệ.
+- Trang `/goals` quản lý mục tiêu tháng.
+- Actual/progress lấy từ dữ liệu hiện có hoặc nhập thủ công với chỉ số chưa tự tính.
+
+## 11. Public web và thư viện TikTok
+
+- `/` là trang giới thiệu public.
 - `/exercises` là thư viện video TikTok public.
-- `/exercises/:slug` là trang chi tiết video/bài tập public.
-- OWNER quản lý thư viện tại `/owner/exercises`.
-- Chỉ hỗ trợ TikTok, không hỗ trợ YouTube trong scope hiện tại.
-- Video có category, difficulty, slug, URL, trạng thái published và view count.
+- `/exercises/:slug` là trang chi tiết video/bài tập.
+- `/owner/exercises` là trang OWNER quản lý thư viện.
+- Chỉ hỗ trợ TikTok trong scope hiện tại.
+- Video có category, difficulty, slug, URL, published status và view count.
 
-API liên quan:
-
-- `GET /api/v1/public/exercise-categories`
-- `GET /api/v1/public/exercises`
-- `GET /api/v1/public/exercises/{slugOrId}`
-- `POST /api/v1/public/exercises/{id}/view`
-- `GET/POST/PUT /api/v1/owner/exercise-categories`
-- `GET/POST/PUT /api/v1/owner/exercises`
-- `PATCH /api/v1/owner/exercises/{id}/published`
-- `DELETE /api/v1/owner/exercises/{id}`
-
-## 11. Database/table thực tế cần xem là nguồn chính
-
-Các nhóm entity đang dùng:
+## 12. Entity/table đang dùng
 
 - Auth/user: `users`, `roles`, `user_roles`.
 - Member: `members`.
@@ -266,151 +233,54 @@ Các nhóm entity đang dùng:
 - Exercise: `exercise_categories`, `exercises`.
 - Dashboard/goals/settings: `business_goals`, `system_settings`.
 
-Các bảng/entity đã loại khỏi scope hiện tại:
+Không còn dùng trong scope hiện tại:
 
-- `training_programs`, `training_program_weeks`.
+- `training_programs`.
+- `training_program_weeks`.
 - `exercise_media`.
 - `member_notes`.
 - `notifications` entity riêng.
 - `audit_logs` entity riêng.
 
-Ghi chú: notification hiện tại là response/báo cáo tính động từ dữ liệu nguồn, không phải bảng notification riêng bắt buộc.
+Notification hiện là dữ liệu tính động từ hạn gói, công nợ, sinh nhật và dữ liệu PT.
 
-## 12. Quy tắc dữ liệu quan trọng
+## 13. Quy tắc dữ liệu quan trọng
 
 - OWNER xem toàn bộ dữ liệu.
-- PT chỉ xem dữ liệu member được phân công hoặc member chưa có assignment khi cần xử lý đăng ký mới.
-- MEMBER chỉ xem member liên kết với tài khoản của mình.
-- Membership plan inactive không xuất hiện trong dropdown bán/gia hạn.
-- Không double-count doanh thu: payment là nguồn thu thật, financial transaction income được đồng bộ từ payment.
-- Debt là phần còn phải thu, không thay thế payment.
-- VietQR không tự xác nhận đã thanh toán.
-- Google Sheet sync không được báo thành công nếu Apps Script không trả về trạng thái hợp lệ.
-- Các thao tác ngày giờ trên frontend dùng ngày local của trình duyệt, không dùng UTC `toISOString().slice(0, 10)` cho ngày nghiệp vụ.
+- PT chỉ xem dữ liệu đúng phạm vi phân công.
+- MEMBER chỉ xem dữ liệu của chính mình.
+- Payment là nguồn thu thật.
+- Debt là khoản phải thu, không thay thế payment.
+- Financial transaction income được đồng bộ từ payment.
+- Doanh thu báo cáo theo `paymentDate`/`transactionDate`.
+- Gói inactive không được bán/gia hạn mới.
+- VietQR không xác nhận tự động.
+- Google Sheet sync không được báo thành công giả.
+- Ngày nghiệp vụ frontend dùng local date, không dùng UTC `toISOString().slice(0, 10)`.
 
-## 13. Tiêu chí chốt giai đoạn hiện tại
+## 14. Tiêu chí chốt MVP hiện tại
 
-Giai đoạn hiện tại được xem là chốt khi:
+MVP hiện tại đạt khi:
 
-- OWNER thao tác được toàn bộ luồng hội viên, gói tập, thu tiền, công nợ, VietQR, báo cáo.
-- PT thao tác được luồng khách PT được giao và khách PT mới chưa có PT phụ trách.
+- OWNER thao tác được toàn bộ luồng hội viên, gói tập, thanh toán, công nợ, VietQR, báo cáo, mục tiêu, nhắc việc và thư viện TikTok.
+- PT thao tác được khách PT được giao và khách PT mới chưa có assignment.
 - MEMBER xem được tiến trình cá nhân nhưng không can thiệp nghiệp vụ quản trị.
-- Public site xem được thông tin giới thiệu, bảng giá và thư viện TikTok.
+- Public web xem được thông tin giới thiệu, bảng giá và thư viện TikTok.
+- Dữ liệu tài chính đúng tháng theo ngày thu tiền thực tế.
 - Backend test pass.
-- Frontend build pass.
-- Frontend lint không có lỗi chặn build.
+- Frontend lint/build pass.
 
-## 14. Cập nhật hardening ngày 08/10/2026
+## 15. Ghi chú hardening đã làm
 
-Các chỉnh sửa ngày 08/10/2026 được xem là một phần của implementation hiện tại:
-
-- Seed OWNER không được tự reset mật khẩu ở mỗi lần chạy app. Nếu OWNER đã tồn tại và đã có `passwordHash`, hệ thống giữ nguyên mật khẩu hiện tại.
-- Tài khoản portal hội viên chỉ được tạo/reuse cho user `MEMBER`-only do hệ thống sinh ra. Không reuse, xoá hoặc khoá nhầm tài khoản `OWNER`/`PT` khi tạo/xoá portal account.
-- Tạo/gia hạn gói hội viên kèm tiền trả trước được xử lý atomic trong một transaction:
-  - tạo `member_memberships`;
-  - tạo/cập nhật `debt_records`;
-  - tạo `payments`;
-  - đồng bộ `financial_transactions` loại income;
-  - đồng bộ `paidAmount` và `debtAmount`.
-- Tổng công nợ ở màn hình hội viên và portal chỉ tính các debt còn mở (`OPEN`, `PARTIALLY_PAID`) và còn số tiền phải thu lớn hơn 0.
-- Backend không còn dùng `ContentAccessLevel/contentAccessLevel`. Thư viện TikTok hiện là public, không có mô hình premium content trong scope hiện tại.
-- PT hardening:
-  - chỉ user có role `PT` mới được tạo hồ sơ PT, nhận assignment, nhận lịch dạy hoặc được gán mục tiêu PT;
-  - chỉ khách có gói PT active, còn hạn và còn buổi mới được gán PT;
-  - ghi log buổi PT sẽ đồng bộ trạng thái lịch PT tương ứng;
-  - buổi ôn tập và buổi hướng dẫn/trị liệu được kiểm soát số buổi còn lại theo gói.
-- Prod profile tạm tắt Flyway khi chưa có migration thật; giai đoạn dev hiện vẫn ưu tiên Hibernate update/drop-create theo nhu cầu reset dữ liệu.
-- Frontend dọn lint warning: bỏ export/hằng số thừa, bỏ import không dùng, chuẩn hoá label nút PDF thành `In / lưu PDF`, và loại trạng thái PT không khớp enum backend.
-- Kiểm tra sau cập nhật:
-  - `backend`: `.\mvnw.cmd -q test` pass.
-  - `frontend`: `npm run lint` pass.
-  - `frontend`: `npm run build` pass, chỉ còn cảnh báo bundle size của Vite.
-
-## 15. Cập nhật hardening ngày 10/10/2026
-
-Các chỉnh sửa ngày 10/10/2026 chốt thêm lớp ổn định cho môi trường dev/MVP:
-
-- Chuẩn hóa xử lý ngày local ở frontend:
-  - thêm helper `localIsoDate` và `addDaysIso`;
-  - thay các chỗ dùng `toISOString().slice(0, 10)` trong form thanh toán, gán gói, nhắc việc, lịch PT, báo cáo;
-  - tránh lệch ngày khi máy chạy ở múi giờ Việt Nam nhưng JavaScript convert sang UTC.
-- Siết quyền portal hội viên:
-  - backend `POST /members/{id}/portal-account` chỉ cho `OWNER`;
-  - frontend ẩn thao tác tạo/khóa/reset portal account với tài khoản không phải OWNER;
-  - PT không còn được cấp tài khoản đăng nhập cho hội viên.
-- Siết nghiệp vụ PT:
-  - chỉ PT active và có `pt_profile` active mới được nhận assignment, lịch dạy hoặc mục tiêu PT;
-  - chặn gán PT với ngày kết thúc trước ngày bắt đầu;
-  - chặn lịch PT trùng khung giờ cho cùng PT hoặc cùng học viên;
-  - chặn ghi buổi tập, hoạt động hoặc chỉ số cơ thể ở ngày tương lai;
-  - chỉ lịch đang `SCHEDULED` mới được ghi nhận buổi tập.
-- Siết nghiệp vụ gói PT:
-  - khi bán/gán gói PT có `ptUserId`, backend kiểm tra user đó là PT active và có hồ sơ PT active;
-  - tránh gán nhầm OWNER/PT inactive hoặc user không có hồ sơ PT.
-- Siết thư viện TikTok:
-  - backend từ chối link TikTok rút gọn hoặc link không có dạng `/video/{id}`;
-  - mục tiêu là tránh lưu link không embed ổn định.
-- Dashboard/notification:
-  - cảnh báo gói PT còn ít buổi không tính gói đã hủy hoặc đã hết hạn.
-- Báo cáo:
-  - tách logic xuất `.xlsx` khỏi `ReportsPage` sang helper `features/reports/lib/xlsxExport.ts`;
-  - giảm độ phình của page report nhưng giữ nguyên luồng xuất file hiện tại.
-- Tài liệu:
-  - sửa các dòng mojibake còn lại trong `03-database-design.md`, `04-api-design.md`, `08-sprint-1-review.md`;
-  - cập nhật tài liệu này để phản ánh đúng logic đã triển khai.
-- Kiểm tra sau cập nhật:
-  - `backend`: `.\mvnw.cmd test` pass.
-  - `frontend`: `npm run lint` pass.
-  - `frontend`: `npm run build` pass, chỉ còn cảnh báo bundle size của Vite.
-
-## 16. Cập nhật hardening ngày 11/10/2026
-
-Các chỉnh sửa ngày 11/10/2026 tiếp tục chốt ổn định nghiệp vụ MVP sau khi rà soát logic toàn hệ thống:
-
-- Chuẩn hóa ngày hiệu lực gói:
-  - gói hội viên chỉ được xem là active khi `startDate <= today <= endDate`;
-  - danh sách hội viên, dashboard và portal hội viên không còn tính gói bắt đầu trong tương lai là đang active;
-  - API summary hội viên trả thêm `startDate` để frontend có đủ dữ liệu phân loại trạng thái.
-- Chuẩn hóa doanh thu khi bán/gia hạn gói:
-  - nếu có tiền trả trước mà không nhập ngày thu, hệ thống dùng ngày hiện tại theo `AppClock.today()`;
-  - không còn mặc định ngày thu bằng ngày bắt đầu gói, tránh doanh thu bị đẩy sang tháng tương lai khi gói được queue sau gói cũ.
-- Siết PT check-in và chống ghi trùng:
-  - không cho ghi buổi PT, buổi ôn tập hoặc buổi hướng dẫn trước ngày bắt đầu gói;
-  - ghi lịch có `scheduleId` vẫn dùng rule chống trùng theo lịch;
-  - ghi tay không qua lịch được chặn trùng theo gói/ngày hoặc số buổi để tránh double-submit làm trừ buổi nhiều lần;
-  - chỉ các trạng thái tiêu hao buổi (`COMPLETED`, `MISSED`) mới tham gia rule chống trùng/trừ buổi.
-- Siết tạo lịch PT:
-  - `POST /pt/schedules` luôn tạo lịch ở trạng thái `SCHEDULED`;
-  - client không còn được gửi trạng thái lịch khi tạo mới, tránh tạo trực tiếp lịch `COMPLETED`, `MISSED`, `CANCELLED` sai luồng.
-- Siết validation số liệu PT:
-  - `sessionNumber` phải lớn hơn 0;
-  - cân nặng, chỉ số cơ thể và mục tiêu cơ thể nếu nhập phải lớn hơn 0;
-  - frontend thêm `min="0.1"` cho các input số liên quan để giảm nhập sai từ UI, backend vẫn là lớp chặn chính.
-- Báo cáo member tháng:
-  - không tính gói `CANCELLED` vào khách mới, khách gia hạn/quay lại hoặc nhóm khách theo loại gói;
-  - lịch sử trước tháng cũng bỏ qua gói đã hủy khi xác định khách mới/gia hạn.
-- Seed dev:
-  - bỏ default seed credential khỏi annotation trong `DataInitializer`;
-  - mật khẩu demo member chuyển sang cấu hình `app.seed.demo.member-password` trong `application.yml`;
-  - prod profile vẫn tắt demo seed.
-- Kiểm tra sau cập nhật:
-  - `backend`: `.\mvnw.cmd test` pass.
-  - `frontend`: `npm run lint` pass.
-  - `frontend`: `npm run build` pass, chỉ còn cảnh báo bundle size của Vite.
-
-### Bổ sung chốt rà soát cuối ngày 11/10/2026
-
-- Thanh toán và doanh thu:
-  - frontend không còn gửi `initialPaymentDate` bằng ngày bắt đầu gói khi bán/gia hạn gói;
-  - backend chặn `paymentDate` và `initialPaymentDate` ở tương lai để tránh doanh thu bị ghi lệch tháng;
-  - form thu nợ giới hạn ngày lập phiếu không vượt quá ngày hiện tại.
-- Phân quyền PT:
-  - assignment PT chỉ được tính active khi đã tới ngày bắt đầu và chưa quá ngày kết thúc;
-  - PT không bị cấp quyền sớm với khách có assignment bắt đầu ở tương lai.
-- Đổi mật khẩu cá nhân:
-  - UI profile và member portal thống nhất rule mật khẩu mới tối thiểu 8 ký tự với backend.
-- Kiểm tra sau cập nhật:
-  - `backend`: `.\mvnw.cmd test` pass.
-  - `frontend`: `npm run lint` pass.
-  - `frontend`: `npm run build` pass, chỉ còn cảnh báo bundle size của Vite.
-  - `git diff --check` pass, chỉ có warning line ending CRLF/LF trên Windows.
+- Không còn role `STAFF`.
+- Không còn content premium trong thư viện TikTok.
+- Không còn training program/LMS theo tuần.
+- Chuẩn hóa active membership theo `startDate <= today <= endDate`.
+- Chặn gán PT sai role hoặc PT inactive.
+- Chặn lịch PT trùng khung giờ.
+- Chặn check-in/lưu chỉ số ở ngày tương lai.
+- Chặn payment date và initial payment date ở tương lai.
+- Không reset password OWNER seed nếu tài khoản đã tồn tại.
+- Tài khoản portal hội viên không reuse nhầm OWNER/PT.
+- Google Sheet sync đọc phản hồi thật.
+- Xuất report `.xlsx` được tách helper để giảm phình page.

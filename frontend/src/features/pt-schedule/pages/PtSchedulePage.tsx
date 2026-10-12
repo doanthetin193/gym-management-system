@@ -28,6 +28,7 @@ import type { LucideIcon } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { Dispatch, FormEvent, SetStateAction } from 'react'
 import { ApiClientError } from '../../../shared/api/apiClient'
+import { DatePartsSelect } from '../../../shared/components/DatePartsSelect'
 import { addDaysIso, localIsoDate } from '../../../shared/lib/date'
 import { useAuth } from '../../auth/context/authContext'
 import { listMembers } from '../../members/api/memberApi'
@@ -1855,17 +1856,15 @@ function SchedulePanel({
             </select>
           </div>
 
-          <div>
-            <label className="text-[11px] font-bold text-[var(--text-muted)] block mb-1">Ngày tập</label>
-            <input
-              type="date"
-              min={todayIso()}
-              value={form.scheduleDate}
-              onChange={(e) => setForm((c) => ({ ...c, scheduleDate: e.target.value }))}
-              className="h-10 w-full rounded-xl border border-[var(--line)] bg-[var(--input-bg)] px-3 text-xs font-semibold outline-none focus:border-[var(--brand-yellow)]"
-              required
-            />
-          </div>
+          <DatePartsSelect
+            label="Ngày tập"
+            value={form.scheduleDate}
+            onChange={(value) => setForm((current) => ({ ...current, scheduleDate: value }))}
+            minIso={todayIso()}
+            required
+            labelClassName="text-[11px] font-bold text-[var(--text-muted)] block"
+            selectClassName="h-10 w-full rounded-xl border border-[var(--line)] bg-[var(--input-bg)] px-2 text-xs font-semibold outline-none focus:border-[var(--brand-yellow)]"
+          />
         </div>
 
         {/* Time Presets */}
@@ -2093,16 +2092,14 @@ function CheckinPanel({
               </select>
             </div>
 
-            <div>
-              <label className="text-[11px] font-bold text-[var(--text-muted)] block mb-1">Ngày tập</label>
-              <input
-                type="date"
-                value={sessionForm.sessionDate}
-                onChange={(e) => setSessionForm((c) => ({ ...c, sessionDate: e.target.value }))}
-                className="h-10 w-full rounded-xl border border-[var(--line)] bg-[var(--input-bg)] px-3 text-xs font-semibold outline-none focus:border-[var(--brand-yellow)]"
-                required
-              />
-            </div>
+            <DatePartsSelect
+              label="Ngày tập"
+              value={sessionForm.sessionDate}
+              onChange={(value) => setSessionForm((current) => ({ ...current, sessionDate: value }))}
+              required
+              labelClassName="text-[11px] font-bold text-[var(--text-muted)] block"
+              selectClassName="h-10 w-full rounded-xl border border-[var(--line)] bg-[var(--input-bg)] px-2 text-xs font-semibold outline-none focus:border-[var(--brand-yellow)]"
+            />
           </div>
 
           <div>
@@ -2167,16 +2164,14 @@ function CheckinPanel({
               </select>
             </div>
 
-            <div>
-              <label className="text-[11px] font-bold text-[var(--text-muted)] block mb-1">Ngày thực hiện</label>
-              <input
-                type="date"
-                value={activityForm.activityDate}
-                onChange={(e) => setActivityForm((c) => ({ ...c, activityDate: e.target.value }))}
-                className="h-10 w-full rounded-xl border border-[var(--line)] bg-[var(--input-bg)] px-3 text-xs font-semibold outline-none focus:border-[var(--brand-yellow)]"
-                required
-              />
-            </div>
+            <DatePartsSelect
+              label="Ngày thực hiện"
+              value={activityForm.activityDate}
+              onChange={(value) => setActivityForm((current) => ({ ...current, activityDate: value }))}
+              required
+              labelClassName="text-[11px] font-bold text-[var(--text-muted)] block"
+              selectClassName="h-10 w-full rounded-xl border border-[var(--line)] bg-[var(--input-bg)] px-2 text-xs font-semibold outline-none focus:border-[var(--brand-yellow)]"
+            />
           </div>
 
           <div>
@@ -2302,16 +2297,14 @@ function MeasurementPanel({
         </h3>
 
         <div className="grid gap-3 sm:grid-cols-3">
-          <div>
-            <label className="text-[11px] font-bold text-[var(--text-muted)] block mb-1">Ngày đo</label>
-            <input
-              type="date"
-              value={form.recordedAt}
-              onChange={(e) => setForm((c) => ({ ...c, recordedAt: e.target.value }))}
-              className="h-10 w-full rounded-xl border border-[var(--line)] bg-[var(--input-bg)] px-3 text-xs font-semibold outline-none focus:border-[var(--brand-yellow)]"
-              required
-            />
-          </div>
+          <DatePartsSelect
+            label="Ngày đo"
+            value={form.recordedAt}
+            onChange={(value) => setForm((current) => ({ ...current, recordedAt: value }))}
+            required
+            labelClassName="text-[11px] font-bold text-[var(--text-muted)] block"
+            selectClassName="h-10 w-full rounded-xl border border-[var(--line)] bg-[var(--input-bg)] px-2 text-xs font-semibold outline-none focus:border-[var(--brand-yellow)]"
+          />
           <div>
             <label className="text-[11px] font-bold text-[var(--text-muted)] block mb-1">Cân nặng (kg)</label>
             <input
@@ -2568,15 +2561,14 @@ function GoalPanel({
         </div>
 
         <div className="grid gap-3 sm:grid-cols-3">
-          <div>
-            <label className="text-[11px] font-bold text-[var(--text-muted)] block mb-1">Ngày dự kiến đạt mục tiêu</label>
-            <input
-              type="date"
-              value={form.targetDate}
-              onChange={(e) => setForm((c) => ({ ...c, targetDate: e.target.value }))}
-              className="h-10 w-full rounded-xl border border-[var(--line)] bg-[var(--input-bg)] px-3 text-xs font-semibold outline-none focus:border-[var(--brand-yellow)]"
-            />
-          </div>
+          <DatePartsSelect
+            label="Ngày dự kiến đạt mục tiêu"
+            value={form.targetDate}
+            onChange={(value) => setForm((current) => ({ ...current, targetDate: value }))}
+            allowEmpty
+            labelClassName="text-[11px] font-bold text-[var(--text-muted)] block"
+            selectClassName="h-10 w-full rounded-xl border border-[var(--line)] bg-[var(--input-bg)] px-2 text-xs font-semibold outline-none focus:border-[var(--brand-yellow)]"
+          />
           <div>
             <label className="text-[11px] font-bold text-[var(--text-muted)] block mb-1">Cân nặng mục tiêu (kg)</label>
             <input
