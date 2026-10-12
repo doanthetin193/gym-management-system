@@ -1,13 +1,13 @@
 # 07 - Roadmap triển khai hiện tại
 
-Tài liệu này phản ánh roadmap MVP của project DUONG DOUBLE Gym Management ở môi trường local dev. Project hiện đã hoàn thiện Sprint 1-6 và bổ sung Sprint 7 cuối cùng cho AI Progress Insight theo yêu cầu đồ án thực tập. Sprint 7 không phải sprint deploy production.
+Tài liệu này phản ánh roadmap MVP của project DUONG DOUBLE Gym Management ở môi trường local dev. Project hiện đã hoàn thiện Sprint 1-6 cho MVP vận hành nội bộ. Sprint 7 chỉ giữ nền cấu hình Groq để chuẩn bị cho một nghiệp vụ AI mới khi được chốt, chưa triển khai AI vào luồng vận hành chính.
 
 Nguyên tắc chung:
 
 - Bám mô hình phòng gym nhỏ 50-70 hội viên.
 - Chỉ có `OWNER`, `PT`, `MEMBER` và khách vãng lai; không còn role `STAFF`.
 - Ưu tiên vận hành thực tế: hội viên, gói tập, thu tiền, công nợ, PT, chỉ số, nhắc việc, báo cáo.
-- AI chỉ dùng ở mức hỗ trợ phân tích tiến trình thể hình đã ẩn danh, không thay PT/chủ phòng ra quyết định.
+- AI chỉ dùng khi bài toán đủ giá trị vận hành/kinh doanh, dữ liệu gửi ra ngoài phải được ẩn danh và không chứa PII.
 - Không làm payroll, import Excel tự động, thanh toán online tự xác nhận, Zalo API tự gửi tin hoặc LMS khóa học.
 - Local dev là phạm vi hiện tại; production deploy để phase sau.
 
@@ -225,125 +225,39 @@ Done hiện tại:
 - OWNER/PT dùng nhắc việc để copy tin nhắn và mở Zalo thủ công.
 - MEMBER xem được gói, công nợ, lịch sử thanh toán, lịch PT, chỉ số, biểu đồ tiến trình và mục tiêu.
 
-## Sprint 7 - AI Progress Insight
+## Sprint 7 - AI Extension Ready
 
-Mục tiêu:
+Trạng thái hiện tại:
 
-- Bổ sung AI ở mức vừa phải để mentor thấy hệ thống có ứng dụng AI thực tế.
-- AI hỗ trợ PT/chủ phòng phân tích tiến trình thể hình của khách gói PT dựa trên chỉ số cơ thể và mục tiêu.
-- Giữ phạm vi nhỏ, bảo mật và không làm phình hệ thống.
+- Chưa triển khai chức năng AI nghiệp vụ cuối cùng.
+- Đã giữ nền cấu hình Groq ở backend để tái sử dụng khi chọn được bài toán AI phù hợp.
+- Đã loại bỏ AI phân tích chỉ số cơ thể khách PT vì giá trị thực tế chưa đủ cao so với chi phí gọi AI.
 
-Nguyên tắc bảo mật:
+Nền kỹ thuật đang giữ:
 
-- Không gửi tên hội viên, số điện thoại, Zalo, email, địa chỉ, công nợ hoặc lịch sử thanh toán sang AI provider.
-- Backend chỉ gửi dữ liệu thể hình đã ẩn danh.
-- AI output chỉ là nhận xét tham khảo; PT/chủ phòng vẫn là người quyết định.
-- Không tự gửi Zalo.
-- Không lưu lịch sử prompt/response AI vào database ở MVP này.
-- API key đặt trong biến môi trường, không commit vào repo.
+- `GROQ_API_KEYS` cho nhiều key phân tách bằng dấu phẩy.
+- `GROQ_MODEL` để đổi model trong môi trường dev.
+- `GROQ_ENDPOINT` và `GROQ_TIMEOUT_SECONDS` trong cấu hình ứng dụng.
 
-Dữ liệu được phép gửi AI:
+Nguyên tắc chọn chức năng AI sau này:
 
-- Loại mục tiêu: giảm mỡ, tăng cơ, cải thiện sức bền, cổ vai gáy/phục hồi.
-- Nhóm tuổi hoặc tuổi nếu cần, không gửi ngày sinh đầy đủ.
-- Giới tính nếu có.
-- Thời lượng gói, số ngày đã trôi qua, số ngày còn lại.
-- Số buổi PT đã hoàn thành, số buổi PT còn lại.
-- Số buổi tự ôn/hướng dẫn đã ghi nhận.
-- 3-5 lần đo gần nhất: cân nặng, vòng eo, vòng ngực, vòng mông, vòng đùi, vòng tay nếu có.
-- Target hiện tại: cân nặng mục tiêu, vòng eo mục tiêu hoặc target body measurement khác nếu có.
+- Chỉ dùng AI cho bài toán đủ phức tạp, rule/hardcode không làm tốt.
+- Ưu tiên dữ liệu tổng hợp, ẩn danh, không gửi PII như tên, SĐT, Zalo, email, địa chỉ.
+- Không dùng AI cho chức năng phụ như nhắc việc đơn giản, tin nhắn mẫu hoặc nhận xét số đo cơ bản.
+- AI nên hỗ trợ chủ phòng ở tầng vận hành/kinh doanh như giữ chân khách, phân tích doanh thu, phân khúc rủi ro hoặc cơ hội tăng trưởng.
+- Chỉ gọi AI khi OWNER chủ động bấm phân tích, không gọi tự động thường xuyên để tránh tốn chi phí.
 
-Dữ liệu không gửi AI:
+Ứng viên chức năng AI đang cân nhắc:
 
-- Họ tên.
-- Số điện thoại/Zalo/email.
-- Địa chỉ.
-- Công nợ.
-- Thanh toán.
-- Ghi chú nhạy cảm.
-- Lịch sử giao dịch.
+- AI Retention & Revenue Advisor: phân tích rủi ro mất khách và cơ hội doanh thu từ dữ liệu tổng hợp.
+- AI Monthly Business Review: tạo báo cáo quản trị cuối tháng từ số liệu đã tổng hợp.
+- AI Marketing Campaign Planner: đề xuất kế hoạch marketing ngắn hạn dựa trên nguồn khách, gói bán chạy và tình hình gia hạn.
 
-Backend dự kiến:
+Done khi chọn Sprint 7 thật sự:
 
-- Thêm endpoint:
-
-```http
-POST /api/v1/ai/pt-progress-analysis/{memberId}
-```
-
-- Chỉ `OWNER` hoặc PT có quyền với hội viên đó được gọi.
-- Backend gom dữ liệu từ:
-  - member profile ở mức tối thiểu;
-  - active PT package;
-  - `body_measurements`;
-  - `pt_goals`;
-  - `pt_session_logs`;
-  - `member_activity_logs`.
-- Backend tạo payload ẩn danh.
-- Backend gọi Gemini/Groq/OpenAI compatible API tùy cấu hình env.
-- Backend yêu cầu AI trả JSON cố định.
-- Backend validate/parse JSON trước khi trả frontend.
-- Nếu thiếu API key hoặc AI lỗi, trả lỗi rõ ràng để UI hiển thị, không làm hỏng luồng PT chính.
-
-JSON response dự kiến:
-
-```json
-{
-  "status": "ON_TRACK",
-  "score": 78,
-  "summary": "Tiến trình đang khá tốt...",
-  "improvements": ["Vòng eo giảm rõ", "Lịch tập duy trì ổn"],
-  "attentionPoints": ["Theo dõi nguy cơ giảm cơ"],
-  "nextActions": ["Duy trì 3 buổi/tuần", "Đo lại sau 7 ngày"],
-  "memberMessage": "Tuần này chỉ số của bạn đang cải thiện tốt..."
-}
-```
-
-Frontend dự kiến:
-
-- Thêm panel `AI Progress Insight` ở trang chi tiết khách PT hoặc tab Chỉ số trong Lịch PT.
-- Có nút `Phân tích AI`.
-- Hiển thị trạng thái:
-  - `Đang đúng tiến độ`;
-  - `Cần chú ý`;
-  - `Chậm hơn mục tiêu`;
-  - `Dữ liệu chưa đủ`.
-- Hiển thị score dạng badge/gauge nhẹ.
-- Vẽ biểu đồ từ dữ liệu thật trong database, không để AI tự vẽ:
-  - line chart cân nặng;
-  - line chart vòng eo;
-  - có thể thêm vòng ngực/vòng mông nếu có đủ dữ liệu.
-- Hiển thị progress bar:
-  - tiến độ cân nặng mục tiêu;
-  - tiến độ vòng eo mục tiêu;
-  - số buổi PT đã hoàn thành;
-  - thời gian gói đã trôi qua.
-- Hiển thị 3 nhóm nhận xét:
-  - Cải thiện tốt;
-  - Cần chú ý;
-  - Gợi ý tuần tới.
-- Có nút `Copy nhận xét cho hội viên` để PT tự gửi thủ công nếu muốn.
-
-Không làm trong Sprint 7:
-
-- Không tạo giáo án tập luyện chi tiết bằng AI.
-- Không tư vấn y tế/dinh dưỡng chuyên sâu.
-- Không tự gửi Zalo.
-- Không tự ra quyết định gia hạn/đổi gói.
-- Không lưu lịch sử AI analysis.
-- Không tạo ảnh/biểu đồ bằng AI.
-- Không dùng dữ liệu tài chính hoặc thông tin định danh.
-- Không làm chatbot hỏi đáp tự do.
-- Không dự báo doanh thu hoặc phân khúc khách hàng.
-
-Done khi:
-
-- OWNER/PT bấm `Phân tích AI` cho khách PT có dữ liệu chỉ số.
-- Backend chỉ gửi payload ẩn danh, không chứa PII/tài chính.
-- AI trả về summary, điểm tiến trình, điểm cần chú ý, gợi ý tuần tới và đoạn nhận xét có thể copy.
-- Frontend hiển thị panel trực quan gồm score, biểu đồ từ dữ liệu thật, progress bar và nhận xét AI.
-- Nếu thiếu dữ liệu chỉ số, UI báo `Dữ liệu chưa đủ để phân tích`.
-- Nếu thiếu API key hoặc AI provider lỗi, UI báo lỗi rõ ràng và các chức năng PT khác vẫn dùng bình thường.
+- Có endpoint AI mới đúng nghiệp vụ đã chọn.
+- Payload gửi AI được ẩn danh và có schema rõ ràng.
+- UI hiển thị kết quả ở đúng trang vận hành, không làm rối luồng core.
 - Backend test, frontend lint/build pass.
 
 ## Phạm vi không làm trong MVP hiện tại
@@ -369,7 +283,6 @@ MVP được xem là đạt khi:
 - MEMBER xem được tiến trình cá nhân nhưng không can thiệp nghiệp vụ quản trị.
 - Khách vãng lai xem được trang giới thiệu, bảng giá và thư viện TikTok.
 - Dữ liệu tài chính tính theo ngày thu tiền thực tế.
-- AI Progress Insight phân tích được tiến trình khách PT bằng dữ liệu ẩn danh và hiển thị trực quan trên web.
 - Backend test pass.
 - Frontend lint/build pass.
 
@@ -377,3 +290,4 @@ MVP được xem là đạt khi:
 
 - Chi tiết implementation hiện tại: `plans/active/10-current-implementation-alignment.md`.
 - Kịch bản test thủ công: `plans/active/09-manual-test-scenarios.md`.
+

@@ -17,6 +17,7 @@ import {
 import type { FormEvent } from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import { ApiClientError } from '../../../shared/api/apiClient'
+import { fixVietnameseMojibake } from '../../../shared/lib/text'
 import { useAuth } from '../../auth/context/authContext'
 import {
   createTeamUser,
@@ -118,7 +119,7 @@ export function SettingsPage() {
     setTeamUserError(null)
     try {
       const data = await listTeamUsers()
-      setTeamUsers(data)
+      setTeamUsers(data.map((account) => ({ ...account, fullName: fixVietnameseMojibake(account.fullName) })))
     } catch (err) {
       setTeamUserError(errorMessage(err))
     } finally {

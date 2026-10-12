@@ -22,9 +22,9 @@ Project hiện là MVP quản lý phòng gym nhỏ DUONG DOUBLE, chạy local de
 
 Không làm trong MVP hiện tại:
 
-- Sprint 7/deploy production.
+- Deploy production.
 - Payroll/lương PT đầy đủ.
-- AI/forecast.
+- AI forecast/chatbot tự do/tạo giáo án tự động.
 - Import Excel/CSV tự động.
 - Thanh toán online/webhook ngân hàng.
 - Zalo API tự gửi tin.
@@ -155,6 +155,8 @@ VietQR:
 - Không cho ghi buổi trước ngày bắt đầu gói, sau ngày hết hạn gói hoặc khi hết số buổi cần trừ.
 - Chặn ghi trùng theo lịch/gói/ngày để tránh double-submit.
 - Body measurement và mục tiêu chủ yếu phục vụ khách PT, không bắt buộc cho khách tự tập.
+- Groq key/model vẫn được cấu hình ở backend để tái sử dụng cho Sprint 7 AI mới khi chốt đúng bài toán.
+- Hiện tại không còn endpoint/panel AI phân tích chỉ số cơ thể trong luồng PT.
 
 ## 8. Portal hội viên
 
@@ -284,3 +286,4 @@ MVP hiện tại đạt khi:
 - Tài khoản portal hội viên không reuse nhầm OWNER/PT.
 - Google Sheet sync đọc phản hồi thật.
 - Xuất report `.xlsx` được tách helper để giảm phình page.
+

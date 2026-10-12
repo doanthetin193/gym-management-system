@@ -57,6 +57,12 @@ app:
       - http://localhost:5173
       - http://localhost:5174
       - http://localhost:3000
+  ai:
+    groq:
+      api-keys: ${GROQ_API_KEYS:}
+      model: ${GROQ_MODEL:openai/gpt-oss-20b}
+      endpoint: ${GROQ_ENDPOINT:https://api.groq.com/openai/v1/chat/completions}
+      timeout-seconds: ${GROQ_TIMEOUT_SECONDS:25}
 
 logging:
   level:

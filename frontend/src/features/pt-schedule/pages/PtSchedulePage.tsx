@@ -1537,20 +1537,20 @@ function MemberOverview({
 
           {activeGoal ? (
             <div className="space-y-2.5">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
                   {goalConfig ? (
-                    <span className={`inline-flex items-center gap-1 rounded-md bg-[var(--surface)] border border-[var(--line)] px-2 py-0.5 text-xs font-bold ${goalConfig.color}`}>
+                    <span className={`inline-flex shrink-0 items-center gap-1 rounded-md bg-[var(--surface)] border border-[var(--line)] px-2 py-0.5 text-xs font-bold ${goalConfig.color}`}>
                       <goalConfig.icon size={12} />
                       {goalConfig.label}
                     </span>
                   ) : null}
-                  <span className="text-xs font-black text-[var(--text-strong)] truncate">
+                  <span className="min-w-[160px] flex-1 text-xs font-black text-[var(--text-strong)] line-clamp-2">
                     {activeGoal.goalDescription ?? 'Mục tiêu thể hình'}
                   </span>
                 </div>
                 {activeGoal.targetDate ? (
-                  <span className="text-[10px] font-bold text-amber-500 shrink-0">
+                  <span className="shrink-0 whitespace-nowrap rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-500">
                     Hạn chót: {formatDate(activeGoal.targetDate)}
                   </span>
                 ) : null}
