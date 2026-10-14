@@ -21,4 +21,9 @@ public record CreateTeamUserRequest(
     @NotBlank(message = "Vai trò không được để trống")
     String roleCode
 ) {
+    @Override
+    public String toString() {
+        return "CreateTeamUserRequest[email=%s, fullName=%s, phone=%s, password=***, roleCode=%s]"
+            .formatted(email, fullName, phone, roleCode);
+    }
 }

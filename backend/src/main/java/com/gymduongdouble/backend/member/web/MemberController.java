@@ -2,12 +2,14 @@ package com.gymduongdouble.backend.member.web;
 
 import com.gymduongdouble.backend.common.web.dto.ApiResponse;
 import com.gymduongdouble.backend.member.service.MemberService;
+import com.gymduongdouble.backend.member.web.dto.CreatePortalAccountRequest;
 import com.gymduongdouble.backend.member.web.dto.MemberCreateRequest;
 import com.gymduongdouble.backend.member.web.dto.MemberDetailResponse;
 import com.gymduongdouble.backend.member.web.dto.MemberListFilter;
 import com.gymduongdouble.backend.member.web.dto.MemberResponse;
 import com.gymduongdouble.backend.member.web.dto.MemberSummaryResponse;
 import com.gymduongdouble.backend.member.web.dto.MemberUpdateRequest;
+import com.gymduongdouble.backend.member.web.dto.ResetPortalAccountPasswordRequest;
 import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -60,9 +62,9 @@ public class MemberController {
     @PreAuthorize("hasRole('OWNER')")
     public ApiResponse<MemberDetailResponse> createPortalAccount(
         @PathVariable Long id,
-        @RequestBody(required = false) java.util.Map<String, String> payload
+        @RequestBody(required = false) CreatePortalAccountRequest payload
     ) {
-        String password = payload != null ? payload.get("password") : null;
+        String password = payload != null ? payload.password() : null;
         return ApiResponse.created(memberService.createPortalAccount(id, password));
     }
 
@@ -82,9 +84,9 @@ public class MemberController {
     @PreAuthorize("hasRole('OWNER')")
     public ApiResponse<MemberDetailResponse> resetPortalAccountPassword(
         @PathVariable Long id,
-        @RequestBody(required = false) java.util.Map<String, String> payload
+        @RequestBody(required = false) ResetPortalAccountPasswordRequest payload
     ) {
-        String newPassword = payload != null ? payload.get("newPassword") : null;
+        String newPassword = payload != null ? payload.newPassword() : null;
         return ApiResponse.ok(memberService.resetPortalAccountPassword(id, newPassword));
     }
 

@@ -141,6 +141,7 @@ public class DataInitializer implements ApplicationRunner {
         if (demoSeedEnabled) {
             seedDemoData(owner);
             normalizeExistingDemoRecords();
+            seedAiAdvisorDemoMembers(owner);
             seedDemoMemberLogin();
         }
     }
@@ -363,6 +364,87 @@ public class DataInitializer implements ApplicationRunner {
                 memberRepository.save(member);
             }
         });
+    }
+
+    private void seedAiAdvisorDemoMembers(User owner) {
+        if (memberRepository.findByPhone("0901100001").isPresent()) {
+            return;
+        }
+
+        Map<String, MembershipPlan> plans = seedMembershipPlans();
+        Map<String, FinancialCategory> categories = financialCategoryRepository.findAll().stream()
+            .collect(Collectors.toMap(FinancialCategory::getCode, Function.identity()));
+        LocalDate today = LocalDate.now();
+        User ptKiet = userRepository.findByEmail("kiet.pt@gymduongdouble.local").orElse(owner);
+        User ptTien = userRepository.findByEmail("tien.pt@gymduongdouble.local").orElse(owner);
+
+        Member mai = createMember("Mai Anh", "0901100001", LocalDate.of(2001, 3, 12), Gender.FEMALE, MemberSource.FACEBOOK, "Khách tự tập gói đầu tiên, sắp hết hạn.");
+        Member bao = createMember("Quốc Bảo", "0901100002", LocalDate.of(1996, 6, 24), Gender.MALE, MemberSource.ZALO, "Khách tự tập đã hết hạn hơn 1 tuần.");
+        Member khoa = createMember("Minh Khoa", "0901100003", LocalDate.of(1995, 11, 8), Gender.MALE, MemberSource.REFERRAL, "Khách PT gần hết hạn nhưng còn nhiều buổi.");
+        Member ha = createMember("Thu Hà", "0901100004", LocalDate.of(1999, 1, 20), Gender.FEMALE, MemberSource.WALK_IN, "Khách PT bị gián đoạn lịch tập lâu ngày.");
+        Member ngoc = createMember("Bích Ngọc", "0901100005", LocalDate.of(1998, 8, 17), Gender.FEMALE, MemberSource.FACEBOOK, "Khách cổ vai gáy sắp cần chăm sóc lại.");
+        Member nam = createMember("Văn Nam", "0901100006", LocalDate.of(1993, 4, 2), Gender.MALE, MemberSource.OTHER, "Khách VIP tự tập đang duy trì tốt.");
+        Member phuc = createMember("Đức Phúc", "0901100007", LocalDate.of(2000, 12, 10), Gender.MALE, MemberSource.WALK_IN, "Khách mới tháng này.");
+
+        MemberMembership maiMembership = createMembership(mai, plans.get("SELF_1M"), owner, today.minusDays(27), today.plusDays(3), bd("300000"), bd("300000"), bd("0"), MembershipStatus.ACTIVE, "Gói đầu tiên sắp hết hạn.");
+        MemberMembership baoMembership = createMembership(bao, plans.get("SELF_2M"), owner, today.minusDays(72), today.minusDays(12), bd("560000"), bd("560000"), bd("0"), MembershipStatus.EXPIRED, "Đã hết hạn, cần chăm sóc quay lại.");
+        MemberMembership khoaMembership = createMembership(khoa, plans.get("PT_MAIN_20"), owner, today.minusDays(55), today.plusDays(5), bd("6000000"), bd("4000000"), bd("2000000"), MembershipStatus.ACTIVE, "Gần hết hạn, còn nhiều buổi PT.");
+        MemberMembership haMembership = createMembership(ha, plans.get("PT_NEW_20"), ptKiet, today.minusDays(46), today.plusDays(14), bd("3900000"), bd("3900000"), bd("0"), MembershipStatus.ACTIVE, "Khách PT mới bị gián đoạn.");
+        MemberMembership ngocMembership = createMembership(ngoc, plans.get("REHAB_5"), owner, today.minusDays(52), today.plusDays(8), bd("2550000"), bd("1550000"), bd("1000000"), MembershipStatus.ACTIVE, "Cổ vai gáy còn nợ một phần.");
+        MemberMembership namMembership = createMembership(nam, plans.get("SELF_VIP_4M"), owner, today.minusDays(40), today.plusDays(80), bd("2080000"), bd("2080000"), bd("0"), MembershipStatus.ACTIVE, "Khách VIP ổn định.");
+        MemberMembership phucMembership = createMembership(phuc, plans.get("SELF_2M"), owner, today.minusDays(3), today.plusDays(57), bd("560000"), bd("560000"), bd("0"), MembershipStatus.ACTIVE, "Khách mới tháng này.");
+
+        createPayment(mai, maiMembership, null, today.minusDays(27), bd("300000"), PaymentMethod.BANK_TRANSFER, RevenueCategory.SELF_TRAINING, "Thu gói tự tập 1 tháng.", owner, categories.get("SELF_TRAINING"));
+        createPayment(bao, baoMembership, null, today.minusDays(72), bd("560000"), PaymentMethod.CASH, RevenueCategory.SELF_TRAINING, "Thu gói tự tập 2 tháng.", owner, categories.get("SELF_TRAINING"));
+        createPayment(khoa, khoaMembership, null, today.minusDays(55), bd("4000000"), PaymentMethod.BANK_TRANSFER, RevenueCategory.PT_MAIN, "Đóng trước gói PT chính.", owner, categories.get("PT_MAIN"));
+        createPayment(ha, haMembership, null, today.minusDays(46), bd("3900000"), PaymentMethod.BANK_TRANSFER, RevenueCategory.PT_NEW, "Thu đủ gói PT mới.", ptKiet, categories.get("PT_NEW"));
+        createPayment(ngoc, ngocMembership, null, today.minusDays(52), bd("1550000"), PaymentMethod.CASH, RevenueCategory.GUIDANCE, "Đóng trước gói cổ vai gáy.", owner, categories.get("GUIDANCE"));
+        createPayment(nam, namMembership, null, today.minusDays(40), bd("2080000"), PaymentMethod.BANK_TRANSFER, RevenueCategory.SELF_TRAINING, "Thu gói VIP 4 tháng.", owner, categories.get("SELF_TRAINING"));
+        createPayment(phuc, phucMembership, null, today.minusDays(3), bd("560000"), PaymentMethod.CASH, RevenueCategory.SELF_TRAINING, "Thu gói tự tập khách mới.", owner, categories.get("SELF_TRAINING"));
+
+        createOpenDebt(khoa, khoaMembership, bd("6000000"), bd("4000000"), bd("2000000"), today.plusDays(2), "Còn nợ phần sau của gói PT chính.");
+        createOpenDebt(ngoc, ngocMembership, bd("2550000"), bd("1550000"), bd("1000000"), today.plusDays(5), "Còn nợ gói cổ vai gáy.");
+
+        PtSessionPackage khoaPackage = createPtPackage(khoa, ptTien, khoaMembership, 20, 6, 20, 4, today.minusDays(55), today.plusDays(5), SessionPackageStatus.ACTIVE);
+        PtSessionPackage haPackage = createPtPackage(ha, ptKiet, haMembership, 20, 5, 20, 3, today.minusDays(46), today.plusDays(14), SessionPackageStatus.ACTIVE);
+
+        createPtAssignment(khoa, ptTien, today.minusDays(55), null, "Cần phục hồi lịch PT trước khi hết hạn.");
+        createPtAssignment(ha, ptKiet, today.minusDays(46), null, "Khách PT mới cần kéo lại nhịp tập.");
+
+        createSessionLog(khoaPackage, khoa, ptTien, today.minusDays(52), 1, bd("81.0"), PtSessionStatus.COMPLETED, "Đánh giá form squat, push, pull.", "Khởi đầu tốt.");
+        createSessionLog(khoaPackage, khoa, ptTien, today.minusDays(40), 2, bd("80.4"), PtSessionStatus.COMPLETED, "Upper body strength.", "Cần đều lịch hơn.");
+        createSessionLog(khoaPackage, khoa, ptTien, today.minusDays(22), 3, bd("79.8"), PtSessionStatus.COMPLETED, "Lower body, core.", "Sau đó nghỉ dài.");
+        createSessionLog(haPackage, ha, ptKiet, today.minusDays(44), 1, bd("61.5"), PtSessionStatus.COMPLETED, "Full body nhẹ.", "Khách còn ngại tập tạ.");
+        createSessionLog(haPackage, ha, ptKiet, today.minusDays(32), 2, bd("61.1"), PtSessionStatus.COMPLETED, "Máy đùi, hip thrust.", "Gián đoạn sau buổi này.");
+
+        createActivityLog(khoa, khoaMembership, khoaPackage, ActivityType.PRACTICE, today.minusDays(38), 1, bd("80.2"), "Tự ôn buổi 1.", ptTien);
+        createActivityLog(khoa, khoaMembership, khoaPackage, ActivityType.PRACTICE, today.minusDays(24), 2, bd("79.9"), "Tự ôn buổi 2.", ptTien);
+        createActivityLog(ngoc, ngocMembership, null, ActivityType.GUIDANCE_CHECKIN, today.minusDays(14), 1, null, "Check cổ vai gáy buổi 1.", owner);
+
+        seedAdvisorMeasurements(khoa, ptTien, today.minusDays(55), bd("175"), List.of(bd("81.0"), bd("80.4"), bd("79.8"), bd("79.5")), List.of(bd("92"), bd("90"), bd("88"), bd("87")));
+        seedAdvisorMeasurements(ha, ptKiet, today.minusDays(46), bd("162"), List.of(bd("61.5"), bd("61.1"), bd("60.9"), bd("61.0")), List.of(bd("78"), bd("76"), bd("75"), bd("75")));
+
+        createGoal(khoa, ptTien, GoalType.FAT_LOSS, "Giảm mỡ bụng, tăng sức bền và giữ lịch PT đều.", today.minusDays(55), today.plusDays(5), bd("76"), null, bd("84"), ProgramStatus.ACTIVE);
+        createGoal(ha, ptKiet, GoalType.MUSCLE_GAIN, "Tăng cơ mông đùi, cải thiện sự tự tin khi tập tạ.", today.minusDays(46), today.plusDays(14), bd("62"), null, bd("72"), ProgramStatus.ACTIVE);
+    }
+
+    private void seedAdvisorMeasurements(Member member, User recordedBy, LocalDate startDate, BigDecimal height, List<BigDecimal> weights, List<BigDecimal> waists) {
+        for (int index = 0; index < weights.size(); index += 1) {
+            createBodyMeasurement(
+                member,
+                recordedBy,
+                startDate.plusDays(index * 14L),
+                height,
+                weights.get(index),
+                bd("94"),
+                waists.get(index),
+                waists.get(index).add(bd("3")),
+                bd("96"),
+                bd("55"),
+                bd("31"),
+                "Chỉ số demo phục vụ kiểm thử AI retention."
+            );
+        }
     }
 
     private void normalizeExistingDemoRecords() {

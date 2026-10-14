@@ -11,4 +11,8 @@ public record LoginRequest(
 
     Boolean rememberMe
 ) {
+    @Override
+    public String toString() {
+        return "LoginRequest[email=%s, password=***, rememberMe=%s]".formatted(email, rememberMe);
+    }
 }

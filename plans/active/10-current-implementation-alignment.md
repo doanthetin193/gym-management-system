@@ -1,6 +1,6 @@
 # 10 - Current Implementation Alignment
 
-Cập nhật lần cuối: 12/10/2026.
+Cập nhật lần cuối: 13/10/2026.
 
 Tài liệu này là nguồn đối chiếu hiện trạng implementation. Nếu tài liệu kế hoạch cũ khác với code hiện tại, ưu tiên file này và `07-development-roadmap.md` bản đã cập nhật.
 
@@ -18,13 +18,14 @@ Project hiện là MVP quản lý phòng gym nhỏ DUONG DOUBLE, chạy local de
 - Quản lý khách PT, lịch PT, check-in buổi tập, chỉ số cơ thể, mục tiêu.
 - Nhắc việc Zalo thủ công.
 - Báo cáo, biểu đồ, export `.xlsx`, đồng bộ Google Sheet thủ công.
+- AI cố vấn giữ chân khách và doanh thu trong trang Báo cáo, dùng dữ liệu tổng hợp đã ẩn danh.
 - Cài đặt tài khoản PT, portal hội viên và thông tin thanh toán.
 
 Không làm trong MVP hiện tại:
 
 - Deploy production.
 - Payroll/lương PT đầy đủ.
-- AI forecast/chatbot tự do/tạo giáo án tự động.
+- Chatbot tự do/tạo giáo án tự động/AI gửi tin nhắn cho từng khách.
 - Import Excel/CSV tự động.
 - Thanh toán online/webhook ngân hàng.
 - Zalo API tự gửi tin.
@@ -155,7 +156,7 @@ VietQR:
 - Không cho ghi buổi trước ngày bắt đầu gói, sau ngày hết hạn gói hoặc khi hết số buổi cần trừ.
 - Chặn ghi trùng theo lịch/gói/ngày để tránh double-submit.
 - Body measurement và mục tiêu chủ yếu phục vụ khách PT, không bắt buộc cho khách tự tập.
-- Groq key/model vẫn được cấu hình ở backend để tái sử dụng cho Sprint 7 AI mới khi chốt đúng bài toán.
+- Groq key/model được cấu hình ở backend để phục vụ AI cố vấn giữ chân khách/doanh thu.
 - Hiện tại không còn endpoint/panel AI phân tích chỉ số cơ thể trong luồng PT.
 
 ## 8. Portal hội viên
@@ -199,6 +200,10 @@ Reports:
 - Biểu đồ doanh thu 6 tháng gần nhất.
 - Thu chuyển khoản/tiền mặt tháng hiện tại.
 - Số gói đang niêm yết.
+- Card `AI Cố vấn Giữ chân & Doanh thu` cho OWNER bấm phân tích theo tháng.
+- AI chỉ nhận dữ liệu tổng hợp/ẩn danh: số lượng hội viên, doanh thu theo tháng, công nợ, segment rủi ro/cơ hội, nguồn khách dạng tổng hợp và trạng thái PT ở cấp nhóm.
+- Không gửi tên, SĐT, Zalo, email, địa chỉ hoặc từng giao dịch cá nhân chi tiết sang AI.
+- Nếu Groq lỗi hoặc trả dữ liệu không ổn định, backend trả kết quả rule-based fallback để trang Báo cáo vẫn dùng được.
 
 Export:
 
@@ -269,6 +274,7 @@ MVP hiện tại đạt khi:
 - MEMBER xem được tiến trình cá nhân nhưng không can thiệp nghiệp vụ quản trị.
 - Public web xem được thông tin giới thiệu, bảng giá và thư viện TikTok.
 - Dữ liệu tài chính đúng tháng theo ngày thu tiền thực tế.
+- OWNER dùng được AI cố vấn giữ chân khách/doanh thu trong trang Báo cáo mà không gửi PII sang AI provider.
 - Backend test pass.
 - Frontend lint/build pass.
 
@@ -283,6 +289,7 @@ MVP hiện tại đạt khi:
 - Chặn check-in/lưu chỉ số ở ngày tương lai.
 - Chặn payment date và initial payment date ở tương lai.
 - Không reset password OWNER seed nếu tài khoản đã tồn tại.
+- DTO chứa password/token được mask trong `toString()` để tránh lộ credential khi môi trường dev bật debug log.
 - Tài khoản portal hội viên không reuse nhầm OWNER/PT.
 - Google Sheet sync đọc phản hồi thật.
 - Xuất report `.xlsx` được tách helper để giảm phình page.

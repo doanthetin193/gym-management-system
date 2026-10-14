@@ -8,4 +8,8 @@ public record ResetTeamPasswordRequest(
     @Size(min = 6, message = "Mật khẩu tối thiểu 6 ký tự")
     String newPassword
 ) {
+    @Override
+    public String toString() {
+        return "ResetTeamPasswordRequest[newPassword=***]";
+    }
 }

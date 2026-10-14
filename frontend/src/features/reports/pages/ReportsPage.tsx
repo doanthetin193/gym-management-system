@@ -26,6 +26,8 @@ import type { MembershipPlan } from '../../membership-plans/types/membershipPlan
 import { listDebts, listPayments } from '../../payments/api/paymentApi'
 import { paymentMethodLabels } from '../../payments/types/payment'
 import type { DebtRecord, PaymentTransaction } from '../../payments/types/payment'
+import { analyzeRetentionRevenue } from '../api/aiAdvisorApi'
+import type { AiAdvisorResult } from '../api/aiAdvisorApi'
 import { downloadXlsx } from '../lib/xlsxExport'
 
 type SheetConfig = {
@@ -124,6 +126,9 @@ export function ReportsPage() {
   const [sheetConfig, setSheetConfig] = useState<SheetConfig>(() => readSheetConfig())
   const [syncing, setSyncing] = useState(false)
   const [syncMessage, setSyncMessage] = useState<{ text: string; success: boolean } | null>(null)
+  const [aiAdvisor, setAiAdvisor] = useState<AiAdvisorResult | null>(null)
+  const [aiLoading, setAiLoading] = useState(false)
+  const [aiError, setAiError] = useState<string | null>(null)
 
   const loadReports = useCallback(async () => {
     try {
@@ -164,8 +169,10 @@ export function ReportsPage() {
   const financeRows = useMemo(() => lastSixRows(financeReport), [financeReport])
   const maxIncome = Math.max(1, ...financeRows.map((row) => row.income))
   const sixMonthsTotal = financeRows.reduce((sum, row) => sum + row.income, 0)
-  const activeDebts = debts.filter((debt) => debt.status === 'OPEN' || debt.status === 'PARTIALLY_PAID')
+  const activeDebts = debts.filter((debt) => (debt.status === 'OPEN' || debt.status === 'PARTIALLY_PAID') && debt.remainingAmount > 0)
   const totalDebt = activeDebts.reduce((sum, debt) => sum + debt.remainingAmount, 0)
+  const operatingMembers = distribution.active + distribution.expiringSoon
+  const attentionMembers = distribution.expiringSoon + distribution.expired
 
   const currentMonthPayments = payments.filter((payment) => {
     const date = new Date(payment.paymentDate)
@@ -249,6 +256,19 @@ export function ReportsPage() {
       plans: 'Goi tap',
     }
     downloadXlsx(`gym-duong-double-${kind}.xlsx`, [{ name: sheetNames[kind], rows: reportRows(kind) }])
+  }
+
+  async function handleAnalyzeAiAdvisor() {
+    setAiLoading(true)
+    setAiError(null)
+    try {
+      const result = await analyzeRetentionRevenue(period)
+      setAiAdvisor(result)
+    } catch (analyzeError) {
+      setAiError(analyzeError instanceof Error ? analyzeError.message : 'Không thể tạo phân tích AI.')
+    } finally {
+      setAiLoading(false)
+    }
   }
 
   async function syncGoogleSheet() {
@@ -370,7 +390,7 @@ export function ReportsPage() {
             icon={Users}
             label="Tổng hội viên"
             value={`${formatNumber(distribution.total)} khách`}
-            helper={`${distribution.active} đang tập • ${distribution.expired} hết hạn`}
+            helper={`${operatingMembers} hoạt động • ${distribution.expiringSoon} sắp hết hạn • ${distribution.expired} hết hạn`}
             iconColor="text-sky-400"
             iconBg="bg-sky-500/15 border-sky-500/30"
             glowColor="rgba(56, 189, 248, 0.5)"
@@ -403,6 +423,13 @@ export function ReportsPage() {
             glowColor="rgba(251, 191, 36, 0.5)"
           />
         </div>
+
+        <AiRetentionAdvisorCard
+          result={aiAdvisor}
+          loading={aiLoading}
+          error={aiError}
+          onAnalyze={() => void handleAnalyzeAiAdvisor()}
+        />
 
         {/* 2 Flagship Charts Grid */}
         <div className="grid gap-5 lg:grid-cols-12">
@@ -437,10 +464,10 @@ export function ReportsPage() {
             <div className="mt-5 rounded-xl border border-cyan-500/25 bg-cyan-500/5 p-3 flex items-center justify-between gap-3 text-xs font-bold text-[var(--text-muted)]">
               <span className="flex items-center gap-2">
                 <span className="size-2 rounded-full bg-cyan-400 shadow-[0_0_6px_#00e5ff]" />
-                Tỷ lệ duy trì: <strong className="text-cyan-400 font-black">{distribution.total > 0 ? Math.round((distribution.active / distribution.total) * 100) : 0}%</strong>
+                Tỷ lệ duy trì: <strong className="text-cyan-400 font-black">{distribution.total > 0 ? Math.round((operatingMembers / distribution.total) * 100) : 0}%</strong>
               </span>
               <span className="font-semibold text-right truncate">
-                {distribution.expired > 0 ? `Cần nhắc ${distribution.expired} khách gia hạn` : '100% hội viên đang tập'}
+                {attentionMembers > 0 ? `Cần chăm sóc ${attentionMembers} khách sắp/đã hết hạn` : '100% hội viên còn hạn ổn định'}
               </span>
             </div>
           </div>
@@ -559,7 +586,7 @@ export function ReportsPage() {
                 <QuickExportCard
                   icon={AlertTriangle}
                   title="Sổ theo dõi công nợ"
-                  count={`${debts.length} khoản nợ`}
+                  count={`${activeDebts.length} khoản cần thu • ${debts.length} bản ghi`}
                   badge="Công nợ"
                   onClick={() => exportXlsx('debts')}
                 />
@@ -658,6 +685,185 @@ export function ReportsPage() {
           </div>
         </div>
       </section>
+    </div>
+  )
+}
+
+function AiRetentionAdvisorCard({
+  result,
+  loading,
+  error,
+  onAnalyze,
+}: {
+  result: AiAdvisorResult | null
+  loading: boolean
+  error: string | null
+  onAnalyze: () => void
+}) {
+  const insight = result?.insight
+  const statusStyle = {
+    GOOD: 'border-emerald-500/35 bg-emerald-500/10 text-emerald-400',
+    WATCH: 'border-amber-500/35 bg-amber-500/10 text-amber-400',
+    RISK: 'border-rose-500/35 bg-rose-500/10 text-rose-400',
+  }[insight?.healthStatus ?? 'WATCH'] ?? 'border-amber-500/35 bg-amber-500/10 text-amber-400'
+
+  return (
+    <div className="rounded-2xl border border-violet-500/25 bg-[var(--surface)] p-5 shadow-sm">
+      <div className="flex flex-col gap-3 border-b border-[var(--line)] pb-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex items-start gap-3">
+          <div className="grid size-11 shrink-0 place-items-center rounded-xl border border-violet-500/35 bg-violet-500/12 text-violet-400 shadow-[0_0_16px_rgba(139,92,246,0.18)]">
+            <Sparkles size={21} />
+          </div>
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-base font-black text-[var(--text-strong)]">AI Cố vấn Giữ chân & Doanh thu</h2>
+              {result ? (
+                <span className={`rounded-full border px-2.5 py-0.5 text-[10px] font-black ${statusStyle}`}>
+                  {result.aiGenerated ? 'AI Groq' : 'Rule fallback'} • {insight?.healthStatus ?? 'WATCH'}
+                </span>
+              ) : null}
+            </div>
+            <p className="mt-1 text-[11px] font-semibold leading-relaxed text-[var(--text-muted)]">
+              Phân tích dữ liệu tổng hợp đã ẩn danh: không gửi tên, SĐT, Zalo, email, địa chỉ hay giao dịch cá nhân sang AI.
+            </p>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={onAnalyze}
+          disabled={loading}
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 via-fuchsia-600 to-amber-500 px-4 text-xs font-black text-white shadow-[0_4px_18px_rgba(139,92,246,0.25)] transition-all hover:brightness-110 active:scale-[0.98] disabled:opacity-60"
+        >
+          <Sparkles size={15} className={loading ? 'animate-spin' : ''} />
+          {loading ? 'AI đang phân tích...' : result ? 'Phân tích lại' : 'Phân tích AI'}
+        </button>
+      </div>
+
+      {error ? (
+        <div className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-xs font-bold text-red-500">
+          {error}
+        </div>
+      ) : null}
+
+      {!result ? (
+        <div className="mt-4 grid gap-3 lg:grid-cols-3">
+          <AiEmptyPoint title="Tìm rủi ro mất khách" text="Nhận diện nhóm đã hết hạn, sắp hết hạn, còn nợ hoặc khách PT đang gián đoạn." />
+          <AiEmptyPoint title="Tìm cơ hội doanh thu" text="Gợi ý nhóm nên gia hạn, thu công nợ, phục hồi lịch PT hoặc upsell gói phù hợp." />
+          <AiEmptyPoint title="Lập kế hoạch 7 ngày" text="AI chuyển dữ liệu tổng hợp thành hành động vận hành cụ thể cho chủ phòng." />
+        </div>
+      ) : (
+        <div className="mt-4 space-y-4">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <AiSummaryTile label="Rủi ro cao" value={`${result.summary.highRiskChurn} khách`} tone="rose" />
+            <AiSummaryTile label="Sắp hết hạn" value={`${result.summary.nearExpiryMembers} khách`} tone="amber" />
+            <AiSummaryTile label="Công nợ mở" value={`${result.summary.openDebtCount} khoản`} tone="violet" />
+            <AiSummaryTile label="Giá trị rủi ro" value={formatMoney(result.summary.estimatedRevenueAtRisk)} tone="emerald" />
+          </div>
+
+          <div className="rounded-xl border border-[var(--line)] bg-[var(--surface-muted)]/35 p-4">
+            <p className="text-sm font-bold leading-relaxed text-[var(--text-strong)]">{insight?.overview}</p>
+            {insight?.providerMessage ? (
+              <p className="mt-2 rounded-lg border border-amber-500/25 bg-amber-500/10 p-2 text-[11px] font-semibold text-amber-500">
+                {insight.providerMessage}
+              </p>
+            ) : null}
+            <p className="mt-2 text-xs font-semibold text-[var(--text-muted)]">{insight?.revenueRiskNote}</p>
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-3">
+            <AiInsightList title="Top rủi ro cần xử lý" items={insight?.topRisks ?? []} tone="rose" />
+            <AiInsightList title="Cơ hội doanh thu" items={insight?.revenueOpportunities ?? []} tone="emerald" />
+            <AiInsightList title="Kế hoạch 7 ngày" items={insight?.actionPlan7Days ?? []} tone="amber" />
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-2">
+            <AiSegmentList title="Nhóm rủi ro hệ thống đã chấm" segments={result.riskSegments} />
+            <AiSegmentList title="Nhóm cơ hội nên ưu tiên" segments={result.opportunitySegments} />
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function AiEmptyPoint({ title, text }: { title: string; text: string }) {
+  return (
+    <div className="rounded-xl border border-[var(--line)] bg-[var(--surface-muted)]/35 p-3">
+      <p className="text-xs font-black text-[var(--text-strong)]">{title}</p>
+      <p className="mt-1 text-[11px] font-semibold leading-relaxed text-[var(--text-muted)]">{text}</p>
+    </div>
+  )
+}
+
+function AiSummaryTile({ label, value, tone }: { label: string; value: string; tone: 'rose' | 'amber' | 'violet' | 'emerald' }) {
+  const color = {
+    rose: 'text-rose-400 bg-rose-500/10 border-rose-500/25',
+    amber: 'text-amber-400 bg-amber-500/10 border-amber-500/25',
+    violet: 'text-violet-400 bg-violet-500/10 border-violet-500/25',
+    emerald: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/25',
+  }[tone]
+
+  return (
+    <div className={`rounded-xl border p-3 ${color}`}>
+      <p className="text-[10px] font-black uppercase tracking-wider opacity-80">{label}</p>
+      <p className="mt-1 text-lg font-black">{value}</p>
+    </div>
+  )
+}
+
+function AiInsightList({ title, items, tone }: { title: string; items: string[]; tone: 'rose' | 'emerald' | 'amber' }) {
+  const dotColor = {
+    rose: 'bg-rose-400',
+    emerald: 'bg-emerald-400',
+    amber: 'bg-amber-400',
+  }[tone]
+
+  return (
+    <div className="rounded-xl border border-[var(--line)] bg-[var(--surface-muted)]/35 p-4">
+      <h3 className="text-xs font-black uppercase tracking-wider text-[var(--text-strong)]">{title}</h3>
+      <div className="mt-3 space-y-2">
+        {items.length === 0 ? (
+          <p className="text-xs font-semibold text-[var(--text-muted)]">Chưa có khuyến nghị.</p>
+        ) : (
+          items.map((item) => (
+            <div key={item} className="flex gap-2 text-xs font-semibold leading-relaxed text-[var(--text-muted)]">
+              <span className={`mt-1.5 size-1.5 shrink-0 rounded-full ${dotColor}`} />
+              <span>{item}</span>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  )
+}
+
+function AiSegmentList({ title, segments }: { title: string; segments: AiAdvisorResult['riskSegments'] }) {
+  return (
+    <div className="rounded-xl border border-[var(--line)] bg-[var(--surface-muted)]/30 p-4">
+      <h3 className="text-xs font-black uppercase tracking-wider text-[var(--text-strong)]">{title}</h3>
+      <div className="mt-3 space-y-2">
+        {segments.length === 0 ? (
+          <p className="text-xs font-semibold text-[var(--text-muted)]">Không có nhóm đáng chú ý.</p>
+        ) : (
+          segments.slice(0, 4).map((segment) => (
+            <div key={segment.code} className="rounded-lg border border-[var(--line)] bg-[var(--surface)] p-3">
+              <div className="flex items-center justify-between gap-2">
+                <p className="min-w-0 flex-1 truncate text-xs font-black text-[var(--text-strong)]">{segment.label}</p>
+                <span className="shrink-0 rounded-full bg-[var(--line)] px-2 py-0.5 text-[10px] font-black text-[var(--text-muted)]">
+                  {segment.count} khách
+                </span>
+              </div>
+              <p className="mt-1 text-[11px] font-semibold text-[var(--text-muted)]">{segment.recommendation}</p>
+              {segment.estimatedRevenueAtRisk > 0 ? (
+                <p className="mt-1 text-[11px] font-black text-amber-500">
+                  Ước tính liên quan: {formatMoney(segment.estimatedRevenueAtRisk)}
+                </p>
+              ) : null}
+            </div>
+          ))
+        )}
+      </div>
     </div>
   )
 }

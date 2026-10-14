@@ -6,4 +6,9 @@ public record LoginResponse(
     long expiresInMinutes,
     AuthUserResponse user
 ) {
+    @Override
+    public String toString() {
+        return "LoginResponse[tokenType=%s, accessToken=***, expiresInMinutes=%d, user=%s]"
+            .formatted(tokenType, expiresInMinutes, user);
+    }
 }

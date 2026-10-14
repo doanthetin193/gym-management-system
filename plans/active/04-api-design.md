@@ -543,7 +543,7 @@ Yêu cầu:
 ## 13. API chưa làm trong MVP
 
 - Payroll API.
-- AI score API.
+- AI chatbot tự do hoặc AI score cá nhân theo từng hội viên.
 - Payment online API.
 - Auto Zalo API.
 - Export PDF API server-side. Xuất `.xlsx` hiện đã xử lý ở frontend/report flow, không còn xếp là API chặn MVP.
@@ -661,6 +661,18 @@ PATCH /v1/notifications/{id}/read
 ```
 
 Xuất `.xlsx`, full backup và Google Sheet sync hiện được xử lý phía frontend bằng dữ liệu report API; chưa có export API riêng ở backend.
+
+### AI cố vấn giữ chân và doanh thu
+
+```text
+POST /v1/ai/retention-revenue-advisor
+```
+
+- Chỉ role `OWNER` được gọi.
+- Request body có thể truyền `year` và `month`; nếu bỏ trống backend dùng tháng hiện tại theo local business date.
+- Backend gom dữ liệu tổng hợp đã ẩn danh rồi mới gọi Groq: tổng hội viên, active/expired/near-expiry, doanh thu tháng này/tháng trước, công nợ mở, khách mới/gia hạn, phân nhóm rủi ro và cơ hội.
+- Không gửi tên, SĐT, Zalo, email, địa chỉ hoặc từng giao dịch cá nhân chi tiết sang AI provider.
+- Nếu Groq lỗi hoặc trả JSON không ổn định, API vẫn trả `aiGenerated = false` với phân tích rule-based fallback để trang Báo cáo không bị gãy.
 
 ### Thư viện TikTok public
 

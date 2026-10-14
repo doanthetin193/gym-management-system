@@ -11,4 +11,8 @@ public record ChangePasswordRequest(
     @Size(min = 8, message = "Mật khẩu mới phải có ít nhất 8 ký tự.")
     String newPassword
 ) {
+    @Override
+    public String toString() {
+        return "ChangePasswordRequest[currentPassword=***, newPassword=***]";
+    }
 }

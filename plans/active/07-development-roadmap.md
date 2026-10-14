@@ -1,6 +1,6 @@
 # 07 - Roadmap triển khai hiện tại
 
-Tài liệu này phản ánh roadmap MVP của project DUONG DOUBLE Gym Management ở môi trường local dev. Project hiện đã hoàn thiện Sprint 1-6 cho MVP vận hành nội bộ. Sprint 7 chỉ giữ nền cấu hình Groq để chuẩn bị cho một nghiệp vụ AI mới khi được chốt, chưa triển khai AI vào luồng vận hành chính.
+Tài liệu này phản ánh roadmap MVP của project DUONG DOUBLE Gym Management ở môi trường local dev. Project hiện đã hoàn thiện Sprint 1-6 cho MVP vận hành nội bộ, Sprint 7 chuẩn bị nền AI và Sprint 8 triển khai AI cố vấn giữ chân khách/doanh thu ở mức vừa đủ cho đồ án.
 
 Nguyên tắc chung:
 
@@ -229,9 +229,9 @@ Done hiện tại:
 
 Trạng thái hiện tại:
 
-- Chưa triển khai chức năng AI nghiệp vụ cuối cùng.
 - Đã giữ nền cấu hình Groq ở backend để tái sử dụng khi chọn được bài toán AI phù hợp.
-- Đã loại bỏ AI phân tích chỉ số cơ thể khách PT vì giá trị thực tế chưa đủ cao so với chi phí gọi AI.
+- Đã đánh giá prototype AI phân tích chỉ số cơ thể khách PT.
+- Đã loại bỏ hướng AI nhận xét số đo cơ thể khỏi scope chính vì giá trị thực tế chưa đủ cao so với chi phí gọi AI.
 
 Nền kỹ thuật đang giữ:
 
@@ -255,9 +255,74 @@ Nguyên tắc chọn chức năng AI sau này:
 
 Done khi chọn Sprint 7 thật sự:
 
-- Có endpoint AI mới đúng nghiệp vụ đã chọn.
-- Payload gửi AI được ẩn danh và có schema rõ ràng.
-- UI hiển thị kết quả ở đúng trang vận hành, không làm rối luồng core.
+- Có nền cấu hình AI dùng lại được cho Sprint 8.
+- Không còn endpoint/panel AI nhận xét chỉ số cơ thể trong luồng PT.
+- Không gửi dữ liệu cá nhân hoặc tài chính chi tiết sang AI.
+- Backend giữ được cấu hình Groq qua biến môi trường.
+- Backend test, frontend lint/build pass.
+
+## Sprint 8 - AI Cố vấn Giữ chân & Doanh thu
+
+Mục tiêu:
+
+- Bổ sung AI vào đúng bài toán đủ giá trị: hỗ trợ chủ phòng nhìn rủi ro mất khách và cơ hội doanh thu tuần tới.
+- Không dùng AI cho từng tin nhắn nhỏ hoặc nhận xét số đo đơn giản.
+- Không gửi PII: không tên, SĐT, Zalo, email, địa chỉ hoặc giao dịch cá nhân chi tiết.
+- Chỉ gọi AI khi OWNER chủ động bấm phân tích trong trang Báo cáo.
+
+Backend implement:
+
+- Endpoint:
+
+```http
+POST /api/v1/ai/retention-revenue-advisor
+```
+
+- Chỉ role `OWNER` được gọi.
+- Backend tự gom dữ liệu tổng hợp:
+  - tổng hội viên, hội viên active, hết hạn, sắp hết hạn;
+  - doanh thu tháng hiện tại/tháng trước;
+  - công nợ đang mở;
+  - khách mới/gia hạn trong tháng;
+  - nhóm gói: tự tập, PT, giáo án/hướng dẫn;
+  - nguồn khách ở dạng tổng hợp;
+  - khách PT gần hết hạn nhưng còn nhiều buổi;
+  - khách PT gián đoạn lâu ngày.
+- Rule nội bộ chấm segment trước:
+  - `HIGH / MEDIUM` risk qua các nhóm như hết hạn, gần hết hạn, công nợ, PT còn buổi, khách gói đầu tiên sắp hết hạn.
+- Payload gửi AI chỉ là dữ liệu tổng hợp/ẩn danh và các segment đã tính.
+- Groq client hỗ trợ nhiều API key phân tách bằng dấu phẩy và thử key kế tiếp nếu key trước lỗi.
+- Nếu Groq lỗi hoặc trả JSON không ổn định, backend trả phân tích rule-based fallback để luồng báo cáo không bị gãy.
+
+Frontend implement:
+
+- Thêm card `AI Cố vấn Giữ chân & Doanh thu` trong trang `/reports`.
+- Có nút `Phân tích AI`.
+- Hiển thị:
+  - trạng thái sức khỏe vận hành: `GOOD / WATCH / RISK`;
+  - tổng quan rủi ro;
+  - top rủi ro mất khách;
+  - cơ hội doanh thu;
+  - kế hoạch hành động 7 ngày;
+  - các segment hệ thống đã chấm;
+  - thông báo rõ nếu đang dùng fallback rule-based.
+
+Seed/test data:
+
+- Bổ sung riêng dữ liệu hội viên demo phục vụ kiểm thử AI:
+  - khách tự tập sắp hết hạn;
+  - khách tự tập đã hết hạn;
+  - khách PT gần hết hạn nhưng còn nhiều buổi;
+  - khách còn công nợ;
+  - khách giáo án/hướng dẫn sắp cần chăm sóc;
+  - chỉ số cơ thể đầy đủ hơn cho nhóm khách PT.
+- Không thay đổi account demo, 21 gói tập chuẩn hoặc cấu hình quan trọng.
+
+Done hiện tại:
+
+- OWNER bấm phân tích AI trong trang Báo cáo và nhận được cố vấn vận hành ở tầng tổng hợp.
+- Dữ liệu gửi AI không chứa PII.
+- Nếu AI provider lỗi, UI vẫn hiển thị phân tích fallback và báo rõ trạng thái.
 - Backend test, frontend lint/build pass.
 
 ## Phạm vi không làm trong MVP hiện tại
