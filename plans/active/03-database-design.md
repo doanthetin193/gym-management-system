@@ -22,10 +22,10 @@ Nguyên tắc:
 
 ## 2. Quy mô bảng đề xuất
 
-MVP tối ưu nhưng đủ nghĩa:
+MVP hiện tại tối ưu nhưng đủ nghĩa:
 
 ```text
-Khoảng 24-26 bảng
+22 bảng nghiệp vụ/runtime
 ```
 
 Full phase sau:
@@ -44,12 +44,11 @@ roles
 user_roles
 
 members
-member_notes
 
 membership_plans
 member_memberships
 
-payments
+payment_transactions
 financial_categories
 financial_transactions
 debt_records
@@ -68,21 +67,17 @@ exercises
 
 business_goals
 
-notifications
-audit_logs
 system_settings
 ```
 
-Tổng: khoảng 25 bảng.
+Tổng hiện tại: 22 bảng. Các bảng `member_notes`, `notifications`, `audit_logs` từng nằm trong thiết kế sơ khai nhưng đã được loại khỏi DB dev vì implementation hiện tại không dùng entity/persistence riêng cho các phần này.
 
 Nếu cần giảm scope MVP, ưu tiên hoãn UI/báo cáo nâng cao chứ không bỏ dữ liệu nguồn cốt lõi:
 
 - Không nên bỏ `member_activity_logs` vì bảng này giữ buổi Ôn tập và check-in Giáo án/Hướng Dẫn.
 - Không làm `training_programs`/`training_program_weeks` trong Sprint 5 vì nhu cầu thực tế hiện tại là thư viện video TikTok public, không phải LMS/giáo án theo tuần.
 - Có thể làm `business_goals` ở cuối MVP.
-- Notification nâng cao có thể hoãn. Nếu chưa làm bảng `notifications` ngay, dashboard vẫn phải hiển thị danh sách sắp hết hạn, sinh nhật, công nợ và khách PT còn ít buổi từ dữ liệu nguồn.
-
-Nhưng không nên bỏ hẳn khỏi thiết kế vì các bảng này phản ánh đúng dữ liệu chủ phòng đang dùng.
+- Notification nâng cao/persistence riêng được hoãn. Dashboard và trang nhắc việc hiện tính động danh sách sắp hết hạn, sinh nhật, công nợ và khách PT còn ít buổi từ dữ liệu nguồn.
 
 ## 4. Auth và phân quyền
 
@@ -163,23 +158,14 @@ Enum/code:
 - `MemberStatus`: ACTIVE, INACTIVE, ARCHIVED.
 - `MemberSource`: WALK_IN, FACEBOOK, ZALO, REFERRAL, OTHER.
 
-### 5.2 `member_notes`
+### 5.2 Ghi chú hội viên
 
-Lưu ghi chú theo dòng thời gian.
+Không dùng bảng `member_notes` trong implementation hiện tại. Ghi chú được lưu trực tiếp ở đúng ngữ cảnh nghiệp vụ:
 
-```text
-member_notes
-  id
-  member_id
-  note_type
-  content
-  created_by
-  created_at
-```
-
-Enum/code:
-
-- `NoteType`: GENERAL, RENEWAL, DEBT, PT_PROGRESS, CUSTOMER_CARE.
+- `members.note`: ghi chú tổng quan.
+- `member_memberships.note`: ghi chú đăng ký/gia hạn gói.
+- `payment_transactions.description`: ghi chú phiếu thu.
+- `pt_session_logs.note`, `member_activity_logs.note`, `pt_goals.note`: ghi chú PT/chỉ số/mục tiêu.
 
 ## 6. Gói tập và lịch sử gia hạn
 
@@ -750,50 +736,16 @@ Mapping từ Excel `MỤC TIÊU THÁNG`:
 
 Khách Hướng Dẫn là khách mua giáo án sau giai đoạn tập PT; nhóm này có thể check-in theo gói 30, 60, 90 buổi.
 
-### 13.2 `notifications`
+### 13.2 Nhắc việc động và audit
 
-```text
-notifications
-  id
-  recipient_user_id
-  member_id
-  notification_type
-  title
-  content
-  status
-  scheduled_at
-  sent_at
-  read_at
-  created_at
-```
+Không dùng entity/table `notifications` riêng trong MVP hiện tại. API nhắc việc được tính động từ:
 
-Enum/code:
+- Hạn gói tập.
+- Sinh nhật.
+- Công nợ mở.
+- Gói PT còn ít buổi.
 
-- `NotificationType`: MEMBERSHIP_EXPIRING, MEMBERSHIP_EXPIRED, BIRTHDAY, DEBT_REMINDER, PT_LOW_SESSIONS, PT_PROGRESS_WARNING.
-
-### 13.3 `audit_logs`
-
-```text
-audit_logs
-  id
-  actor_user_id
-  action
-  entity_type
-  entity_id
-  old_value_json
-  new_value_json
-  ip_address
-  created_at
-```
-
-Cần log:
-
-- Tạo/sửa member.
-- Gia hạn gói.
-- Ghi nhận/sửa thanh toán.
-- Ghi nhận/sửa chi phí.
-- Sửa buổi PT.
-- Sửa dữ liệu lương sau này.
+Không dùng table `audit_logs` trong MVP hiện tại. Nếu cần truy vết thay đổi đầy đủ khi triển khai thực tế, mở lại ở phase hardening.
 
 ### 13.4 `system_settings`
 
@@ -926,15 +878,13 @@ exercise_categories.slug
 exercises.slug
 exercises.category_id
 exercises.published
-notifications.recipient_user_id
-notifications.status
 ```
 
 ## 17. Ràng buộc dữ liệu
 
 - Gói đã từng bán không xóa cứng, chỉ inactive.
 - Thanh toán đã ghi nhận không xóa cứng tùy tiện.
-- Sửa dữ liệu tài chính phải có audit log.
+- Sửa dữ liệu tài chính trong MVP nên hạn chế qua UI; audit log đầy đủ để phase hardening.
 - Gia hạn tạo dòng mới trong `member_memberships`.
 - PT chỉ xem khách được phân công.
 - MEMBER chỉ xem dữ liệu của mình.

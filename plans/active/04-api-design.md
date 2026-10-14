@@ -518,10 +518,10 @@ Progress response cần thể hiện được các nhóm từ Excel:
 ## 11. Notification API
 
 ```text
-GET   /notifications
-PATCH /notifications/{id}/read
-GET   /notifications/unread-count
+GET /v1/notifications
 ```
+
+Notification hiện là dữ liệu tính động từ hạn gói, sinh nhật, công nợ và gói PT còn ít buổi. MVP hiện tại không dùng bảng `notifications`, không có trạng thái read/unread persistent.
 
 ## 12. Import API
 
@@ -657,7 +657,6 @@ GET /v1/business-goals/progress
 GET /v1/reports/finance
 GET /v1/reports/members
 GET /v1/notifications
-PATCH /v1/notifications/{id}/read
 ```
 
 Xuất `.xlsx`, full backup và Google Sheet sync hiện được xử lý phía frontend bằng dữ liệu report API; chưa có export API riêng ở backend.

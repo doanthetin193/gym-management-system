@@ -10,6 +10,7 @@ import com.gymduongdouble.backend.member.web.dto.MemberResponse;
 import com.gymduongdouble.backend.member.web.dto.MemberSummaryResponse;
 import com.gymduongdouble.backend.member.web.dto.MemberUpdateRequest;
 import com.gymduongdouble.backend.member.web.dto.ResetPortalAccountPasswordRequest;
+import com.gymduongdouble.backend.member.web.dto.UpdatePortalAccountStatusRequest;
 import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -72,12 +73,9 @@ public class MemberController {
     @PreAuthorize("hasRole('OWNER')")
     public ApiResponse<MemberDetailResponse> updatePortalAccountStatus(
         @PathVariable Long id,
-        @RequestBody java.util.Map<String, String> payload
+        @Valid @RequestBody UpdatePortalAccountStatusRequest payload
     ) {
-        String statusStr = payload.getOrDefault("status", "ACTIVE");
-        com.gymduongdouble.backend.common.enums.UserStatus status =
-            "LOCKED".equalsIgnoreCase(statusStr) ? com.gymduongdouble.backend.common.enums.UserStatus.LOCKED : com.gymduongdouble.backend.common.enums.UserStatus.ACTIVE;
-        return ApiResponse.ok(memberService.updatePortalAccountStatus(id, status));
+        return ApiResponse.ok(memberService.updatePortalAccountStatus(id, payload.status()));
     }
 
     @PostMapping("/{id}/portal-account/reset-password")

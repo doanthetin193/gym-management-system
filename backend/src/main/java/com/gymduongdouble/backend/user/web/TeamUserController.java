@@ -1,6 +1,5 @@
 package com.gymduongdouble.backend.user.web;
 
-import com.gymduongdouble.backend.common.enums.UserStatus;
 import com.gymduongdouble.backend.common.security.AuthenticatedUser;
 import com.gymduongdouble.backend.common.security.SecurityUtils;
 import com.gymduongdouble.backend.common.web.dto.ApiResponse;
@@ -8,9 +7,10 @@ import com.gymduongdouble.backend.user.service.TeamUserService;
 import com.gymduongdouble.backend.user.web.dto.CreateTeamUserRequest;
 import com.gymduongdouble.backend.user.web.dto.ResetTeamPasswordRequest;
 import com.gymduongdouble.backend.user.web.dto.TeamUserResponse;
+import com.gymduongdouble.backend.user.web.dto.UpdateTeamRoleRequest;
+import com.gymduongdouble.backend.user.web.dto.UpdateTeamStatusRequest;
 import jakarta.validation.Valid;
 import java.util.List;
-import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -43,22 +43,19 @@ public class TeamUserController {
     @PutMapping("/{id}/role")
     public ApiResponse<TeamUserResponse> updateRole(
         @PathVariable Long id,
-        @RequestBody Map<String, String> payload
+        @Valid @RequestBody UpdateTeamRoleRequest request
     ) {
-        String roleCode = payload.getOrDefault("roleCode", "PT");
         AuthenticatedUser currentUser = currentUser();
-        return ApiResponse.ok(teamUserService.updateRole(id, roleCode, currentUser));
+        return ApiResponse.ok(teamUserService.updateRole(id, request.roleCode(), currentUser));
     }
 
     @PutMapping("/{id}/status")
     public ApiResponse<TeamUserResponse> updateStatus(
         @PathVariable Long id,
-        @RequestBody Map<String, String> payload
+        @Valid @RequestBody UpdateTeamStatusRequest request
     ) {
-        String statusStr = payload.getOrDefault("status", "ACTIVE");
-        UserStatus status = "LOCKED".equalsIgnoreCase(statusStr) ? UserStatus.LOCKED : UserStatus.ACTIVE;
         AuthenticatedUser currentUser = currentUser();
-        return ApiResponse.ok(teamUserService.updateStatus(id, status, currentUser));
+        return ApiResponse.ok(teamUserService.updateStatus(id, request.status(), currentUser));
     }
 
     @PostMapping("/{id}/reset-password")

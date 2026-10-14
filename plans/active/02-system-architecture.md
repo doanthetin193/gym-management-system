@@ -7,8 +7,8 @@ Kiến trúc phải phù hợp với phòng gym nhỏ, dễ triển khai và d�
 Ưu tiên:
 
 - Đơn giản.
-- Production-ready ở mức vừa đủ.
-- Dễ deploy trên VPS.
+- Sẵn sàng mở rộng lên production ở phase sau.
+- Chạy local dev ổn định cho phạm vi đồ án hiện tại.
 - Dễ backup.
 - Có module rõ để mở rộng.
 - Không over-engineer.
@@ -18,15 +18,13 @@ Kiến trúc phải phù hợp với phòng gym nhỏ, dễ triển khai và d�
 ```text
 Browser
   |
-Cloudflare
+Vite React Dev Server
   |
-Nginx
-  |
-  |-- React Static App
+  |-- Browser
   |
   |-- /api -> Spring Boot Modular Monolith
                   |
-                  -> PostgreSQL
+                  -> PostgreSQL local
 ```
 
 ## 3. Lý do chọn Modular Monolith
@@ -40,7 +38,7 @@ Không chọn microservices vì:
 
 Modular monolith vẫn đảm bảo:
 
-- Một backend deployable.
+- Một backend dễ đóng gói/deploy sau này.
 - Module theo domain.
 - Dễ tách module sau này nếu thật sự cần.
 
@@ -63,9 +61,7 @@ Backend:
 - Spring Security.
 - Spring Data JPA.
 - Bean Validation.
-- Flyway.
-- Spring Scheduler.
-- Caffeine Cache.
+- Flyway dependency được giữ cho tư duy migration/phase sau, dev hiện dùng Hibernate `ddl-auto:update`.
 
 Database:
 
@@ -73,10 +69,9 @@ Database:
 
 Deploy:
 
-- VPS Ubuntu.
-- Docker Compose.
-- Nginx.
-- Cloudflare.
+- Chưa thuộc phạm vi hiện tại.
+- Local dev dùng Vite + Spring Boot + PostgreSQL.
+- Docker/Nginx/VPS/Cloudflare để phase sau.
 
 ## 5. Module backend
 
@@ -90,7 +85,6 @@ pt
 training
 exercise
 dashboard
-notification
 common
 ```
 
@@ -101,10 +95,11 @@ common
 Trách nhiệm:
 
 - Login.
-- Refresh token.
 - Logout.
 - Password hashing.
 - Current user.
+
+MVP hiện tại dùng JWT access token. Refresh token để phase sau nếu triển khai production.
 
 Không xử lý nghiệp vụ member/PT.
 
@@ -191,7 +186,7 @@ Trách nhiệm:
 - Tổng hợp số liệu cho OWNER/PT/MEMBER.
 - Không sở hữu dữ liệu nguồn.
 
-### `notification`
+### Nhắc việc động
 
 Trách nhiệm:
 
@@ -199,6 +194,7 @@ Trách nhiệm:
 - Sinh nhật.
 - Công nợ.
 - Khách PT còn ít buổi.
+- Không sở hữu bảng riêng trong MVP; dữ liệu được tính động trong dashboard/reminders từ các bảng nguồn.
 
 ## 7. Luồng nghiệp vụ quan trọng
 
@@ -221,7 +217,7 @@ OWNER chọn member
 member_memberships.end_date
   -> tính days_until_expiration
   -> phân loại active/sắp hết hạn/hết hạn
-  -> dashboard + notification
+  -> dashboard + reminders/notification response động
 ```
 
 ### 7.3 Ghi nhận buổi PT
@@ -280,12 +276,7 @@ Nếu performance cần, có thể thêm snapshot/cache sau.
 
 ## 10. Scheduler
 
-Spring Scheduler dùng cho:
-
-- Tạo notification hết hạn.
-- Nhắc sinh nhật.
-- Cập nhật cảnh báo khách PT còn ít buổi.
-- Tính score rule-based sau này.
+MVP hiện tại chưa dùng scheduler. Nhắc việc và cảnh báo được tính động khi OWNER/PT mở dashboard/reminders. Scheduler để phase sau nếu cần gửi thông báo tự động.
 
 ## 11. Media
 

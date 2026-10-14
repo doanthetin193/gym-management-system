@@ -21,6 +21,7 @@ public class GroqAiClient {
 
     private final GroqAiProperties properties;
     private final ObjectMapper objectMapper;
+    private final HttpClient httpClient;
 
     public <T> T requestJson(String systemPrompt, Object anonymizedPayload, Class<T> responseType) {
         List<String> keys = properties.resolvedApiKeys();
@@ -52,9 +53,7 @@ public class GroqAiClient {
     }
 
     private <T> T requestWithKey(String key, String systemPrompt, String userPrompt, Class<T> responseType) {
-        try (HttpClient client = HttpClient.newBuilder()
-            .connectTimeout(Duration.ofSeconds(properties.getTimeoutSeconds()))
-            .build()) {
+        try {
             String requestBody = writeJson(Map.of(
                 "model", properties.getModel(),
                 "temperature", 0.2,
@@ -73,7 +72,7 @@ public class GroqAiClient {
                 .POST(HttpRequest.BodyPublishers.ofString(requestBody))
                 .build();
 
-            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
                 throw new BadRequestException("Groq từ chối yêu cầu AI. Mã lỗi: " + response.statusCode());
             }

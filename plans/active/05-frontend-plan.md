@@ -28,31 +28,26 @@ Frontend cần phục vụ thao tác thực tế hằng ngày của chủ phòng
 ```text
 /login
 
-/owner/dashboard
-/owner/members
-/owner/members/:id
-/owner/membership-plans
-/owner/finance
-/owner/pt
-/owner/pt/schedules
+/dashboard
+/members
+/members/:memberId
+/membership-plans
+/payments
+/reports
+/pt-schedule
 /owner/exercises
-/owner/business-goals
-/owner/notifications
-/owner/settings
+/goals
+/settings
+/profile
 
-/pt/dashboard
-/pt/my-members
-/pt/members/:id
-/pt/schedule
-/pt/session-logs/new
-/pt/body-measurements/new
+/my-progress
 
-/member/dashboard
-/member/profile
-/member/membership
+/reminders
+/reminders/:type
 
 /exercises
 /exercises/:slug
+/login
 ```
 
 ## 4. Layout theo role

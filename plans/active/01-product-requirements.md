@@ -382,7 +382,7 @@ MVP hoàn thành khi:
 - OWNER nhập được thu/chi và xem lợi nhuận cơ bản.
 - PT nhập được buổi tập và chỉ số.
 - Public TikTok exercise library xem/chia sẻ được.
-- Hệ thống deploy được trên VPS.
+- Hệ thống chạy ổn định ở môi trường local dev để demo và kiểm thử nghiệp vụ. Deploy production để phase sau.
 
 ## 10. Cập nhật theo implementation hiện tại
 
