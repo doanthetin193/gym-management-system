@@ -288,7 +288,9 @@ public class MemberMembershipService {
 
     private User resolveSoldByUser(Long requestedUserId) {
         if (isOwner()) {
-            return findUserOrNull(requestedUserId);
+            User seller = requestedUserId == null ? currentUserOrNull() : findUser(requestedUserId);
+            ensureActiveTeamUser(seller, "Người ghi nhận bán gói phải là Chủ phòng hoặc PT đang hoạt động.");
+            return seller;
         }
         User currentPt = currentPtUser();
         rejectForeignPtUser(requestedUserId, currentPt.getId());
@@ -349,5 +351,17 @@ public class MemberMembershipService {
             throw new BadRequestException("Người phụ trách gói PT phải là tài khoản PT đang hoạt động.");
         }
         return user;
+    }
+
+    private User findUser(Long id) {
+        return userRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài khoản người dùng."));
+    }
+
+    private void ensureActiveTeamUser(User user, String message) {
+        if (user == null || user.getStatus() != UserStatus.ACTIVE
+            || user.getRoles().stream().noneMatch(role -> "OWNER".equals(role.getCode()) || "PT".equals(role.getCode()))) {
+            throw new BadRequestException(message);
+        }
     }
 }

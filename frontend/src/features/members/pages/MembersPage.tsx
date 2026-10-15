@@ -240,31 +240,32 @@ export function MembersPage() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-5 pb-8">
-      {/* Sleek Top Action Bar */}
-      <section className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200/80 pb-4 dark:border-white/[0.08]">
+      {/* 1. Page Header (Đồng bộ chuẩn 100% với các trang khác) */}
+      <section className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="size-2 rounded-full bg-[#087ec1] animate-pulse" />
-            <h1 className="text-xl md:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
-              Quản Lý Hội Viên
-            </h1>
-            <span className="rounded-full border border-slate-200/80 bg-slate-100/80 px-2.5 py-0.5 text-xs font-bold text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-gray-300">
-              {stats.total} hồ sơ
+          <div className="inline-flex items-center gap-2 rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-1 text-xs font-black uppercase tracking-wider text-sky-400">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-sky-400 opacity-75" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-sky-400" />
             </span>
+            Quản Trị Hội Viên • Hồ Sơ & Thẻ Tập
           </div>
-          <p className="mt-1 text-xs md:text-sm text-slate-500 dark:text-gray-400">
+          <h1 className="mt-2 text-2xl font-black tracking-tight text-[var(--text-strong)] sm:text-3xl">
+            Quản Lý Hội Viên
+          </h1>
+          <p className="mt-1 text-sm font-semibold text-[var(--text-muted)]">
             Theo dõi thời hạn gói tập, lịch sử đăng ký và tình trạng hội viên toàn phòng gym.
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2.5">
           <button
             type="button"
             onClick={openCreateModal}
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#df271b] to-[#b91c1c] px-4 text-xs md:text-sm font-extrabold text-white shadow-sm hover:brightness-110 active:scale-[0.99] transition"
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#df271b] to-[#b91c1c] px-4 text-sm font-extrabold text-white shadow-sm hover:brightness-110 active:scale-[0.99] transition"
           >
             <Plus size={16} />
-            <span>Tạo hội viên mới</span>
+            <span>+ Tạo hội viên mới</span>
           </button>
         </div>
       </section>

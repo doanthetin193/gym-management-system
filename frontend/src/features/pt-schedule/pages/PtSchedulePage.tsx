@@ -45,6 +45,7 @@ import {
   listMyPtMembers,
   listPtProfiles,
   listPtSchedules,
+  reassignPtMember,
   savePtProfile,
 } from '../api/ptApi'
 import type { ActivityType, GoalType, PtAssignment, PtMemberDetail, PtProfile, PtSchedule } from '../types/pt'
@@ -146,6 +147,7 @@ export function PtSchedulePage() {
   const [memberKeyword, setMemberKeyword] = useState('')
   const [studentSearchKeyword, setStudentSearchKeyword] = useState('')
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false)
+  const [reassigningAssignment, setReassigningAssignment] = useState<PtAssignment | null>(null)
   const [schedules, setSchedules] = useState<PtSchedule[]>([])
   const [detail, setDetail] = useState<PtMemberDetail | null>(null)
   const [selectedMemberId, setSelectedMemberId] = useState<number | null>(null)
@@ -299,22 +301,28 @@ export function PtSchedulePage() {
       setFormError('Vui lòng chọn PT phụ trách.')
       return
     }
-    if (!assignForm.memberId) {
+    if (!assignForm.memberId && !reassigningAssignment) {
       setFormError('Vui lòng chọn khách cần gán.')
       return
     }
     setSubmitting(true)
     setFormError(null)
     try {
-      const assignment = await assignPtMember({
-        ptUserId: selectedPtUserId,
-        memberId: Number(assignForm.memberId),
-        startDate: todayIso(),
-        note: assignForm.note.trim() || null,
-      })
+      const assignment = reassigningAssignment
+        ? await reassignPtMember(reassigningAssignment.id, {
+            ptUserId: selectedPtUserId,
+            note: assignForm.note.trim() || null,
+          })
+        : await assignPtMember({
+            ptUserId: selectedPtUserId,
+            memberId: Number(assignForm.memberId),
+            startDate: todayIso(),
+            note: assignForm.note.trim() || null,
+          })
       setAssignForm((current) => ({ memberId: '', ptUserId: current.ptUserId, note: '' }))
       setMemberKeyword('')
       setSelectedAssignMember(null)
+      setReassigningAssignment(null)
       setSelectedMemberId(assignment.memberId)
       setIsAssignModalOpen(false)
       await loadData()
@@ -323,6 +331,21 @@ export function PtSchedulePage() {
     } finally {
       setSubmitting(false)
     }
+  }
+
+  function openReassignModal(assignment: PtAssignment) {
+    setReassigningAssignment(assignment)
+    setAssignForm({ memberId: String(assignment.memberId), ptUserId: '', note: '' })
+    setMemberKeyword('')
+    setSelectedAssignMember(null)
+    setFormError(null)
+    setIsAssignModalOpen(true)
+  }
+
+  function closeAssignModal() {
+    setIsAssignModalOpen(false)
+    setReassigningAssignment(null)
+    setFormError(null)
   }
 
   async function handleCreateSchedule(event: FormEvent<HTMLFormElement>) {
@@ -749,10 +772,17 @@ export function PtSchedulePage() {
                 const initials = getInitials(assignment.memberName)
 
                 return (
-                  <button
+                  <div
                     key={assignment.id}
-                    type="button"
+                    role="button"
+                    tabIndex={0}
                     onClick={() => setSelectedMemberId(assignment.memberId)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault()
+                        setSelectedMemberId(assignment.memberId)
+                      }
+                    }}
                     className={[
                       'w-full rounded-xl border p-3 text-left transition-all relative overflow-hidden group flex items-center gap-3',
                       isSelected
@@ -780,14 +810,30 @@ export function PtSchedulePage() {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-1">
                         <p className="text-xs font-black text-[var(--text-strong)] truncate">{assignment.memberName}</p>
-                        <span className="text-[10px] font-bold text-emerald-500 shrink-0">1-1</span>
+                        <div className="flex items-center gap-1 shrink-0">
+                          {isOwner ? (
+                            <button
+                              type="button"
+                              title="Doi PT phu trach"
+                              aria-label={`Doi PT phu trach cho ${assignment.memberName}`}
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                openReassignModal(assignment)
+                              }}
+                              className="grid size-6 place-items-center rounded-md text-amber-500 hover:bg-amber-500/15"
+                            >
+                              <RefreshCcw size={13} />
+                            </button>
+                          ) : null}
+                          <span className="text-[10px] font-bold text-emerald-500">1-1</span>
+                        </div>
                       </div>
                       <p className="text-[11px] font-semibold text-[var(--text-muted)] truncate">{assignment.memberPhone}</p>
                       {isOwner ? (
                         <p className="text-[10px] font-bold text-amber-500 truncate mt-0.5">PT: {assignment.ptFullName}</p>
                       ) : null}
                     </div>
-                  </button>
+                  </div>
                 )
               })
             )}
@@ -937,7 +983,7 @@ export function PtSchedulePage() {
               </div>
               <button
                 type="button"
-                onClick={() => setIsAssignModalOpen(false)}
+                onClick={closeAssignModal}
                 className="grid size-8 place-items-center rounded-lg text-[var(--text-muted)] hover:bg-[var(--surface-muted)] hover:text-[var(--text-strong)]"
               >
                 <X size={18} />
@@ -964,6 +1010,8 @@ export function PtSchedulePage() {
                 </div>
               ) : null}
 
+              {!reassigningAssignment ? (
+                <>
               <div>
                 <label className="text-xs font-bold text-[var(--text-muted)] block mb-1">
                   Tìm hội viên cần gán (tên hoặc SĐT)
@@ -1034,6 +1082,12 @@ export function PtSchedulePage() {
                   <span>Đã chọn: <strong>{selectedMemberCandidate.fullName}</strong> ({selectedMemberCandidate.phone})</span>
                 </div>
               ) : null}
+                </>
+              ) : (
+                <div className="rounded-xl border border-sky-500/30 bg-sky-500/10 p-3 text-xs font-bold text-sky-500">
+                  Đang đổi PT phụ trách cho: <strong>{reassigningAssignment.memberName}</strong> ({reassigningAssignment.memberPhone})
+                </div>
+              )}
 
               <div>
                 <label className="text-xs font-bold text-[var(--text-muted)] block mb-1">
@@ -1050,17 +1104,17 @@ export function PtSchedulePage() {
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-[var(--line)]">
                 <button
                   type="button"
-                  onClick={() => setIsAssignModalOpen(false)}
+                  onClick={closeAssignModal}
                   className="h-10 rounded-xl border border-[var(--line)] bg-[var(--surface)] px-4 text-xs font-black text-[var(--text)] hover:bg-[var(--surface-muted)]"
                 >
                   Đóng
                 </button>
                 <button
                   type="submit"
-                  disabled={submitting || !assignForm.memberId || selectedMemberAssigned}
+                  disabled={submitting || (!reassigningAssignment && (!assignForm.memberId || selectedMemberAssigned))}
                   className="h-10 rounded-xl bg-gradient-to-r from-[var(--brand-yellow)] to-amber-500 px-5 text-xs font-black text-black shadow-sm hover:brightness-105 disabled:opacity-50"
                 >
-                  {submitting ? 'Đang gán...' : 'Xác nhận gán'}
+                  {submitting ? 'Đang xử lý...' : reassigningAssignment ? 'Xác nhận đổi PT' : 'Xác nhận gán'}
                 </button>
               </div>
             </form>

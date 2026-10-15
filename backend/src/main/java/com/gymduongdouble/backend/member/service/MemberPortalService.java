@@ -1,6 +1,7 @@
 package com.gymduongdouble.backend.member.service;
 
 import com.gymduongdouble.backend.common.enums.DebtStatus;
+import com.gymduongdouble.backend.common.enums.MemberStatus;
 import com.gymduongdouble.backend.common.exception.ResourceNotFoundException;
 import com.gymduongdouble.backend.common.time.AppClock;
 import com.gymduongdouble.backend.finance.domain.DebtRecord;
@@ -30,6 +31,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -52,6 +54,9 @@ public class MemberPortalService {
     public MemberPortalResponse getPortal(Long userId) {
         Member member = memberRepository.findByUserId(userId)
             .orElseThrow(() -> new ResourceNotFoundException("Tai khoan hoi vien chua duoc lien ket voi ho so khach hang."));
+        if (member.getStatus() != MemberStatus.ACTIVE) {
+            throw new AccessDeniedException("Tài khoản hội viên đã ngừng hoạt động.");
+        }
         Long memberId = member.getId();
         LocalDate today = AppClock.today();
         List<MemberMembership> memberships = memberMembershipRepository.findByMemberIdOrderByStartDateDesc(memberId);

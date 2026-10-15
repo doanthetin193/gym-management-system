@@ -78,7 +78,7 @@ public class ExerciseService {
     ) {
         return PageResponse.from(exerciseRepository.findAll(
             exerciseSpec(categorySlug, level, keyword, featured, true),
-            PageRequest.of(page, normalizeSize(size), Sort.by(Sort.Direction.DESC, "featured").and(Sort.by(Sort.Direction.ASC, "name")))
+            PageRequest.of(normalizePage(page), normalizeSize(size), Sort.by(Sort.Direction.DESC, "featured").and(Sort.by(Sort.Direction.ASC, "name")))
         ).map(ExerciseResponse::from));
     }
 
@@ -94,7 +94,7 @@ public class ExerciseService {
     ) {
         return PageResponse.from(exerciseRepository.findAll(
             exerciseSpec(categorySlug, level, keyword, featured, published),
-            PageRequest.of(page, normalizeSize(size), Sort.by(Sort.Direction.DESC, "updatedAt"))
+            PageRequest.of(normalizePage(page), normalizeSize(size), Sort.by(Sort.Direction.DESC, "updatedAt"))
         ).map(ExerciseResponse::from));
     }
 
@@ -302,5 +302,9 @@ public class ExerciseService {
             return 12;
         }
         return Math.min(size, 50);
+    }
+
+    private int normalizePage(int page) {
+        return Math.max(page, 0);
     }
 }

@@ -8,7 +8,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface MemberActivityLogRepository extends JpaRepository<MemberActivityLog, Long> {
     List<MemberActivityLog> findByMemberIdOrderByActivityDateDesc(Long memberId);
-    long countByMembershipId(Long membershipId);
     long countByMembershipIdAndActivityType(Long membershipId, ActivityType activityType);
     boolean existsBySessionPackageIdAndActivityDateAndActivityType(Long sessionPackageId, LocalDate activityDate, ActivityType activityType);
     boolean existsByMembershipIdAndActivityDateAndActivityType(Long membershipId, LocalDate activityDate, ActivityType activityType);

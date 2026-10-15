@@ -14,6 +14,7 @@ import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -70,6 +71,12 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(HttpMessageNotReadableException.class)
     ResponseEntity<ApiResponse<Void>> handleUnreadableBody(HttpMessageNotReadableException exception) {
         return build(HttpStatus.BAD_REQUEST, "INVALID_REQUEST_BODY", "Body JSON không hợp lệ hoặc không đúng encoding UTF-8.");
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    ResponseEntity<ApiResponse<Void>> handleArgumentTypeMismatch(MethodArgumentTypeMismatchException exception) {
+        String parameter = exception.getName();
+        return build(HttpStatus.BAD_REQUEST, "INVALID_REQUEST_PARAMETER", "Tham số '" + parameter + "' không hợp lệ.");
     }
 
     @ExceptionHandler(ObjectOptimisticLockingFailureException.class)

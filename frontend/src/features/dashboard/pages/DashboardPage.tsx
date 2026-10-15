@@ -1,7 +1,6 @@
 import {
   AlertCircle,
   ArrowRight,
-  Bell,
   Calendar,
   CalendarClock,
   CheckCircle2,
@@ -126,119 +125,108 @@ export function DashboardPage() {
   const selfCount = rawSelf > 0 ? rawSelf : Math.max(0, (dashboard?.activeMembers ?? 0) - ptCount)
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6 pb-12 animate-in fade-in duration-200">
+    <div className="mx-auto max-w-7xl space-y-5 pb-12 animate-in fade-in duration-200">
       {/* ================= 1. HEADER BAR ================= */}
-      <section className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200/90 pb-5 dark:border-white/[0.08]">
-        {/* Title & Date Badge */}
-        <div className="space-y-1">
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-2.5">
-              <span className="size-2.5 rounded-full bg-[#ffcc08] animate-pulse" />
-              <h1 className="text-2xl md:text-3xl font-black tracking-tight text-slate-900 dark:text-white">
-                Tổng Quan Vận Hành
-              </h1>
-            </div>
-
-            <span className="rounded-full border border-slate-300 bg-slate-100 px-3 py-1 text-xs md:text-sm font-bold text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-gray-300">
-              Tháng {month}/{year}
+      <section className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <div className="inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-black uppercase tracking-wider text-amber-500">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-amber-500" />
             </span>
-
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3.5 py-1 text-xs md:text-sm font-black text-emerald-600 dark:text-emerald-400">
-              <TrendingUp size={15} />
-              <span>Thu T{month}: {loading ? '...' : formatMoney(dashboard?.monthlyIncome)}</span>
-            </span>
+            Trung Tâm Vận Hành • Tháng {month}/{year}
           </div>
-          <p className="text-xs md:text-sm font-semibold text-slate-500 dark:text-gray-400">
-            Trung tâm kiểm soát tài chính, ca dạy PT và công việc cần xử lý trong ngày.
+          <h1 className="mt-2 text-2xl font-black tracking-tight text-[var(--text-strong)] sm:text-3xl">
+            Tổng Quan Vận Hành
+          </h1>
+          <p className="mt-1 text-sm font-semibold text-[var(--text-muted)]">
+            Theo dõi tài chính, ca dạy PT và công việc ưu tiên trong ngày.
           </p>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex items-center gap-2.5 shrink-0">
-          <Link
-            to="/members"
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#df271b] to-[#b91c1c] px-4 md:px-5 text-sm font-black text-white shadow-sm hover:brightness-110 active:scale-98 transition"
-          >
-            <UserPlus size={17} />
-            <span>+ Thêm hội viên</span>
-          </Link>
-
-          <Link
-            to="/payments"
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 text-sm font-black text-slate-800 shadow-sm hover:border-[#ffcc08] hover:bg-slate-50 dark:border-white/15 dark:bg-white/5 dark:text-white dark:hover:border-white/25 transition"
-          >
-            <WalletCards size={17} />
-            <span>Xem công nợ</span>
-          </Link>
-
+        {/* Action Buttons (Đồng bộ chuẩn 100% với các trang khác) */}
+        <div className="flex flex-wrap items-center gap-2.5">
           <button
             type="button"
             onClick={() => void loadData()}
-            className="inline-flex size-11 items-center justify-center rounded-xl border border-slate-300 bg-white text-slate-600 shadow-sm hover:text-slate-900 dark:border-white/15 dark:bg-white/5 dark:text-gray-300 dark:hover:text-white transition"
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-[var(--line)] bg-[var(--surface)] px-3.5 text-sm font-bold text-[var(--text)] shadow-sm transition hover:border-[var(--brand-yellow)] hover:bg-[var(--surface-muted)]"
             title="Làm mới dữ liệu"
-            aria-label="Làm mới dữ liệu"
           >
-            <RefreshCcw size={17} className={loading ? 'animate-spin' : ''} />
+            <RefreshCcw size={16} className={loading ? 'animate-spin text-[var(--brand-yellow)]' : ''} />
+            <span className="hidden sm:inline">Làm mới</span>
           </button>
+
+          <Link
+            to="/payments"
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-[var(--line)] bg-[var(--surface)] px-3.5 text-sm font-bold text-[var(--text)] shadow-sm transition hover:border-[var(--brand-yellow)] hover:bg-[var(--surface-muted)]"
+          >
+            <WalletCards size={16} />
+            <span>Xem công nợ</span>
+          </Link>
+
+          <Link
+            to="/members"
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 px-4 text-sm font-black text-white shadow-md shadow-red-950/20 transition-all hover:scale-[1.02] hover:brightness-105 active:scale-[0.98]"
+          >
+            <UserPlus size={16} />
+            <span>+ Thêm hội viên</span>
+          </Link>
         </div>
       </section>
 
       {/* Error Banner */}
       {error && (
-        <div className="flex items-center gap-3 rounded-xl border border-red-300 bg-red-50 p-4 text-sm font-bold text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300">
-          <AlertCircle size={18} className="shrink-0 text-red-500" />
+        <div className="flex items-center gap-3 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm font-bold text-red-300">
+          <AlertCircle size={18} className="shrink-0 text-red-400" />
           <span>{error}</span>
         </div>
       )}
 
-      {/* ================= 2. TOP 4 KPI CARDS (CHỮ TO RÕ RÀNG) ================= */}
-      <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* ================= 2. TOP 4 KPI CARDS (ĐỒNG BỘ TYPOGRAPHY & KHÔNG BỊ TRÀN CHỮ) ================= */}
+      <section className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 md:gap-4">
         {/* 1. Tổng hội viên */}
         <Link
           to="/members"
-          className="group relative rounded-2xl border border-slate-200/90 bg-white p-5 shadow-sm transition-all hover:border-[#087ec1] hover:shadow-md dark:border-white/[0.08] dark:bg-[#0c1017] dark:hover:border-[#087ec1]/60 overflow-hidden"
+          className="group rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-4 sm:p-5 shadow-sm transition hover:border-blue-500/40 hover:shadow-md"
         >
-          <div className="pointer-events-none absolute right-0 top-0 size-28 rounded-full bg-[#087ec1]/10 blur-xl transition group-hover:scale-125" />
-
           <div className="flex items-center justify-between">
-            <span className="text-xs md:text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-gray-400">
+            <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
               Tổng hội viên
             </span>
-            <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-[#087ec1] dark:bg-[#087ec1]/15">
+            <span className="grid size-9 place-items-center rounded-xl bg-blue-500/15 text-blue-400">
               <Users size={18} />
-            </div>
+            </span>
           </div>
 
-          <div className="mt-3 flex items-baseline justify-between">
-            <p className="text-3xl md:text-4xl font-black tracking-tight text-slate-900 dark:text-white">
+          <div className="mt-2.5 flex items-baseline justify-between gap-2">
+            <span className="text-2xl font-black text-[var(--text-strong)] sm:text-3xl">
               {loading ? '...' : dashboard?.totalMembers ?? 0}
-            </p>
-            <span className="text-xs font-bold text-[#087ec1]">Hồ sơ lưu</span>
+            </span>
+            <span className="rounded-lg bg-[var(--surface-muted)] px-2 py-0.5 text-xs font-bold text-[var(--text-muted)]">
+              Toàn hệ thống
+            </span>
           </div>
         </Link>
 
-        {/* 2. Đang hoạt động */}
+        {/* 2. Đang tập luyện */}
         <Link
           to="/members"
-          className="group relative rounded-2xl border border-slate-200/90 bg-white p-5 shadow-sm transition-all hover:border-emerald-500 hover:shadow-md dark:border-white/[0.08] dark:bg-[#0c1017] dark:hover:border-emerald-500/60 overflow-hidden"
+          className="group rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-4 sm:p-5 shadow-sm transition hover:border-emerald-500/40 hover:shadow-md"
         >
-          <div className="pointer-events-none absolute right-0 top-0 size-28 rounded-full bg-emerald-500/10 blur-xl transition group-hover:scale-125" />
-
           <div className="flex items-center justify-between">
-            <span className="text-xs md:text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-gray-400">
+            <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
               Đang tập luyện
             </span>
-            <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400">
+            <span className="grid size-9 place-items-center rounded-xl bg-emerald-500/15 text-emerald-400">
               <UserCheck size={18} />
-            </div>
+            </span>
           </div>
 
-          <div className="mt-3 flex items-baseline justify-between">
-            <p className="text-3xl md:text-4xl font-black tracking-tight text-emerald-600 dark:text-emerald-400">
+          <div className="mt-2.5 flex items-baseline justify-between gap-2">
+            <span className="text-2xl font-black text-emerald-400 sm:text-3xl">
               {loading ? '...' : dashboard?.activeMembers ?? 0}
-            </p>
-            <span className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-2 py-1 text-xs font-black text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
-              <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
+            </span>
+            <span className="rounded-lg bg-emerald-500/15 px-2 py-0.5 text-xs font-bold text-emerald-400">
               {memberPercent}% tệp
             </span>
           </div>
@@ -247,24 +235,22 @@ export function DashboardPage() {
         {/* 3. Sắp / Đã hết hạn */}
         <Link
           to="/reminders"
-          className="group relative rounded-2xl border border-slate-200/90 bg-white p-5 shadow-sm transition-all hover:border-amber-400 hover:shadow-md dark:border-white/[0.08] dark:bg-[#0c1017] dark:hover:border-amber-400/60 overflow-hidden"
+          className="group rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-4 sm:p-5 shadow-sm transition hover:border-amber-500/40 hover:shadow-md"
         >
-          <div className="pointer-events-none absolute right-0 top-0 size-28 rounded-full bg-amber-400/10 blur-xl transition group-hover:scale-125" />
-
           <div className="flex items-center justify-between">
-            <span className="text-xs md:text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-gray-400">
+            <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
               Sắp / Đã hết hạn
             </span>
-            <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-400/15 dark:text-amber-400">
+            <span className="grid size-9 place-items-center rounded-xl bg-amber-500/15 text-amber-400">
               <CalendarClock size={18} />
-            </div>
+            </span>
           </div>
 
-          <div className="mt-3 flex items-baseline justify-between">
-            <p className="text-3xl md:text-4xl font-black tracking-tight text-amber-500">
+          <div className="mt-2.5 flex items-baseline justify-between gap-2">
+            <span className="text-2xl font-black text-amber-400 sm:text-3xl">
               {loading ? '...' : (dashboard?.expiringSoon ?? 0) + (dashboard?.expired ?? 0)}
-            </p>
-            <span className="inline-flex rounded-lg bg-amber-50 px-2 py-1 text-xs font-black text-amber-700 dark:bg-amber-400/15 dark:text-amber-300">
+            </span>
+            <span className="rounded-lg bg-amber-500/15 px-2 py-0.5 text-xs font-bold text-amber-400">
               Cần gia hạn
             </span>
           </div>
@@ -273,155 +259,153 @@ export function DashboardPage() {
         {/* 4. Tổng công nợ */}
         <Link
           to="/payments"
-          className="group relative rounded-2xl border border-slate-200/90 bg-white p-5 shadow-sm transition-all hover:border-red-500 hover:shadow-md dark:border-white/[0.08] dark:bg-[#0c1017] dark:hover:border-red-500/60 overflow-hidden"
+          className="group rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-4 sm:p-5 shadow-sm transition hover:border-red-500/40 hover:shadow-md"
         >
-          <div className="pointer-events-none absolute right-0 top-0 size-28 rounded-full bg-red-500/10 blur-xl transition group-hover:scale-125" />
-
           <div className="flex items-center justify-between">
-            <span className="text-xs md:text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-gray-400">
+            <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
               Công nợ chưa thu
             </span>
-            <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-red-50 text-red-600 dark:bg-red-500/15 dark:text-red-400">
+            <span className="grid size-9 place-items-center rounded-xl bg-red-500/15 text-red-400">
               <CreditCard size={18} />
-            </div>
+            </span>
           </div>
 
-          <div className="mt-3 flex items-baseline justify-between">
-            <p className="text-2xl md:text-3xl font-black tracking-tight text-red-600 dark:text-red-400">
+          <div className="mt-2.5 flex items-baseline justify-between gap-2 min-w-0">
+            <span className="text-xl font-black text-red-400 sm:text-2xl truncate">
               {loading ? '...' : formatMoney(dashboard?.totalDebt)}
-            </p>
-            <span className="inline-flex rounded-lg bg-red-50 px-2 py-1 text-xs font-black text-red-700 dark:bg-red-500/15 dark:text-red-300">
-              Cần thu hồi
+            </span>
+            <span className="shrink-0 rounded-lg bg-red-500/15 px-2 py-0.5 text-xs font-bold text-red-400 whitespace-nowrap">
+              Cần thu
             </span>
           </div>
         </Link>
       </section>
 
-      {/* ================= 3. TRUNG TÂM VẬN HÀNH THIẾT THỰC (2 CỘT) ================= */}
-      <section className="grid gap-6 lg:grid-cols-12 items-start">
-        {/* ================= CỘT TRÁI (lg:col-span-7): TÀI CHÍNH & CƠ CẤU HỌC VIÊN ================= */}
+      {/* ================= 3. TRUNG TÂM VẬN HÀNH (2 CỘT GỌN GÀNG, KHÔNG RỐI MẮT) ================= */}
+      <section className="grid gap-5 lg:grid-cols-12 items-start">
+        {/* ================= CỘT TRÁI (lg:col-span-7): TÀI CHÍNH & CƠ CẤU HỘI VIÊN ================= */}
         <div className="space-y-5 lg:col-span-7">
-          {/* Card 1: Doanh thu gói tập */}
-          <div className="rounded-2xl border border-slate-200/90 bg-white p-5 md:p-6 shadow-sm transition-colors duration-300 dark:border-white/[0.08] dark:bg-[#0c1017] space-y-4">
-            <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-3.5 dark:border-white/[0.06]">
+          {/* Card 1: Tài chính tháng này */}
+          <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-5 shadow-sm space-y-4">
+            <div className="flex items-center justify-between border-b border-[var(--line)] pb-3">
               <div>
-                <p className="text-xs md:text-sm font-bold uppercase tracking-wider text-slate-400 dark:text-gray-400">
-                  Tài chính gói tập T{month}/{year}
-                </p>
-                <h2 className="text-lg md:text-xl font-black text-slate-900 dark:text-white">
-                  Doanh thu thực thu
+                <h2 className="text-base font-bold text-[var(--text-strong)]">
+                  Tài chính tháng {month}/{year}
                 </h2>
+                <p className="text-xs text-[var(--text-muted)]">
+                  Dòng tiền từ các gói tập và công nợ tồn đọng
+                </p>
               </div>
               <Link
                 to="/reports"
-                className="inline-flex items-center gap-1.5 text-xs md:text-sm font-bold text-[#087ec1] hover:underline dark:text-[#ffcc08]"
+                className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--brand-yellow)] hover:underline"
               >
                 <span>Báo cáo chi tiết</span>
-                <ArrowRight size={14} />
+                <ArrowRight size={13} />
               </Link>
             </div>
 
-            <div className="grid gap-3 md:gap-4">
-              <FinanceBlock label="Đã thu từ các gói trong tháng" value={formatMoney(dashboard?.monthlyIncome)} />
-            </div>
-
-            {/* Cảnh báo công nợ trực quan */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-red-500/30 bg-red-500/5 p-3.5 dark:border-red-500/20">
-              <div className="flex items-center gap-2.5">
-                <span className="size-2.5 rounded-full bg-red-500 animate-pulse shrink-0" />
-                <span className="text-xs md:text-sm font-bold text-slate-700 dark:text-gray-300">
-                  Công nợ học phí chưa thu:
-                </span>
-                <strong className="text-sm md:text-base font-black text-red-600 dark:text-red-400">
-                  {formatMoney(dashboard?.totalDebt)}
-                </strong>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              {/* Thực thu */}
+              <div className="rounded-xl border border-[var(--line)] bg-[var(--surface-muted)]/50 p-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                    Thực thu gói tập
+                  </span>
+                  <span className="grid size-7 place-items-center rounded-lg bg-emerald-500/15 text-emerald-400">
+                    <TrendingUp size={15} />
+                  </span>
+                </div>
+                <p className="mt-2 text-2xl font-black text-emerald-400">
+                  {loading ? '...' : formatMoney(dashboard?.monthlyIncome)}
+                </p>
+                <p className="mt-1 text-xs text-[var(--text-muted)]">Đã thu thực tế trong tháng</p>
               </div>
-              <Link
-                to="/payments"
-                className="inline-flex items-center gap-1 text-xs md:text-sm font-black text-red-600 dark:text-red-400 hover:underline shrink-0"
-              >
-                <span>Thu nợ & Sổ quỹ</span>
-                <ArrowRight size={14} />
-              </Link>
+
+              {/* Công nợ chưa thu */}
+              <div className="rounded-xl border border-[var(--line)] bg-[var(--surface-muted)]/50 p-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                    Công nợ chưa thu
+                  </span>
+                  <span className="grid size-7 place-items-center rounded-lg bg-red-500/15 text-red-400">
+                    <CreditCard size={15} />
+                  </span>
+                </div>
+                <p className="mt-2 text-2xl font-black text-red-400">
+                  {loading ? '...' : formatMoney(dashboard?.totalDebt)}
+                </p>
+                <div className="mt-1 flex items-center justify-between">
+                  <span className="text-xs text-[var(--text-muted)]">Khoản thu còn thiếu</span>
+                  <Link
+                    to="/payments"
+                    className="text-xs font-bold text-red-400 hover:underline"
+                  >
+                    Thu nợ ➔
+                  </Link>
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Card 2: Phân bổ học viên theo nhóm (Thay thế thanh 63% rối mắt) */}
-          <div className="rounded-2xl border border-slate-200/90 bg-white p-5 md:p-6 shadow-sm transition-colors duration-300 dark:border-white/[0.08] dark:bg-[#0c1017] space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3.5 dark:border-white/[0.06]">
+          {/* Card 2: Phân bổ hội viên (Thiết kế dạng thẻ ngắn gọn, không nhồi nhét chữ) */}
+          <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-5 shadow-sm space-y-4">
+            <div className="flex items-center justify-between border-b border-[var(--line)] pb-3">
               <div>
-                <p className="text-xs md:text-sm font-bold uppercase tracking-wider text-slate-400 dark:text-gray-400">
-                  Hiện trạng học viên phòng gym
+                <h2 className="text-base font-bold text-[var(--text-strong)]">
+                  Cơ cấu hội viên
+                </h2>
+                <p className="text-xs text-[var(--text-muted)]">
+                  Phân bổ dịch vụ tập luyện và xu hướng tăng trưởng
                 </p>
-                <h3 className="text-base md:text-lg font-black text-slate-900 dark:text-white">
-                  Cơ cấu học viên theo dịch vụ
-                </h3>
               </div>
-              <span className="text-xs md:text-sm font-bold text-slate-500 dark:text-gray-400">
-                Đang tập: <strong className="text-emerald-500">{dashboard?.activeMembers ?? 0} người</strong>
+              <span className="rounded-lg bg-emerald-500/10 px-2.5 py-1 text-xs font-bold text-emerald-400">
+                {dashboard?.activeMembers ?? 0} đang tập
               </span>
             </div>
 
-            {/* 4 Nhóm dịch vụ thiết thực */}
-            <div className="grid grid-cols-2 gap-3 md:gap-4">
-              <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3.5 dark:border-amber-500/20">
+            {/* 4 Thẻ chỉ số tinh gọn */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-xl border border-[var(--line)] bg-[var(--surface-muted)]/50 p-3.5">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs md:text-sm font-bold text-amber-600 dark:text-amber-400">
-                    Khách kèm PT (VIP)
-                  </span>
-                  <Dumbbell size={16} className="text-amber-500" />
+                  <span className="text-xs font-bold text-blue-400">Tự tập thường</span>
+                  <Users size={15} className="text-blue-400" />
                 </div>
-                <p className="mt-2 text-2xl font-black text-slate-900 dark:text-white">
-                  {ptCount}{' '}
-                  <span className="text-xs font-normal text-slate-500 dark:text-gray-400">học viên</span>
-                </p>
-                <p className="mt-1 text-xs font-medium text-slate-500 dark:text-gray-400">
-                  Gói dạy kèm 1-1 & giáo án
+                <p className="mt-2 text-xl font-black text-[var(--text-strong)]">
+                  {selfCount} <span className="text-xs font-normal text-[var(--text-muted)]">hội viên</span>
                 </p>
               </div>
 
-              <div className="rounded-xl border border-blue-500/30 bg-blue-500/5 p-3.5 dark:border-blue-500/20">
+              <div className="rounded-xl border border-[var(--line)] bg-[var(--surface-muted)]/50 p-3.5">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs md:text-sm font-bold text-blue-600 dark:text-[#087ec1]">
-                    Khách tự tập thường
-                  </span>
-                  <Users size={16} className="text-blue-500" />
+                  <span className="text-xs font-bold text-amber-400">Khách kèm PT</span>
+                  <Dumbbell size={15} className="text-amber-400" />
                 </div>
-                <p className="mt-2 text-2xl font-black text-slate-900 dark:text-white">
-                  {selfCount}{' '}
-                  <span className="text-xs font-normal text-slate-500 dark:text-gray-400">hội viên</span>
-                </p>
-                <p className="mt-1 text-xs font-medium text-slate-500 dark:text-gray-400">
-                  Gói tháng tự do theo buổi
+                <p className="mt-2 text-xl font-black text-[var(--text-strong)]">
+                  {ptCount} <span className="text-xs font-normal text-[var(--text-muted)]">học viên</span>
                 </p>
               </div>
 
-              <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-3.5 dark:border-emerald-500/20">
+              <div className="rounded-xl border border-[var(--line)] bg-[var(--surface-muted)]/50 p-3.5">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs md:text-sm font-bold text-emerald-600 dark:text-emerald-400">
-                    Khách mới tháng {month}
-                  </span>
-                  <UserPlus size={16} className="text-emerald-500" />
+                  <span className="text-xs font-bold text-emerald-400">Khách mới T{month}</span>
+                  <UserPlus size={15} className="text-emerald-400" />
                 </div>
-                <p className="mt-2 text-2xl font-black text-slate-900 dark:text-white">
+                <p className="mt-2 text-xl font-black text-[var(--text-strong)]">
                   {dashboard?.newMembersThisMonth ?? 0}{' '}
-                  <span className="text-xs font-normal text-slate-500 dark:text-gray-400">người</span>
+                  <span className="text-xs font-normal text-[var(--text-muted)]">người</span>
                 </p>
-                <p className="mt-1 text-xs font-medium text-slate-500 dark:text-gray-400">Đăng ký mới trong tháng</p>
               </div>
 
-              <div className="rounded-xl border border-purple-500/30 bg-purple-500/5 p-3.5 dark:border-purple-500/20">
+              <div className="rounded-xl border border-[var(--line)] bg-[var(--surface-muted)]/50 p-3.5">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs md:text-sm font-bold text-purple-600 dark:text-purple-400">
-                    Lượt gia hạn / quay lại
-                  </span>
-                  <TrendingUp size={16} className="text-purple-500" />
+                  <span className="text-xs font-bold text-purple-400">Gia hạn / Quay lại</span>
+                  <RefreshCcw size={15} className="text-purple-400" />
                 </div>
-                <p className="mt-2 text-2xl font-black text-slate-900 dark:text-white">
+                <p className="mt-2 text-xl font-black text-[var(--text-strong)]">
                   {dashboard?.renewedMembersThisMonth ?? 0}{' '}
-                  <span className="text-xs font-normal text-slate-500 dark:text-gray-400">lượt</span>
+                  <span className="text-xs font-normal text-[var(--text-muted)]">lượt</span>
                 </p>
-                <p className="mt-1 text-xs font-medium text-slate-500 dark:text-gray-400">Tái đăng ký duy trì</p>
               </div>
             </div>
           </div>
@@ -429,35 +413,34 @@ export function DashboardPage() {
 
         {/* ================= CỘT PHẢI (lg:col-span-5): TRUNG TÂM HÀNH ĐỘNG HÔM NAY ================= */}
         <div className="space-y-5 lg:col-span-5">
-          <div className="rounded-2xl border border-slate-200/90 bg-white p-5 md:p-6 shadow-sm transition-colors duration-300 dark:border-white/[0.08] dark:bg-[#0c1017] space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3.5 dark:border-white/[0.06]">
+          <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-5 shadow-sm space-y-4">
+            <div className="flex items-center justify-between border-b border-[var(--line)] pb-3">
               <div>
-                <p className="text-xs md:text-sm font-bold uppercase tracking-wider text-slate-400 dark:text-gray-400">
-                  Hành động ngay
-                </p>
-                <h2 className="text-lg md:text-xl font-black text-slate-900 dark:text-white">
-                  Nhắc việc & Lịch PT hôm nay
+                <h2 className="text-base font-bold text-[var(--text-strong)]">
+                  Hành động ưu tiên
                 </h2>
+                <p className="text-xs text-[var(--text-muted)]">
+                  Công nợ, gia hạn gói và lịch dạy PT hôm nay
+                </p>
               </div>
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs md:text-sm font-bold text-[#087ec1] dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-300">
-                <Bell size={13} />
-                <span>{actionStats.total} mục</span>
+              <span className="rounded-full border border-[var(--line)] bg-[var(--surface-muted)] px-2.5 py-0.5 text-xs font-bold text-[var(--text-muted)]">
+                {actionStats.total} việc
               </span>
             </div>
 
-            {/* Smart Filter Tabs (To rõ, dễ bấm) */}
-            <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+            {/* Smart Filter Tabs (Đồng bộ cỡ chữ với các trang khác) */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 no-scrollbar">
               <button
                 type="button"
                 onClick={() => setActiveTab('ALL')}
-                className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs md:text-sm font-black transition ${
+                className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition ${
                   activeTab === 'ALL'
-                    ? 'bg-[#087ec1] text-white shadow-sm dark:bg-[#ffcc08] dark:text-slate-900'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-white/5 dark:text-gray-300 dark:hover:bg-white/10'
+                    ? 'bg-[var(--brand-yellow)] text-slate-900 shadow-sm'
+                    : 'border border-[var(--line)] bg-[var(--surface-muted)]/60 text-[var(--text-muted)] hover:bg-[var(--surface-muted)] hover:text-[var(--text)]'
                 }`}
               >
                 <span>Tất cả</span>
-                <span className="rounded-full bg-black/10 dark:bg-black/20 px-1.5 py-0.2 text-xs">
+                <span className="rounded-full bg-black/10 px-1.5 py-0.2 text-[10px] font-bold">
                   {notifications.length}
                 </span>
               </button>
@@ -465,14 +448,14 @@ export function DashboardPage() {
               <button
                 type="button"
                 onClick={() => setActiveTab('DEBT')}
-                className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs md:text-sm font-black transition ${
+                className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition ${
                   activeTab === 'DEBT'
                     ? 'bg-red-600 text-white shadow-sm'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-white/5 dark:text-gray-300 dark:hover:bg-white/10'
+                    : 'border border-[var(--line)] bg-[var(--surface-muted)]/60 text-[var(--text-muted)] hover:bg-[var(--surface-muted)] hover:text-[var(--text)]'
                 }`}
               >
                 <span>Công nợ</span>
-                <span className="rounded-full bg-black/10 dark:bg-black/20 px-1.5 py-0.2 text-xs">
+                <span className="rounded-full bg-white/20 px-1.5 py-0.2 text-[10px] font-bold">
                   {actionStats.debtCount}
                 </span>
               </button>
@@ -480,14 +463,14 @@ export function DashboardPage() {
               <button
                 type="button"
                 onClick={() => setActiveTab('EXPIRED')}
-                className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs md:text-sm font-black transition ${
+                className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition ${
                   activeTab === 'EXPIRED'
-                    ? 'bg-amber-500 text-black shadow-sm'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-white/5 dark:text-gray-300 dark:hover:bg-white/10'
+                    ? 'bg-amber-500 text-slate-900 shadow-sm'
+                    : 'border border-[var(--line)] bg-[var(--surface-muted)]/60 text-[var(--text-muted)] hover:bg-[var(--surface-muted)] hover:text-[var(--text)]'
                 }`}
               >
                 <span>Hạn gói</span>
-                <span className="rounded-full bg-black/10 dark:bg-black/20 px-1.5 py-0.2 text-xs">
+                <span className="rounded-full bg-black/10 px-1.5 py-0.2 text-[10px] font-bold">
                   {actionStats.expiringCount}
                 </span>
               </button>
@@ -495,10 +478,10 @@ export function DashboardPage() {
               <button
                 type="button"
                 onClick={() => setActiveTab('SCHEDULE')}
-                className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs md:text-sm font-black transition ${
+                className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition ${
                   activeTab === 'SCHEDULE'
                     ? 'bg-emerald-600 text-white shadow-sm'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-white/5 dark:text-gray-300 dark:hover:bg-white/10'
+                    : 'border border-[var(--line)] bg-[var(--surface-muted)]/60 text-[var(--text-muted)] hover:bg-[var(--surface-muted)] hover:text-[var(--text)]'
                 }`}
               >
                 <span>Lịch PT ({todaySchedules.length})</span>
@@ -508,42 +491,42 @@ export function DashboardPage() {
             {/* Content Display based on Tab */}
             {activeTab === 'SCHEDULE' ? (
               /* Danh sách ca PT hôm nay */
-              <div className="space-y-2.5 max-h-[360px] overflow-y-auto no-scrollbar pr-0.5">
+              <div className="space-y-2 max-h-[360px] overflow-y-auto no-scrollbar pr-0.5">
                 {todaySchedules.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 p-8 text-center dark:border-white/10">
-                    <Calendar size={28} className="text-slate-400 mb-2" />
-                    <p className="text-sm font-bold text-slate-700 dark:text-gray-300">
-                      Hôm nay chưa có ca dạy PT nào được xếp
+                  <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[var(--line)] p-8 text-center">
+                    <Calendar size={24} className="text-[var(--text-muted)] mb-2" />
+                    <p className="text-xs font-bold text-[var(--text)]">
+                      Hôm nay chưa có ca dạy PT nào
                     </p>
                     <Link
                       to="/pt-schedule"
-                      className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-[var(--brand-yellow)] px-3 py-1.5 text-xs font-black text-black"
+                      className="mt-2.5 inline-flex items-center gap-1.5 rounded-lg bg-[var(--brand-yellow)] px-3 py-1.5 text-xs font-bold text-slate-900"
                     >
-                      + Xếp lịch PT ngay
+                      + Xếp lịch ngay
                     </Link>
                   </div>
                 ) : (
                   todaySchedules.map((schedule) => (
                     <div
                       key={schedule.id}
-                      className="flex items-center justify-between gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3.5 dark:border-emerald-500/20"
+                      className="flex items-center justify-between gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3"
                     >
-                      <div className="flex items-center gap-3">
-                        <div className="grid size-10 place-items-center rounded-xl bg-emerald-500/15 text-emerald-400 font-black">
-                          <Clock size={18} />
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="grid size-8 shrink-0 place-items-center rounded-lg bg-emerald-500/15 text-emerald-400">
+                          <Clock size={16} />
                         </div>
-                        <div>
-                          <p className="text-sm font-black text-slate-900 dark:text-white">
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-[var(--text-strong)]">
                             {schedule.startTime?.toString().slice(0, 5)} - {schedule.endTime?.toString().slice(0, 5)}
                           </p>
-                          <p className="text-xs font-semibold text-slate-500 dark:text-gray-400">
+                          <p className="text-xs text-[var(--text-muted)] truncate">
                             {schedule.ptFullName} ➔ <strong className="text-emerald-400">{schedule.memberName}</strong>
                           </p>
                         </div>
                       </div>
                       <Link
                         to="/pt-schedule"
-                        className="rounded-lg border border-[var(--line)] bg-[var(--surface)] px-2.5 py-1 text-xs font-bold text-[var(--text)] hover:text-white"
+                        className="shrink-0 rounded-lg border border-[var(--line)] bg-[var(--surface)] px-2.5 py-1 text-xs font-bold text-[var(--text)] hover:text-white"
                       >
                         Chi tiết
                       </Link>
@@ -553,13 +536,13 @@ export function DashboardPage() {
               </div>
             ) : (
               /* Danh sách Nhắc việc cần xử lý */
-              <div className="space-y-2.5 max-h-[360px] overflow-y-auto no-scrollbar pr-0.5">
+              <div className="space-y-2 max-h-[360px] overflow-y-auto no-scrollbar pr-0.5">
                 {filteredNotifications.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-200 p-8 text-center dark:border-white/10">
-                    <CheckCircle2 size={28} className="text-emerald-500 mb-2" />
-                    <p className="text-sm font-bold text-slate-700 dark:text-gray-300">Không có việc cần xử lý</p>
-                    <p className="text-xs text-slate-400 dark:text-gray-400 mt-1">
-                      Mọi học viên trong mục này đều ở trạng thái tốt.
+                  <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[var(--line)] p-8 text-center">
+                    <CheckCircle2 size={24} className="text-emerald-500 mb-2" />
+                    <p className="text-xs font-bold text-[var(--text)]">Không có việc cần xử lý</p>
+                    <p className="text-[11px] text-[var(--text-muted)] mt-0.5">
+                      Tất cả hội viên trong mục này đều ở trạng thái ổn định.
                     </p>
                   </div>
                 ) : (
@@ -571,39 +554,25 @@ export function DashboardPage() {
             )}
 
             {/* Footer Links */}
-            <div className="flex items-center justify-between border-t border-slate-100 pt-3 text-xs md:text-sm font-bold dark:border-white/[0.06]">
+            <div className="flex items-center justify-between border-t border-[var(--line)] pt-3 text-xs font-bold text-[var(--text-muted)]">
               <Link
                 to="/reminders"
-                className="text-slate-600 hover:text-[#087ec1] dark:text-gray-400 dark:hover:text-[#ffcc08] transition flex items-center gap-1"
+                className="hover:text-[var(--brand-yellow)] transition flex items-center gap-1"
               >
                 <span>Xem tất cả danh sách nhắc việc</span>
-                <ArrowRight size={13} />
+                <ArrowRight size={12} />
               </Link>
               <Link
                 to="/pt-schedule"
-                className="text-slate-600 hover:text-[#087ec1] dark:text-gray-400 dark:hover:text-[#ffcc08] transition flex items-center gap-1"
+                className="hover:text-[var(--brand-yellow)] transition flex items-center gap-1"
               >
                 <span>Xem lịch PT</span>
-                <ArrowRight size={13} />
+                <ArrowRight size={12} />
               </Link>
             </div>
           </div>
         </div>
       </section>
-    </div>
-  )
-}
-
-function FinanceBlock({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-xl border border-slate-200/80 bg-slate-50/80 p-3.5 md:p-4 dark:border-white/[0.06] dark:bg-white/[0.03]">
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-gray-400">{label}</span>
-        <div className="flex size-7 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400">
-          <TrendingUp size={15} />
-        </div>
-      </div>
-      <p className="mt-2 text-lg md:text-xl font-black text-slate-900 dark:text-white truncate">{value}</p>
     </div>
   )
 }
@@ -614,72 +583,68 @@ function CleanNotificationItem({ notification }: { notification: OperationNotifi
   const isExpired = notification.type.includes('EXPIRED') || notification.type.includes('EXPIRING')
 
   let destination = '/members'
-  let actionLabel = 'Xem hồ sơ'
+  let actionLabel = 'Xem'
   let Icon = AlertCircle
   let toneStyles = {
-    iconBg: 'bg-blue-50 text-[#087ec1] dark:bg-blue-500/15 dark:text-blue-400',
-    border: 'hover:border-[#087ec1]/50',
-    titleColor: 'text-[#087ec1]',
+    iconBg: 'bg-blue-500/15 text-blue-400',
+    border: 'hover:border-blue-500/40',
   }
 
   if (isDebt) {
     destination = notification.memberId ? `/members/${notification.memberId}` : '/payments'
-    actionLabel = 'Thu nợ ngay'
+    actionLabel = 'Thu nợ'
     Icon = CreditCard
     toneStyles = {
-      iconBg: 'bg-red-50 text-[#df271b] dark:bg-red-500/15 dark:text-red-400',
-      border: 'hover:border-[#df271b]/50',
-      titleColor: 'text-red-600 dark:text-red-400',
+      iconBg: 'bg-red-500/15 text-red-400',
+      border: 'hover:border-red-500/40',
     }
   } else if (isBirthday) {
     destination = notification.memberId ? `/members/${notification.memberId}` : '/reminders'
     actionLabel = 'Chúc mừng'
     Icon = Gift
     toneStyles = {
-      iconBg: 'bg-pink-50 text-pink-600 dark:bg-pink-500/15 dark:text-pink-400',
-      border: 'hover:border-pink-500/50',
-      titleColor: 'text-pink-600 dark:text-pink-400',
+      iconBg: 'bg-pink-500/15 text-pink-400',
+      border: 'hover:border-pink-500/40',
     }
   } else if (isExpired) {
     destination = notification.memberId ? `/members/${notification.memberId}` : '/members'
-    actionLabel = 'Gia hạn gói'
+    actionLabel = 'Gia hạn'
     Icon = CalendarClock
     toneStyles = {
-      iconBg: 'bg-amber-50 text-amber-600 dark:bg-[#ffcc08]/15 dark:text-[#ffcc08]',
-      border: 'hover:border-[#ffcc08]/50',
-      titleColor: 'text-amber-600 dark:text-amber-400',
+      iconBg: 'bg-amber-500/15 text-amber-400',
+      border: 'hover:border-amber-500/40',
     }
   }
 
   return (
     <Link
       to={destination}
-      className={`group flex items-center justify-between gap-3 rounded-xl border border-slate-200/90 bg-slate-50/70 p-3.5 transition-all hover:bg-white hover:shadow-sm dark:border-white/[0.06] dark:bg-white/[0.02] dark:hover:bg-white/[0.05] ${toneStyles.border}`}
+      className={`group flex items-center justify-between gap-3 rounded-xl border border-[var(--line)] bg-[var(--surface-muted)]/40 hover:bg-[var(--surface-muted)] p-3 transition ${toneStyles.border}`}
     >
-      <div className="flex items-center gap-3.5 min-w-0">
-        <div className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${toneStyles.iconBg}`}>
-          <Icon size={18} />
+      <div className="flex items-center gap-3 min-w-0">
+        <div className={`grid size-8 shrink-0 place-items-center rounded-lg ${toneStyles.iconBg}`}>
+          <Icon size={16} />
         </div>
-        <div className="min-w-0 space-y-1">
+        <div className="min-w-0 space-y-0.5">
           <div className="flex items-center gap-2">
-            <span className={`text-xs md:text-sm font-black ${toneStyles.titleColor}`}>
+            <span className="text-xs font-bold text-[var(--text-strong)] truncate">
               {notification.title}
             </span>
             {notification.dueDate && (
-              <span className="shrink-0 text-xs font-semibold text-slate-400 dark:text-gray-400">
+              <span className="shrink-0 text-[11px] text-[var(--text-muted)]">
                 • {formatDate(notification.dueDate)}
               </span>
             )}
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2 text-xs">
             {notification.memberName && (
-              <span className="inline-block rounded-md bg-slate-200/80 px-2 py-0.5 text-xs font-black text-slate-800 dark:bg-white/10 dark:text-white">
+              <span className="font-semibold text-[var(--text)]">
                 {notification.memberName}
               </span>
             )}
             {notification.amount != null && notification.amount > 0 && (
-              <span className="text-xs md:text-sm font-black text-red-600 dark:text-red-400">
+              <span className="font-bold text-red-400">
                 {formatMoney(notification.amount)}
               </span>
             )}
@@ -687,13 +652,9 @@ function CleanNotificationItem({ notification }: { notification: OperationNotifi
         </div>
       </div>
 
-      <div className="flex shrink-0 items-center gap-2 pl-2">
-        <span className="hidden sm:inline-block text-xs font-bold text-slate-500 group-hover:text-slate-800 dark:group-hover:text-white transition">
-          {actionLabel}
-        </span>
-        <div className="flex size-8 items-center justify-center rounded-lg bg-white border border-slate-200 text-slate-400 group-hover:border-[#087ec1] group-hover:text-[#087ec1] dark:border-white/10 dark:bg-white/5 dark:text-gray-400 dark:group-hover:text-white transition">
-          <ArrowRight size={14} className="transition group-hover:translate-x-0.5" />
-        </div>
+      <div className="flex shrink-0 items-center gap-1.5 text-xs font-semibold text-[var(--text-muted)] group-hover:text-[var(--text-strong)] transition pl-2">
+        <span className="hidden sm:inline">{actionLabel}</span>
+        <ArrowRight size={13} className="transition group-hover:translate-x-0.5" />
       </div>
     </Link>
   )

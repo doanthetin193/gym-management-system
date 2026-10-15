@@ -41,7 +41,7 @@ public class GroqAiClient {
         for (String key : keys) {
             try {
                 return requestWithKey(key, systemPrompt, userPrompt, responseType);
-            } catch (RuntimeException error) {
+            } catch (RetryableGroqException error) {
                 lastError = error;
             }
         }
@@ -74,6 +74,9 @@ public class GroqAiClient {
 
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                if (response.statusCode() == 401 || response.statusCode() == 403 || response.statusCode() == 429) {
+                    throw new RetryableGroqException(response.statusCode());
+                }
                 throw new BadRequestException("Groq từ chối yêu cầu AI. Mã lỗi: " + response.statusCode());
             }
 
@@ -111,5 +114,11 @@ public class GroqAiClient {
             throw new BadRequestException("AI trả về dữ liệu không đúng định dạng JSON.");
         }
         return trimmed.substring(start, end + 1);
+    }
+
+    private static final class RetryableGroqException extends RuntimeException {
+        private RetryableGroqException(int statusCode) {
+            super("Groq từ chối khóa API hiện tại. Mã lỗi: " + statusCode);
+        }
     }
 }

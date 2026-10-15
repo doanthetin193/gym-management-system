@@ -43,6 +43,7 @@ import com.gymduongdouble.backend.pt.web.dto.PtGoalResponse;
 import com.gymduongdouble.backend.pt.web.dto.PtMemberDetailResponse;
 import com.gymduongdouble.backend.pt.web.dto.PtProfileRequest;
 import com.gymduongdouble.backend.pt.web.dto.PtProfileResponse;
+import com.gymduongdouble.backend.pt.web.dto.ReassignPtMemberRequest;
 import com.gymduongdouble.backend.pt.web.dto.PtScheduleRequest;
 import com.gymduongdouble.backend.pt.web.dto.PtScheduleResponse;
 import com.gymduongdouble.backend.pt.web.dto.PtSessionLogRequest;
@@ -168,6 +169,55 @@ public class PtService {
         return PtAssignmentResponse.from(saved, ptAssignmentPolicy.effectiveStatus(saved, AppClock.today()));
     }
 
+    @Transactional
+    public PtAssignmentResponse reassignMember(Long assignmentId, ReassignPtMemberRequest request) {
+        if (!isOwner()) {
+            throw new AccessDeniedException("Chỉ chủ phòng được đổi PT phụ trách.");
+        }
+
+        PtAssignment currentAssignment = findAssignment(assignmentId);
+        LocalDate today = AppClock.today();
+        if (!ptAssignmentPolicy.isEffective(currentAssignment, today)) {
+            throw new BadRequestException("Chỉ có thể đổi PT cho phân công đang hiệu lực.");
+        }
+
+        User nextPtUser = findUser(request.ptUserId());
+        ensureActivePtUser(nextPtUser, "PT mới phải là tài khoản PT đang hoạt động.");
+        if (currentAssignment.getPtUser().getId().equals(nextPtUser.getId())) {
+            throw new BadRequestException("Hội viên này đang được phân công cho PT đã chọn.");
+        }
+
+        Member member = currentAssignment.getMember();
+        ensureOperationalMember(member);
+        List<PtSessionPackage> assignablePackages = assignablePtPackages(member.getId(), today);
+        if (assignablePackages.isEmpty()) {
+            throw new BadRequestException("Chỉ có thể đổi PT khi hội viên còn gói PT hiệu lực và còn buổi học.");
+        }
+
+        LocalDate packageEndDate = assignablePackages.stream()
+            .map(PtSessionPackage::getEndDate)
+            .max(LocalDate::compareTo)
+            .orElseThrow();
+        currentAssignment.setStatus(PtAssignmentStatus.ENDED);
+        currentAssignment.setEndDate(today);
+
+        PtAssignment replacement = new PtAssignment();
+        replacement.setPtUser(nextPtUser);
+        replacement.setMember(member);
+        replacement.setStartDate(today);
+        replacement.setEndDate(packageEndDate);
+        replacement.setStatus(PtAssignmentStatus.ACTIVE);
+        replacement.setNote(request.note());
+
+        assignablePackages.forEach(sessionPackage -> sessionPackage.setPtUser(nextPtUser));
+        ptScheduleRepository.findByMemberIdOrderByScheduleDateDesc(member.getId()).stream()
+            .filter(schedule -> schedule.getStatus() == ScheduleStatus.SCHEDULED)
+            .filter(schedule -> !isPastSchedule(schedule))
+            .forEach(schedule -> schedule.setPtUser(nextPtUser));
+
+        return PtAssignmentResponse.from(ptAssignmentRepository.save(replacement));
+    }
+
     @Transactional(readOnly = true)
     public List<PtAssignmentResponse> listMyMembers(Long ptUserId) {
         Long resolvedPtUserId = resolveVisiblePtUserId(ptUserId);
@@ -238,6 +288,9 @@ public class PtService {
         }
         if (ptSessionLogRepository.existsByScheduleId(scheduleId)) {
             throw new BadRequestException("Không thể xoá lịch dạy này vì buổi tập đã được ghi nhận trong lịch sử.");
+        }
+        if (schedule.getStatus() != ScheduleStatus.SCHEDULED || isPastSchedule(schedule)) {
+            throw new BadRequestException("Chỉ có thể xoá lịch dạy chưa diễn ra. Lịch quá khứ cần được giữ lại để đối soát.");
         }
         ptScheduleRepository.delete(schedule);
     }
@@ -761,6 +814,20 @@ public class PtService {
     private PtSchedule findSchedule(Long id) {
         return ptScheduleRepository.findById(id)
             .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy lịch dạy PT."));
+    }
+
+    private PtAssignment findAssignment(Long id) {
+        return ptAssignmentRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy phân công PT."));
+    }
+
+    private boolean isPastSchedule(PtSchedule schedule) {
+        LocalDate today = AppClock.today();
+        if (schedule.getScheduleDate().isBefore(today)) {
+            return true;
+        }
+        return schedule.getScheduleDate().isEqual(today)
+            && schedule.getStartTime().isBefore(LocalTime.now(AppClock.zone()).minusMinutes(2));
     }
 
     private MemberMembership findMembership(Long id) {

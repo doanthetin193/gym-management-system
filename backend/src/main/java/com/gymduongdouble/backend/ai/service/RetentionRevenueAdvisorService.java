@@ -10,6 +10,7 @@ import com.gymduongdouble.backend.ai.web.dto.RetentionRevenueAdvisorResponse.Adv
 import com.gymduongdouble.backend.common.enums.ActivityType;
 import com.gymduongdouble.backend.common.enums.DebtStatus;
 import com.gymduongdouble.backend.common.enums.MemberStatus;
+import com.gymduongdouble.backend.common.enums.MembershipStatus;
 import com.gymduongdouble.backend.common.enums.PlanType;
 import com.gymduongdouble.backend.common.enums.PtSessionStatus;
 import com.gymduongdouble.backend.common.time.AppClock;
@@ -36,9 +37,11 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -107,7 +110,9 @@ public class RetentionRevenueAdvisorService {
         List<Member> members = memberRepository.findAll().stream()
             .filter(member -> member.getStatus() == MemberStatus.ACTIVE)
             .toList();
-        List<MemberMembership> memberships = memberMembershipRepository.findAll();
+        List<MemberMembership> memberships = memberMembershipRepository.findAll().stream()
+            .filter(membership -> membership.getStatus() != MembershipStatus.CANCELLED)
+            .toList();
         List<Payment> currentPayments = paymentRepository.findByPaymentDateBetween(monthStart, monthEnd);
         List<Payment> previousPayments = paymentRepository.findByPaymentDateBetween(previousPeriod.atDay(1), previousPeriod.atEndOfMonth());
         List<DebtRecord> activeDebts = debtRecordRepository.findByStatusInOrderByDueDateAsc(List.of(DebtStatus.OPEN, DebtStatus.PARTIALLY_PAID)).stream()
@@ -128,8 +133,8 @@ public class RetentionRevenueAdvisorService {
         long activeMembers = 0;
         long expiredMembers = 0;
         long nearExpiryMembers = 0;
-        long highRisk = 0;
-        long mediumRisk = 0;
+        Set<Long> highRiskMemberIds = new LinkedHashSet<>();
+        Set<Long> mediumRiskMemberIds = new LinkedHashSet<>();
         Map<Long, Long> renewalOpportunityByMember = new LinkedHashMap<>();
 
         for (Member member : members) {
@@ -153,14 +158,14 @@ public class RetentionRevenueAdvisorService {
 
                 if (daysToEnd <= NEAR_EXPIRY_DAYS) {
                     nearExpiryMembers += 1;
-                    mediumRisk += 1;
+                    mediumRiskMemberIds.add(member.getId());
                     markRenewalOpportunity(renewalOpportunityByMember, member, value);
                     riskSegments.add(segmentCode(planType, "NEAR_EXPIRY"), segmentLabel(planType, "sắp hết hạn"), value);
                     opportunitySegments.add(segmentCode(planType, "RENEWAL_WINDOW"), segmentLabel(planType, "đang trong cửa sổ gia hạn"), value);
                 }
 
                 if (hasOpenDebt) {
-                    mediumRisk += 1;
+                    mediumRiskMemberIds.add(member.getId());
                     riskSegments.add("OPEN_DEBT_ACTIVE_MEMBER", "Khách đang tập nhưng còn công nợ", memberDebt);
                     opportunitySegments.add("DEBT_COLLECTION", "Công nợ có thể thu hồi", memberDebt);
                 }
@@ -172,13 +177,13 @@ public class RetentionRevenueAdvisorService {
                 if (planType == PlanType.PT) {
                     PtRisk ptRisk = analyzePtRisk(ptPackagesByMember.getOrDefault(member.getId(), List.of()), latestActivityByMember.get(member.getId()), today);
                     if (ptRisk.unusedNearExpiry()) {
-                        highRisk += 1;
+                        highRiskMemberIds.add(member.getId());
                         markRenewalOpportunity(renewalOpportunityByMember, member, value);
                         riskSegments.add("PT_NEAR_EXPIRY_UNUSED_SESSIONS", "Khách PT gần hết hạn nhưng còn nhiều buổi", value);
                         opportunitySegments.add("PT_RENEWAL_OR_SESSION_RECOVERY", "Khôi phục lịch PT hoặc gia hạn PT", value);
                     }
                     if (ptRisk.longInactive()) {
-                        mediumRisk += 1;
+                        mediumRiskMemberIds.add(member.getId());
                         riskSegments.add("LONG_INACTIVE_PT_MEMBER", "Khách PT gián đoạn lịch tập lâu ngày", value);
                     }
                 }
@@ -189,9 +194,9 @@ public class RetentionRevenueAdvisorService {
                 long expiredDays = ChronoUnit.DAYS.between(membership.getEndDate(), today);
 
                 if (expiredDays > 7) {
-                    highRisk += 1;
+                    highRiskMemberIds.add(member.getId());
                 } else {
-                    mediumRisk += 1;
+                    mediumRiskMemberIds.add(member.getId());
                 }
                 markRenewalOpportunity(renewalOpportunityByMember, member, value);
                 riskSegments.add(segmentCode(membership.getPlan().getPlanType(), expiredDays > 7 ? "EXPIRED_OVER_7_DAYS" : "EXPIRED_RECENTLY"), segmentLabel(membership.getPlan().getPlanType(), expiredDays > 7 ? "đã hết hạn hơn 7 ngày" : "vừa hết hạn"), value);
@@ -199,6 +204,7 @@ public class RetentionRevenueAdvisorService {
             }
         }
 
+        mediumRiskMemberIds.removeAll(highRiskMemberIds);
         long currentRevenue = currentPayments.stream().map(Payment::getAmount).mapToLong(this::money).sum();
         long previousRevenue = previousPayments.stream().map(Payment::getAmount).mapToLong(this::money).sum();
         long openDebtAmount = activeDebts.stream().map(DebtRecord::getRemainingAmount).mapToLong(this::money).sum();
@@ -211,8 +217,8 @@ public class RetentionRevenueAdvisorService {
             activeMembers,
             expiredMembers,
             nearExpiryMembers,
-            highRisk,
-            mediumRisk,
+            highRiskMemberIds.size(),
+            mediumRiskMemberIds.size(),
             activeDebts.size(),
             newMembersThisMonth,
             renewalsThisMonth,

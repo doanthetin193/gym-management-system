@@ -1,7 +1,7 @@
 package com.gymduongdouble.backend.member.service;
 
-import com.gymduongdouble.backend.common.enums.MemberStatus;
 import com.gymduongdouble.backend.common.enums.DebtStatus;
+import com.gymduongdouble.backend.common.enums.MemberStatus;
 import com.gymduongdouble.backend.common.enums.UserStatus;
 import com.gymduongdouble.backend.common.exception.BadRequestException;
 import com.gymduongdouble.backend.common.exception.ConflictException;
@@ -25,6 +25,10 @@ import com.gymduongdouble.backend.membership.repository.MemberMembershipReposito
 import com.gymduongdouble.backend.membership.service.MembershipLifecyclePolicy;
 import com.gymduongdouble.backend.membership.web.dto.MemberMembershipResponse;
 import com.gymduongdouble.backend.pt.repository.PtSessionPackageRepository;
+import com.gymduongdouble.backend.user.domain.Role;
+import com.gymduongdouble.backend.user.domain.User;
+import com.gymduongdouble.backend.user.repository.RoleRepository;
+import com.gymduongdouble.backend.user.repository.UserRepository;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Comparator;
@@ -35,10 +39,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
-import com.gymduongdouble.backend.user.domain.Role;
-import com.gymduongdouble.backend.user.domain.User;
-import com.gymduongdouble.backend.user.repository.RoleRepository;
-import com.gymduongdouble.backend.user.repository.UserRepository;
 
 @Service
 @RequiredArgsConstructor
@@ -142,6 +142,8 @@ public class MemberService {
             }
         }
         member.setNote(request.note());
+
+        syncPortalAccount(member, normalizedPhone);
 
         return MemberResponse.from(memberRepository.save(member));
     }
@@ -322,6 +324,24 @@ public class MemberService {
     private boolean isMemberOnlyUser(User user) {
         return user.getRoles().size() == 1
             && user.getRoles().stream().allMatch(role -> "MEMBER".equals(role.getCode()));
+    }
+
+    private void syncPortalAccount(Member member, String phone) {
+        User portalUser = member.getUser();
+        if (portalUser == null) {
+            return;
+        }
+        userRepository.findByPhone(phone)
+            .filter(user -> !user.getId().equals(portalUser.getId()))
+            .ifPresent(user -> {
+                throw new ConflictException("Số điện thoại này đã thuộc một tài khoản khác trong hệ thống.");
+            });
+        portalUser.setFullName(member.getFullName());
+        portalUser.setPhone(phone);
+        if (member.getStatus() != MemberStatus.ACTIVE) {
+            portalUser.setStatus(UserStatus.LOCKED);
+        }
+        userRepository.save(portalUser);
     }
 
     private String requirePortalPhone(Member member) {

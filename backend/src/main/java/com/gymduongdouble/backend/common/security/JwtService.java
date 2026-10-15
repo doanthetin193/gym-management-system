@@ -24,10 +24,6 @@ public class JwtService {
     private final JwtProperties properties;
     private final ObjectMapper objectMapper;
 
-    public String generateAccessToken(AuthenticatedUser user) {
-        return generateAccessToken(user, properties.accessTokenMinutes());
-    }
-
     public String generateAccessToken(AuthenticatedUser user, long expirationMinutes) {
         Instant now = Instant.now();
         Instant expiresAt = now.plusSeconds(expirationMinutes * 60);

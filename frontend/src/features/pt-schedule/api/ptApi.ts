@@ -1,4 +1,4 @@
-import { apiDelete, apiGet, apiPost } from '../../../shared/api/apiClient'
+import { apiDelete, apiGet, apiPost, apiPut } from '../../../shared/api/apiClient'
 import type {
   BodyMeasurement,
   BodyMeasurementPayload,
@@ -34,6 +34,10 @@ export function listMyPtMembers(ptUserId?: number) {
 
 export function assignPtMember(payload: PtAssignmentPayload) {
   return apiPost<PtAssignment, PtAssignmentPayload>('/v1/pt/assignments', payload)
+}
+
+export function reassignPtMember(assignmentId: number, payload: { ptUserId: number; note?: string | null }) {
+  return apiPut<PtAssignment, { ptUserId: number; note?: string | null }>(`/v1/pt/assignments/${assignmentId}/reassign`, payload)
 }
 
 export function listPtSchedules(params: { ptUserId?: number; fromDate?: string; toDate?: string } = {}) {

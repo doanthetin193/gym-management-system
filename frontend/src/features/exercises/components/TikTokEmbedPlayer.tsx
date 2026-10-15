@@ -17,8 +17,8 @@ export function TikTokEmbedPlayer({
 }: TikTokEmbedPlayerProps) {
   if (!videoId) {
     return (
-      <div className="relative aspect-[9/16] h-[360px] sm:h-[380px] w-full max-w-[240px] sm:max-w-[260px] mx-auto overflow-hidden rounded-xl bg-neutral-900 border border-neutral-800 flex flex-col items-center justify-center p-3 text-center">
-        <Video size={32} className="text-amber-400/60 mb-2" />
+      <div className="relative aspect-[9/14] w-full overflow-hidden rounded-xl bg-neutral-900 border border-neutral-800 flex flex-col items-center justify-center p-4 text-center">
+        <Video size={36} className="text-amber-400/60 mb-2" />
         <p className="text-xs font-bold text-neutral-400">Chưa nhận diện được mã video</p>
         {url && (
           <a
@@ -35,7 +35,7 @@ export function TikTokEmbedPlayer({
   }
 
   return (
-    <div className="relative aspect-[9/16] h-[360px] sm:h-[380px] w-full max-w-[240px] sm:max-w-[260px] mx-auto overflow-hidden rounded-xl bg-black border border-white/10 shadow-md group">
+    <div className="relative aspect-[9/14] w-full overflow-hidden rounded-xl bg-black border border-white/10 shadow-md group">
       {/* Official TikTok Player v1 iframe - Plays cleanly directly on web with zero overload-protect */}
       <iframe
         src={`https://www.tiktok.com/player/v1/${videoId}?music_info=1&description=1`}

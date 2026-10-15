@@ -389,8 +389,8 @@ function DebtTable({
             <th className="px-5 py-3 text-right">Tổng nợ</th>
             <th className="px-5 py-3 text-right">Đã thu</th>
             <th className="px-5 py-3 text-right">Còn nợ</th>
-            <th className="px-5 py-3 text-center">Trạng thái</th>
-            <th className="px-5 py-3 text-right">Thao tác</th>
+            <th className="px-5 py-3 text-center whitespace-nowrap">Trạng thái</th>
+            <th className="px-5 py-3 text-right whitespace-nowrap">Thao tác</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-[var(--line)]">
@@ -447,37 +447,37 @@ function DebtTable({
                   </td>
 
                   {/* Amounts */}
-                  <td className="px-5 py-3.5 text-right text-xs font-bold text-[var(--text-muted)]">
+                  <td className="px-5 py-3.5 text-right text-xs font-bold text-[var(--text-muted)] whitespace-nowrap">
                     {formatMoney(debt.originalAmount)}
                   </td>
-                  <td className="px-5 py-3.5 text-right text-xs font-bold text-sky-400">
+                  <td className="px-5 py-3.5 text-right text-xs font-bold text-sky-400 whitespace-nowrap">
                     {formatMoney(debt.paidAmount)}
                   </td>
-                  <td className="px-5 py-3.5 text-right text-sm font-black text-red-500">
+                  <td className="px-5 py-3.5 text-right text-sm font-black text-red-500 whitespace-nowrap">
                     {formatMoney(debt.remainingAmount)}
                   </td>
 
                   {/* Status Badge */}
-                  <td className="px-5 py-3.5 text-center">
+                  <td className="px-5 py-3.5 text-center whitespace-nowrap">
                     <span className={`inline-flex rounded-full border px-2.5 py-0.5 text-[11px] font-black ${debtStatusBadge(debt.status)}`}>
                       {debtStatusLabel(debt.status)}
                     </span>
                   </td>
 
                   {/* Action Column: Single, precise 'Thu tiền' button */}
-                  <td className="px-5 py-3.5 text-right">
+                  <td className="px-5 py-3.5 text-right whitespace-nowrap">
                     {canCollect ? (
                       <button
                         type="button"
                         onClick={() => onCollect(debt)}
-                        className="inline-flex h-8 items-center gap-1.5 rounded-xl bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 px-3 text-xs font-black text-white shadow-sm transition hover:scale-[1.03] hover:brightness-105 active:scale-[0.98]"
+                        className="inline-flex h-8 items-center gap-1.5 rounded-xl bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 px-3.5 text-xs font-black text-white shadow-sm transition hover:scale-[1.03] hover:brightness-105 active:scale-[0.98] whitespace-nowrap shrink-0"
                         title={`Lập phiếu thu tiền cho ${debt.memberName}`}
                       >
-                        <Banknote size={14} />
-                        Thu tiền
+                        <Banknote size={14} className="shrink-0" />
+                        <span>Thu tiền</span>
                       </button>
                     ) : (
-                      <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-400">
+                      <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-400 whitespace-nowrap">
                         <CheckCircle2 size={13} />
                         Đã thu đủ
                       </span>

@@ -13,6 +13,7 @@ import com.gymduongdouble.backend.pt.web.dto.PtGoalResponse;
 import com.gymduongdouble.backend.pt.web.dto.PtMemberDetailResponse;
 import com.gymduongdouble.backend.pt.web.dto.PtProfileRequest;
 import com.gymduongdouble.backend.pt.web.dto.PtProfileResponse;
+import com.gymduongdouble.backend.pt.web.dto.ReassignPtMemberRequest;
 import com.gymduongdouble.backend.pt.web.dto.PtScheduleRequest;
 import com.gymduongdouble.backend.pt.web.dto.PtScheduleResponse;
 import com.gymduongdouble.backend.pt.web.dto.PtSessionLogRequest;
@@ -31,6 +32,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.PutMapping;
 
 @RestController
 @RequestMapping("/v1/pt")
@@ -61,6 +63,15 @@ public class PtController {
     @PreAuthorize("hasAnyRole('OWNER', 'PT')")
     public ApiResponse<PtAssignmentResponse> assignMember(@Valid @RequestBody PtAssignmentRequest request) {
         return ApiResponse.created(ptService.assignMember(request));
+    }
+
+    @PutMapping("/assignments/{assignmentId}/reassign")
+    @PreAuthorize("hasRole('OWNER')")
+    public ApiResponse<PtAssignmentResponse> reassignMember(
+        @PathVariable Long assignmentId,
+        @Valid @RequestBody ReassignPtMemberRequest request
+    ) {
+        return ApiResponse.ok(ptService.reassignMember(assignmentId, request));
     }
 
     @GetMapping("/schedules")

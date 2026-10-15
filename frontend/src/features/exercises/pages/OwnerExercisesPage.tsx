@@ -14,7 +14,6 @@ import {
   Sparkles,
   Trash2,
   Video,
-  Zap,
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ApiClientError } from '../../../shared/api/apiClient'
@@ -76,13 +75,6 @@ export function OwnerExercisesPage() {
   const [submitting, setSubmitting] = useState(false)
   const [copiedId, setCopiedId] = useState<number | null>(null)
 
-  // Quick Embed State
-  const [quickUrl, setQuickUrl] = useState('')
-  const [quickTitle, setQuickTitle] = useState('')
-  const [quickCategoryId, setQuickCategoryId] = useState<number>(0)
-  const [quickSubmitting, setQuickSubmitting] = useState(false)
-  const [quickError, setQuickError] = useState<string | null>(null)
-
   const publishedCount = useMemo(() => exercises.filter((e) => e.published).length, [exercises])
   const hiddenCount = exercises.length - publishedCount
 
@@ -111,15 +103,12 @@ export function OwnerExercisesPage() {
       setExercises(exercisePage.items)
       setTotalPages(exercisePage.totalPages)
       setTotalItems(exercisePage.totalItems)
-      if (categoryData.length > 0 && quickCategoryId === 0) {
-        setQuickCategoryId(categoryData[0].id)
-      }
     } catch (caughtError) {
       setError(errorMessage(caughtError))
     } finally {
       setLoading(false)
     }
-  }, [keyword, page, pageSize, published, quickCategoryId, selectedCategory])
+  }, [keyword, page, pageSize, published, selectedCategory])
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -145,48 +134,6 @@ export function OwnerExercisesPage() {
       setFormError(errorMessage(caughtError))
     } finally {
       setSubmitting(false)
-    }
-  }
-
-  async function handleQuickEmbed(e: React.FormEvent) {
-    e.preventDefault()
-    if (!quickUrl.trim()) {
-      setQuickError('Vui lòng dán link video TikTok.')
-      return
-    }
-
-    const videoId = extractTiktokVideoId(quickUrl)
-    if (!videoId) {
-      setQuickError('Link video TikTok không hợp lệ (cần có dạng .../video/123456...).')
-      return
-    }
-
-    const catId = quickCategoryId || categories[0]?.id
-    if (!catId) {
-      setQuickError('Vui lòng chọn danh mục bài tập.')
-      return
-    }
-
-    setQuickSubmitting(true)
-    setQuickError(null)
-
-    try {
-      await createOwnerExercise({
-        categoryId: catId,
-        title: quickTitle.trim() || 'Video hướng dẫn kỹ thuật TikTok',
-        tiktokUrl: quickUrl.trim(),
-        published: true,
-        featured: false,
-        level: 'BEGINNER',
-        authorName: 'TikTok Creator',
-      })
-      setQuickUrl('')
-      setQuickTitle('')
-      await loadData()
-    } catch (caughtError) {
-      setQuickError(errorMessage(caughtError))
-    } finally {
-      setQuickSubmitting(false)
     }
   }
 
@@ -316,66 +263,6 @@ export function OwnerExercisesPage() {
         />
       </div>
 
-      {/* Fast Quick-Embed Bar (Nhúng link TikTok siêu tốc) */}
-      <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-4 shadow-sm space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="grid size-7 place-items-center rounded-lg bg-amber-500/20 text-amber-500">
-              <Zap size={15} />
-            </span>
-            <h2 className="text-xs font-black uppercase tracking-wider text-[var(--text-strong)]">
-              Nhúng link TikTok siêu tốc
-            </h2>
-          </div>
-          <span className="text-[11px] font-semibold text-[var(--text-muted)]">
-            Dán link TikTok vào đây để nhúng trình chiếu tức thì trên web
-          </span>
-        </div>
-
-        <form onSubmit={(e) => void handleQuickEmbed(e)} className="grid gap-2.5 sm:grid-cols-[1.5fr_1fr_auto_auto]">
-          <input
-            value={quickUrl}
-            onChange={(e) => {
-              setQuickUrl(e.target.value)
-              setQuickError(null)
-            }}
-            placeholder="Dán link TikTok (VD: https://www.tiktok.com/@user/video/7665450123...)"
-            className="h-10 rounded-xl border border-[var(--line)] bg-[var(--input-bg)] px-3 text-xs font-semibold outline-none focus:border-[var(--brand-yellow)] transition-all"
-            required
-          />
-
-          <input
-            value={quickTitle}
-            onChange={(e) => setQuickTitle(e.target.value)}
-            placeholder="Tên bài tập (VD: Hướng dẫn kỹ thuật Squat...)"
-            className="h-10 rounded-xl border border-[var(--line)] bg-[var(--input-bg)] px-3 text-xs font-semibold outline-none focus:border-[var(--brand-yellow)] transition-all"
-          />
-
-          <select
-            value={quickCategoryId || categories[0]?.id || ''}
-            onChange={(e) => setQuickCategoryId(Number(e.target.value))}
-            className="h-10 rounded-xl border border-[var(--line)] bg-[var(--input-bg)] px-3 text-xs font-semibold outline-none focus:border-[var(--brand-yellow)] transition-all min-w-[140px]"
-          >
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
-
-          <button
-            type="submit"
-            disabled={quickSubmitting || !quickUrl.trim()}
-            className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-[var(--brand-yellow)] to-amber-500 px-5 text-xs font-black text-black shadow-sm hover:brightness-105 active:scale-98 transition-all disabled:opacity-50 shrink-0"
-          >
-            <Zap size={14} />
-            {quickSubmitting ? 'Đang nhúng...' : 'Nhúng video'}
-          </button>
-        </form>
-
-        {quickError ? (
-          <p className="text-[11px] font-bold text-red-500">{quickError}</p>
-        ) : null}
-      </div>
-
       {/* Demo Cards Cleanup Notice (If user still has demo cards) */}
       {demoCards.length > 0 ? (
         <div className="rounded-xl border border-red-500/30 bg-red-500/5 p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -459,21 +346,21 @@ export function OwnerExercisesPage() {
             </div>
             <h3 className="text-sm font-black text-[var(--text-strong)]">Chưa có video bài tập nào trong thư viện</h3>
             <p className="text-xs text-[var(--text-muted)] max-w-md mx-auto">
-              Dán link video TikTok vào thanh nhúng siêu tốc ở trên để bắt đầu thêm video bài tập cho học viên.
+              Bấm nút "+ Nhúng video đầy đủ" ở góc trên để bắt đầu thêm video bài tập cho học viên.
             </p>
           </div>
         ) : (
-          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 items-start">
+          <div className="grid gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 items-start">
             {exercises.map((exercise) => {
               const videoId = exercise.tiktokVideoId || extractTiktokVideoId(exercise.tiktokUrl ?? '')
 
               return (
                 <article
                   key={exercise.id}
-                  className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-3 shadow-sm hover:border-amber-400/40 hover:shadow-md transition-all flex flex-col justify-between space-y-2.5 group"
+                  className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-3.5 sm:p-4 shadow-sm hover:border-amber-400/50 hover:shadow-lg transition-all flex flex-col justify-between space-y-3 group"
                 >
-                  {/* Real TikTok Embed Player (Compact Scale) */}
-                  <div className="w-full overflow-hidden rounded-xl border border-[var(--line)] bg-black/60 shadow-inner flex justify-center">
+                  {/* Real TikTok Embed Player (Expanded Width & Balanced Ratio) */}
+                  <div className="w-full overflow-hidden rounded-xl border border-[var(--line)] bg-black shadow-inner">
                     <TikTokEmbedPlayer
                       url={exercise.tiktokUrl ?? (videoId ? `https://www.tiktok.com/@video/video/${videoId}` : '')}
                       videoId={videoId}
@@ -485,16 +372,16 @@ export function OwnerExercisesPage() {
                   </div>
 
                   {/* Video Details */}
-                  <div className="space-y-1.5">
-                    <div className="flex items-start justify-between gap-1.5">
+                  <div className="space-y-2">
+                    <div className="flex items-start justify-between gap-2">
                       <h3
                         onClick={() => setViewingExercise(exercise)}
-                        className="text-xs sm:text-sm font-black text-[var(--text-strong)] leading-snug line-clamp-2 cursor-pointer hover:text-amber-400 transition-colors"
+                        className="text-sm font-bold text-[var(--text-strong)] leading-snug line-clamp-2 cursor-pointer hover:text-amber-400 transition-colors"
                         title="Bấm để xem video"
                       >
                         {exercise.title}
                       </h3>
-                      <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-black ${
+                      <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${
                         exercise.published ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' : 'bg-neutral-800 text-neutral-400 border border-neutral-700'
                       }`}>
                         {exercise.published ? 'Hiện' : 'Ẩn'}
@@ -502,61 +389,61 @@ export function OwnerExercisesPage() {
                     </div>
 
                     {/* Category & Attributes Badges */}
-                    <div className="flex flex-wrap gap-1 text-[9px] font-bold">
-                      <span className="rounded-md bg-amber-500/15 text-amber-500 border border-amber-500/30 px-1.5 py-0.5">
+                    <div className="flex flex-wrap gap-1.5 text-[10px] font-semibold">
+                      <span className="rounded-md bg-amber-500/15 text-amber-500 border border-amber-500/30 px-2 py-0.5">
                         {exercise.categoryName ?? 'Chưa phân loại'}
                       </span>
                       {exercise.level ? (
-                        <span className="rounded-md bg-blue-500/10 text-blue-500 border border-blue-500/20 px-1.5 py-0.5">
+                        <span className="rounded-md bg-blue-500/10 text-blue-400 border border-blue-500/20 px-2 py-0.5">
                           {levelLabels[exercise.level]}
                         </span>
                       ) : null}
                       {exercise.muscleGroup ? (
-                        <span className="rounded-md bg-purple-500/10 text-purple-500 border border-purple-500/20 px-1.5 py-0.5">
+                        <span className="rounded-md bg-purple-500/10 text-purple-400 border border-purple-500/20 px-2 py-0.5">
                           {exercise.muscleGroup}
                         </span>
                       ) : null}
                     </div>
 
                     {exercise.description ? (
-                      <p className="text-[11px] text-[var(--text-muted)] line-clamp-2 leading-relaxed">
+                      <p className="text-xs text-[var(--text-muted)] line-clamp-2 leading-relaxed">
                         {exercise.description}
                       </p>
                     ) : null}
                   </div>
 
                   {/* Actions Toolbar */}
-                  <div className="flex items-center justify-between gap-1 border-t border-[var(--line)] pt-2.5">
-                    <div className="flex items-center gap-1">
+                  <div className="flex items-center justify-between gap-1 border-t border-[var(--line)] pt-3">
+                    <div className="flex items-center gap-1.5">
                       <button
                         type="button"
                         onClick={() => setViewingExercise(exercise)}
-                        className="inline-flex h-7 items-center gap-1 rounded-lg bg-amber-400/20 border border-amber-400/40 text-amber-400 px-2 text-[11px] font-black hover:bg-amber-400 hover:text-black transition-all active:scale-95"
+                        className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-amber-400/20 border border-amber-400/40 text-amber-400 px-2.5 text-xs font-bold hover:bg-amber-400 hover:text-black transition-all active:scale-95"
                         title="Bấm để xem video"
                       >
-                        <Play size={11} className="fill-current" />
+                        <Play size={12} className="fill-current" />
                         <span>Xem</span>
                       </button>
 
                       <button
                         type="button"
                         onClick={() => void togglePublished(exercise)}
-                        className="inline-flex h-7 items-center gap-1 rounded-lg border border-[var(--line)] bg-[var(--surface-muted)]/50 px-2 text-[11px] font-bold text-[var(--text)] hover:border-amber-400 hover:text-amber-400 transition-all"
+                        className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-[var(--line)] bg-[var(--surface-muted)]/50 px-2.5 text-xs font-bold text-[var(--text)] hover:border-amber-400 hover:text-amber-400 transition-all"
                         title={exercise.published ? 'Ẩn video' : 'Hiển thị video'}
                       >
-                        {exercise.published ? <EyeOff size={12} /> : <Eye size={12} />}
+                        {exercise.published ? <EyeOff size={13} /> : <Eye size={13} />}
                         <span>{exercise.published ? 'Ẩn' : 'Hiện'}</span>
                       </button>
                     </div>
 
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1.5">
                       <button
                         type="button"
                         onClick={() => handleCopyLink(exercise)}
-                        className="inline-flex size-7 items-center justify-center rounded-lg border border-[var(--line)] bg-[var(--surface-muted)]/50 text-xs font-bold text-[var(--text)] hover:border-amber-400 hover:text-amber-400 transition-all"
+                        className="inline-flex size-8 items-center justify-center rounded-lg border border-[var(--line)] bg-[var(--surface-muted)]/50 text-xs font-bold text-[var(--text)] hover:border-amber-400 hover:text-amber-400 transition-all"
                         title="Sao chép link TikTok"
                       >
-                        {copiedId === exercise.id ? <Check size={12} className="text-emerald-500" /> : <Copy size={12} />}
+                        {copiedId === exercise.id ? <Check size={13} className="text-emerald-500" /> : <Copy size={13} />}
                       </button>
 
                       <button
@@ -566,19 +453,19 @@ export function OwnerExercisesPage() {
                           setFormError(null)
                           setFormOpen(true)
                         }}
-                        className="inline-flex size-7 items-center justify-center rounded-lg bg-[var(--brand-yellow)] text-xs font-black text-black hover:brightness-105 transition-all"
+                        className="inline-flex size-8 items-center justify-center rounded-lg bg-[var(--brand-yellow)] text-xs font-black text-black hover:brightness-105 transition-all"
                         title="Sửa thông tin video"
                       >
-                        <Edit size={12} />
+                        <Edit size={13} />
                       </button>
 
                       <button
                         type="button"
                         onClick={() => void handleDelete(exercise)}
-                        className="inline-flex size-7 items-center justify-center rounded-lg border border-red-500/30 text-red-500 hover:bg-red-500 hover:text-white transition-all"
+                        className="inline-flex size-8 items-center justify-center rounded-lg border border-red-500/30 text-red-500 hover:bg-red-500 hover:text-white transition-all"
                         title="Xóa video khỏi thư viện"
                       >
-                        <Trash2 size={12} />
+                        <Trash2 size={13} />
                       </button>
                     </div>
                   </div>

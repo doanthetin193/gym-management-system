@@ -54,6 +54,7 @@ import com.gymduongdouble.backend.user.domain.User;
 import com.gymduongdouble.backend.user.repository.RoleRepository;
 import com.gymduongdouble.backend.user.repository.UserRepository;
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -75,6 +76,8 @@ import org.springframework.util.StringUtils;
 @Component
 @RequiredArgsConstructor
 public class DataInitializer implements ApplicationRunner {
+
+    private static final String UTF8_REPAIR_MARKER = "system.utf8_repair.v1";
 
     private final RoleRepository roleRepository;
     private final UserRepository userRepository;
@@ -118,6 +121,7 @@ public class DataInitializer implements ApplicationRunner {
     @Transactional
     public void run(ApplicationArguments args) {
         seedRoles();
+        repairLegacyMojibakeOnce();
         User owner = seedOwner();
         seedSystemSettings();
         seedMembershipPlans();
@@ -132,6 +136,65 @@ public class DataInitializer implements ApplicationRunner {
         createRoleIfMissing("OWNER", "Chủ phòng");
         createRoleIfMissing("PT", "Huấn luyện viên cá nhân");
         createRoleIfMissing("MEMBER", "Hội viên");
+    }
+
+    private void repairLegacyMojibakeOnce() {
+        if (systemSettingRepository.existsById(UTF8_REPAIR_MARKER)) {
+            return;
+        }
+
+        userRepository.findAll().forEach(user -> user.setFullName(repairText(user.getFullName())));
+        memberRepository.findAll().forEach(member -> {
+            member.setFullName(repairText(member.getFullName()));
+            member.setAddress(repairText(member.getAddress()));
+            member.setNote(repairText(member.getNote()));
+        });
+        membershipPlanRepository.findAll().forEach(plan -> {
+            plan.setName(repairText(plan.getName()));
+            plan.setDescription(repairText(plan.getDescription()));
+        });
+        ptProfileRepository.findAll().forEach(profile -> {
+            profile.setSpecialty(repairText(profile.getSpecialty()));
+            profile.setBio(repairText(profile.getBio()));
+        });
+        systemSettingRepository.findAll().forEach(setting -> {
+            setting.setValue(repairText(setting.getValue()));
+            setting.setDescription(repairText(setting.getDescription()));
+        });
+        exerciseCategoryRepository.findAll().forEach(category -> {
+            category.setName(repairText(category.getName()));
+            category.setDescription(repairText(category.getDescription()));
+        });
+        exerciseRepository.findAll().forEach(exercise -> {
+            exercise.setName(repairText(exercise.getName()));
+            exercise.setDescription(repairText(exercise.getDescription()));
+            exercise.setInstruction(repairText(exercise.getInstruction()));
+            exercise.setCommonMistakes(repairText(exercise.getCommonMistakes()));
+            exercise.setPrimaryMuscle(repairText(exercise.getPrimaryMuscle()));
+            exercise.setEquipment(repairText(exercise.getEquipment()));
+        });
+        memberMembershipRepository.findAll().forEach(membership -> membership.setNote(repairText(membership.getNote())));
+        debtRecordRepository.findAll().forEach(debt -> debt.setNote(repairText(debt.getNote())));
+        paymentRepository.findAll().forEach(payment -> payment.setDescription(repairText(payment.getDescription())));
+        ptAssignmentRepository.findAll().forEach(assignment -> assignment.setNote(repairText(assignment.getNote())));
+        ptScheduleRepository.findAll().forEach(schedule -> schedule.setNote(repairText(schedule.getNote())));
+        ptSessionLogRepository.findAll().forEach(log -> {
+            log.setContent(repairText(log.getContent()));
+            log.setNote(repairText(log.getNote()));
+        });
+        memberActivityLogRepository.findAll().forEach(log -> log.setNote(repairText(log.getNote())));
+        bodyMeasurementRepository.findAll().forEach(measurement -> measurement.setNote(repairText(measurement.getNote())));
+        ptGoalRepository.findAll().forEach(goal -> {
+            goal.setGoalDescription(repairText(goal.getGoalDescription()));
+            goal.setNote(repairText(goal.getNote()));
+        });
+
+        SystemSetting marker = new SystemSetting();
+        marker.setKey(UTF8_REPAIR_MARKER);
+        marker.setValue("completed");
+        marker.setDescription("Đã hoàn tất sửa dữ liệu tiếng Việt lỗi mã hóa cũ");
+        marker.setUpdatedAt(Instant.now());
+        systemSettingRepository.save(marker);
     }
 
     private Role createRoleIfMissing(String code, String name) {
@@ -486,12 +549,17 @@ public class DataInitializer implements ApplicationRunner {
         if (!StringUtils.hasText(value)) {
             return false;
         }
-        return value.contains("Ã")
-            || value.contains("Ä")
-            || value.contains("Æ")
-            || value.contains("áº")
-            || value.contains("á»")
-            || value.contains("»");
+        return value.indexOf('\u00c3') >= 0
+            || value.indexOf('\u00c4') >= 0
+            || value.indexOf('\u00c6') >= 0;
+    }
+
+    private String repairText(String value) {
+        String repaired = value;
+        for (int pass = 0; pass < 2 && looksLikeMojibake(repaired); pass += 1) {
+            repaired = new String(repaired.getBytes(StandardCharsets.ISO_8859_1), StandardCharsets.UTF_8);
+        }
+        return repaired;
     }
 
     private MembershipPlan findExistingPlan(List<MembershipPlan> existingPlans, SeedPlan plan) {
