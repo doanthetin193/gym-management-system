@@ -96,8 +96,7 @@ Nguồn dữ liệu tài chính:
 
 - `payments` là dòng tiền thực thu.
 - `debt_records` là khoản còn phải thu.
-- `financial_transactions` được đồng bộ từ payment để làm nguồn tổng hợp báo cáo.
-- Không double-count doanh thu.
+- Báo cáo tổng hợp trực tiếp từ payment theo ngày thu thực tế; không lưu bảng giao dịch trung gian.
 
 Luồng bán/gia hạn gói:
 
@@ -215,11 +214,6 @@ Export:
 - Đồng bộ Google Sheet qua Apps Script Web App URL + token.
 - Nếu Apps Script lỗi hoặc từ chối, UI báo lỗi thật.
 
-Goals:
-
-- Trang `/goals` quản lý mục tiêu tháng.
-- Actual/progress lấy từ dữ liệu hiện có hoặc nhập thủ công với chỉ số chưa tự tính.
-
 ## 11. Public web và thư viện TikTok
 
 - `/` là trang giới thiệu public.
@@ -234,11 +228,11 @@ Goals:
 - Auth/user: `users`, `roles`, `user_roles`.
 - Member: `members`.
 - Membership: `membership_plans`, `member_memberships`.
-- Finance: `payments`, `financial_categories`, `financial_transactions`, `debt_records`.
+- Finance: `payments`, `debt_records`.
 - PT: `pt_profiles`, `pt_assignments`, `pt_schedules`, `pt_session_packages`, `pt_session_logs`, `member_activity_logs`.
 - Tracking: `body_measurements`, `pt_goals`.
 - Exercise: `exercise_categories`, `exercises`.
-- Dashboard/goals/settings: `business_goals`, `system_settings`.
+- Dashboard/settings: `system_settings`.
 
 Không còn dùng trong scope hiện tại:
 
@@ -248,6 +242,7 @@ Không còn dùng trong scope hiện tại:
 - `member_notes`.
 - `notifications` entity riêng.
 - `audit_logs` entity riêng.
+- `business_goals`.
 
 Notification hiện là dữ liệu tính động từ hạn gói, công nợ, sinh nhật và dữ liệu PT.
 
@@ -258,8 +253,9 @@ Notification hiện là dữ liệu tính động từ hạn gói, công nợ, s
 - MEMBER chỉ xem dữ liệu của chính mình.
 - Payment là nguồn thu thật.
 - Debt là khoản phải thu, không thay thế payment.
-- Financial transaction income được đồng bộ từ payment.
-- Doanh thu báo cáo theo `paymentDate`/`transactionDate`.
+- Mỗi payment mới phải gắn với công nợ/lượt đăng ký gói.
+- Doanh thu báo cáo trực tiếp theo `paymentDate`; không lưu thêm transaction trung gian.
+- Chi phí vận hành và lợi nhuận nằm ngoài scope hệ thống.
 - Gói inactive không được bán/gia hạn mới.
 - VietQR không xác nhận tự động.
 - Google Sheet sync không được báo thành công giả.

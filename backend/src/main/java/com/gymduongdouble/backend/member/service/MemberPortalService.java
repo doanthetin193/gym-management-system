@@ -1,6 +1,5 @@
 package com.gymduongdouble.backend.member.service;
 
-import com.gymduongdouble.backend.common.enums.MembershipStatus;
 import com.gymduongdouble.backend.common.enums.DebtStatus;
 import com.gymduongdouble.backend.common.exception.ResourceNotFoundException;
 import com.gymduongdouble.backend.common.time.AppClock;
@@ -16,6 +15,7 @@ import com.gymduongdouble.backend.member.web.dto.MemberResponse;
 import com.gymduongdouble.backend.member.web.dto.PtSessionPackageResponse;
 import com.gymduongdouble.backend.membership.domain.MemberMembership;
 import com.gymduongdouble.backend.membership.repository.MemberMembershipRepository;
+import com.gymduongdouble.backend.membership.service.MembershipLifecyclePolicy;
 import com.gymduongdouble.backend.membership.web.dto.MemberMembershipResponse;
 import com.gymduongdouble.backend.pt.repository.PtScheduleRepository;
 import com.gymduongdouble.backend.pt.repository.PtSessionLogRepository;
@@ -46,6 +46,7 @@ public class MemberPortalService {
     private final PtSessionLogRepository ptSessionLogRepository;
     private final BodyMeasurementRepository bodyMeasurementRepository;
     private final PtGoalRepository ptGoalRepository;
+    private final MembershipLifecyclePolicy membershipLifecyclePolicy;
 
     @Transactional(readOnly = true)
     public MemberPortalResponse getPortal(Long userId) {
@@ -59,15 +60,24 @@ public class MemberPortalService {
         return new MemberPortalResponse(
             MemberResponse.from(member),
             memberships.stream()
-                .filter(membership -> isActiveMembership(membership, today))
-                .map(MemberMembershipResponse::from)
+                .filter(membership -> membershipLifecyclePolicy.isEffective(membership, today))
+                .map(membership -> MemberMembershipResponse.from(
+                    membership,
+                    membershipLifecyclePolicy.effectiveStatus(membership, today)
+                ))
                 .toList(),
             memberships.stream()
-                .filter(membership -> !isActiveMembership(membership, today))
-                .map(MemberMembershipResponse::from)
+                .filter(membership -> !membershipLifecyclePolicy.isEffective(membership, today))
+                .map(membership -> MemberMembershipResponse.from(
+                    membership,
+                    membershipLifecyclePolicy.effectiveStatus(membership, today)
+                ))
                 .toList(),
             ptSessionPackageRepository.findByMemberIdOrderByStartDateDesc(memberId).stream()
-                .map(PtSessionPackageResponse::from)
+                .map(sessionPackage -> PtSessionPackageResponse.from(
+                    sessionPackage,
+                    membershipLifecyclePolicy.effectiveStatus(sessionPackage, today)
+                ))
                 .toList(),
             debts.stream().map(DebtRecordResponse::from).toList(),
             paymentRepository.findByMemberIdOrderByPaymentDateDesc(memberId).stream()
@@ -93,9 +103,4 @@ public class MemberPortalService {
         );
     }
 
-    private boolean isActiveMembership(MemberMembership membership, LocalDate today) {
-        return membership.getStatus() != MembershipStatus.CANCELLED
-            && !membership.getStartDate().isAfter(today)
-            && !membership.getEndDate().isBefore(today);
-    }
 }

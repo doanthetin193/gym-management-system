@@ -21,6 +21,10 @@ public record PtSessionPackageResponse(
 ) {
 
     public static PtSessionPackageResponse from(PtSessionPackage sessionPackage) {
+        return from(sessionPackage, sessionPackage.getStatus());
+    }
+
+    public static PtSessionPackageResponse from(PtSessionPackage sessionPackage, SessionPackageStatus status) {
         return new PtSessionPackageResponse(
             sessionPackage.getId(),
             sessionPackage.getMembership().getId(),
@@ -34,7 +38,7 @@ public record PtSessionPackageResponse(
             sessionPackage.getRemainingPracticeSessions(),
             sessionPackage.getStartDate(),
             sessionPackage.getEndDate(),
-            sessionPackage.getStatus()
+            status
         );
     }
 }

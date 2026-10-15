@@ -1,12 +1,13 @@
 package com.gymduongdouble.backend.member.service;
 
 import com.gymduongdouble.backend.common.enums.MemberStatus;
-import com.gymduongdouble.backend.common.enums.MembershipStatus;
 import com.gymduongdouble.backend.common.enums.DebtStatus;
 import com.gymduongdouble.backend.common.enums.UserStatus;
 import com.gymduongdouble.backend.common.exception.BadRequestException;
 import com.gymduongdouble.backend.common.exception.ConflictException;
 import com.gymduongdouble.backend.common.exception.ResourceNotFoundException;
+import com.gymduongdouble.backend.common.security.AuthenticatedUser;
+import com.gymduongdouble.backend.common.security.SecurityUtils;
 import com.gymduongdouble.backend.common.time.AppClock;
 import com.gymduongdouble.backend.finance.domain.DebtRecord;
 import com.gymduongdouble.backend.finance.repository.DebtRecordRepository;
@@ -21,6 +22,7 @@ import com.gymduongdouble.backend.member.web.dto.MemberUpdateRequest;
 import com.gymduongdouble.backend.member.web.dto.PtSessionPackageResponse;
 import com.gymduongdouble.backend.membership.domain.MemberMembership;
 import com.gymduongdouble.backend.membership.repository.MemberMembershipRepository;
+import com.gymduongdouble.backend.membership.service.MembershipLifecyclePolicy;
 import com.gymduongdouble.backend.membership.web.dto.MemberMembershipResponse;
 import com.gymduongdouble.backend.pt.repository.PtSessionPackageRepository;
 import java.math.BigDecimal;
@@ -28,6 +30,7 @@ import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -51,6 +54,7 @@ public class MemberService {
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final MemberAccessService memberAccessService;
+    private final MembershipLifecyclePolicy membershipLifecyclePolicy;
 
     @Transactional
     public MemberResponse create(MemberCreateRequest request) {
@@ -80,17 +84,26 @@ public class MemberService {
         List<MemberMembership> memberships = memberMembershipRepository.findByMemberIdOrderByStartDateDesc(id);
 
         List<MemberMembershipResponse> activeMemberships = memberships.stream()
-            .filter(membership -> isActiveMembership(membership, today))
-            .map(MemberMembershipResponse::from)
+            .filter(membership -> membershipLifecyclePolicy.isEffective(membership, today))
+            .map(membership -> MemberMembershipResponse.from(
+                membership,
+                membershipLifecyclePolicy.effectiveStatus(membership, today)
+            ))
             .toList();
 
         List<MemberMembershipResponse> membershipHistory = memberships.stream()
-            .filter(membership -> !isActiveMembership(membership, today))
-            .map(MemberMembershipResponse::from)
+            .filter(membership -> !membershipLifecyclePolicy.isEffective(membership, today))
+            .map(membership -> MemberMembershipResponse.from(
+                membership,
+                membershipLifecyclePolicy.effectiveStatus(membership, today)
+            ))
             .toList();
 
         List<PtSessionPackageResponse> ptSessionPackages = ptSessionPackageRepository.findByMemberIdOrderByStartDateDesc(id).stream()
-            .map(PtSessionPackageResponse::from)
+            .map(sessionPackage -> PtSessionPackageResponse.from(
+                sessionPackage,
+                membershipLifecyclePolicy.effectiveStatus(sessionPackage, today)
+            ))
             .toList();
 
         return new MemberDetailResponse(
@@ -119,7 +132,15 @@ public class MemberService {
         member.setAddress(request.address());
         member.setZaloPhone(StringUtils.hasText(request.zaloPhone()) ? request.zaloPhone().trim() : normalizedPhone);
         member.setSource(request.source());
-        member.setStatus(request.status() == null ? member.getStatus() : request.status());
+        if (request.status() != null) {
+            boolean owner = isOwner();
+            if (!owner && request.status() != member.getStatus()) {
+                throw new AccessDeniedException("Only the owner can change a member operational status.");
+            }
+            if (owner) {
+                member.setStatus(request.status());
+            }
+        }
         member.setNote(request.note());
 
         return MemberResponse.from(memberRepository.save(member));
@@ -137,7 +158,8 @@ public class MemberService {
         return members.stream()
             .filter(member -> memberAccessService.canAccessMember(member.getId()))
             .sorted(Comparator.comparing(Member::getCreatedAt).reversed())
-            .map(member -> MemberSummaryResponse.from(member, latestMembership(member.getId())))
+            .map(member -> preferredSummary(member, today))
+            .filter(summary -> resolvedFilter == MemberListFilter.ALL || summary.status() == MemberStatus.ACTIVE)
             .filter(summary -> matchesFilter(summary, resolvedFilter, today))
             .toList();
     }
@@ -148,17 +170,16 @@ public class MemberService {
             .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy khách hàng."));
     }
 
-    private MemberMembership latestMembership(Long memberId) {
-        return memberMembershipRepository.findByMemberIdOrderByStartDateDesc(memberId).stream()
-            .filter(membership -> membership.getStatus() != MembershipStatus.CANCELLED)
-            .max(Comparator.comparing(MemberMembership::getEndDate))
-            .orElse(null);
-    }
-
-    private boolean isActiveMembership(MemberMembership membership, LocalDate today) {
-        return membership.getStatus() != MembershipStatus.CANCELLED
-            && !membership.getStartDate().isAfter(today)
-            && !membership.getEndDate().isBefore(today);
+    private MemberSummaryResponse preferredSummary(Member member, LocalDate today) {
+        MemberMembership membership = membershipLifecyclePolicy.preferredMembership(
+            memberMembershipRepository.findByMemberIdOrderByStartDateDesc(member.getId()),
+            today
+        ).orElse(null);
+        return MemberSummaryResponse.from(
+            member,
+            membership,
+            membership == null ? null : membershipLifecyclePolicy.effectiveStatus(membership, today)
+        );
     }
 
     private boolean matchesFilter(MemberSummaryResponse summary, MemberListFilter filter, LocalDate today) {
@@ -177,6 +198,14 @@ public class MemberService {
             case EXPIRED -> summary.endDate().isBefore(today);
             case ALL -> true;
         };
+    }
+
+    private boolean isOwner() {
+        return SecurityUtils.currentUser()
+            .map(AuthenticatedUser::getAuthorities)
+            .stream()
+            .flatMap(java.util.Collection::stream)
+            .anyMatch(authority -> "ROLE_OWNER".equals(authority.getAuthority()));
     }
 
     private BigDecimal totalDebt(Long memberId) {

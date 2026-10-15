@@ -10,7 +10,6 @@ import {
   Dumbbell,
   Gift,
   RefreshCcw,
-  TrendingDown,
   TrendingUp,
   UserCheck,
   UserPlus,
@@ -120,8 +119,6 @@ export function DashboardPage() {
   const memberPercent = dashboard?.totalMembers
     ? Math.round(((dashboard.activeMembers ?? 0) / dashboard.totalMembers) * 100)
     : 0
-
-  const profitPositive = (dashboard?.monthlyProfit ?? 0) >= 0
 
   // Calculate PT vs Self-training numbers for practical breakdown
   const ptCount = (memberReport?.newPtCustomers ?? 0) + (memberReport?.mainPtCustomers ?? 0)
@@ -304,15 +301,15 @@ export function DashboardPage() {
       <section className="grid gap-6 lg:grid-cols-12 items-start">
         {/* ================= CỘT TRÁI (lg:col-span-7): TÀI CHÍNH & CƠ CẤU HỌC VIÊN ================= */}
         <div className="space-y-5 lg:col-span-7">
-          {/* Card 1: Tài chính & Thu chi */}
+          {/* Card 1: Doanh thu gói tập */}
           <div className="rounded-2xl border border-slate-200/90 bg-white p-5 md:p-6 shadow-sm transition-colors duration-300 dark:border-white/[0.08] dark:bg-[#0c1017] space-y-4">
             <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-3.5 dark:border-white/[0.06]">
               <div>
                 <p className="text-xs md:text-sm font-bold uppercase tracking-wider text-slate-400 dark:text-gray-400">
-                  Tài chính & Hiệu suất T{month}/{year}
+                  Tài chính gói tập T{month}/{year}
                 </p>
                 <h2 className="text-lg md:text-xl font-black text-slate-900 dark:text-white">
-                  Doanh thu, Chi phí & Lợi nhuận
+                  Doanh thu thực thu
                 </h2>
               </div>
               <Link
@@ -324,15 +321,8 @@ export function DashboardPage() {
               </Link>
             </div>
 
-            {/* 3 Hộp số liệu to, rõ ràng */}
-            <div className="grid grid-cols-3 gap-3 md:gap-4">
-              <FinanceBlock label="Tổng thu" value={formatMoney(dashboard?.monthlyIncome)} tone="green" />
-              <FinanceBlock label="Tổng chi" value={formatMoney(dashboard?.monthlyExpense)} tone="red" />
-              <FinanceBlock
-                label="Lợi nhuận"
-                value={formatMoney(dashboard?.monthlyProfit)}
-                tone={profitPositive ? 'green' : 'red'}
-              />
+            <div className="grid gap-3 md:gap-4">
+              <FinanceBlock label="Đã thu từ các gói trong tháng" value={formatMoney(dashboard?.monthlyIncome)} />
             </div>
 
             {/* Cảnh báo công nợ trực quan */}
@@ -604,22 +594,13 @@ export function DashboardPage() {
   )
 }
 
-function FinanceBlock({ label, value, tone }: { label: string; value: string; tone: 'green' | 'red' }) {
-  const isGreen = tone === 'green'
-  const Icon = isGreen ? TrendingUp : TrendingDown
-
+function FinanceBlock({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-xl border border-slate-200/80 bg-slate-50/80 p-3.5 md:p-4 dark:border-white/[0.06] dark:bg-white/[0.03]">
       <div className="flex items-center justify-between">
         <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-gray-400">{label}</span>
-        <div
-          className={`flex size-7 items-center justify-center rounded-lg ${
-            isGreen
-              ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400'
-              : 'bg-red-50 text-red-600 dark:bg-red-500/15 dark:text-red-400'
-          }`}
-        >
-          <Icon size={15} />
+        <div className="flex size-7 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-400">
+          <TrendingUp size={15} />
         </div>
       </div>
       <p className="mt-2 text-lg md:text-xl font-black text-slate-900 dark:text-white truncate">{value}</p>

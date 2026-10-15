@@ -66,22 +66,43 @@ public class MembershipPlanService {
     }
 
     private void validatePlanShape(MembershipPlanRequest request) {
+        if (request.durationDays() == null || request.durationDays() <= 0) {
+            throw new BadRequestException("Goi tap phai co thoi han su dung lon hon 0 ngay.");
+        }
+
         switch (request.planType()) {
             case PT -> {
+                if (request.guidanceSessionCount() != null) {
+                    throw new BadRequestException("Goi PT khong duoc co so buoi huong dan/tri lieu.");
+                }
                 if (request.ptLevel() == null) {
                     throw new BadRequestException("Gói PT phải có cấp PT chính hoặc PT mới.");
                 }
                 if (request.ptSessionCount() == null || request.ptSessionCount() <= 0) {
                     throw new BadRequestException("Gói PT phải có số buổi PT lớn hơn 0.");
                 }
+                if (request.practiceSessionCount() == null || request.practiceSessionCount() <= 0) {
+                    throw new BadRequestException("Goi PT phai co so buoi huong dan/on tap lon hon 0.");
+                }
             }
             case GUIDANCE -> {
+                ensureNoPtFields(request);
                 if (request.guidanceSessionCount() == null || request.guidanceSessionCount() <= 0) {
                     throw new BadRequestException("Gói giáo án phải có số buổi giáo án lớn hơn 0.");
                 }
             }
             default -> {
+                ensureNoPtFields(request);
+                if (request.guidanceSessionCount() != null) {
+                    throw new BadRequestException("Goi nay khong duoc co so buoi huong dan/tri lieu.");
+                }
             }
+        }
+    }
+
+    private void ensureNoPtFields(MembershipPlanRequest request) {
+        if (request.ptLevel() != null || request.ptSessionCount() != null || request.practiceSessionCount() != null) {
+            throw new BadRequestException("Chi goi PT moi duoc khai bao cap PT va so buoi PT/on tap.");
         }
     }
 

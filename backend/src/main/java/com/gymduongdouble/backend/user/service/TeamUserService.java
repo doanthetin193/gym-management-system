@@ -17,6 +17,7 @@ import com.gymduongdouble.backend.user.web.dto.TeamUserResponse;
 import java.math.BigDecimal;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -55,7 +56,7 @@ public class TeamUserService {
             }
         }
 
-        String targetRoleCode = "OWNER".equalsIgnoreCase(request.roleCode()) ? "OWNER" : "PT";
+        String targetRoleCode = requireTeamRole(request.roleCode());
         Role role = roleRepository.findByCode(targetRoleCode)
             .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy vai trò " + targetRoleCode));
 
@@ -66,20 +67,13 @@ public class TeamUserService {
         user.setPasswordHash(passwordEncoder.encode(request.password().trim()));
         user.setStatus(UserStatus.ACTIVE);
         user.getRoles().add(role);
+        if ("OWNER".equals(targetRoleCode)) {
+            user.getRoles().add(teamRole("PT"));
+        }
         User savedUser = userRepository.save(user);
 
-        if ("PT".equals(targetRoleCode)) {
-            ptProfileRepository.findByUserId(savedUser.getId()).orElseGet(() -> {
-                PtProfile profile = new PtProfile();
-                profile.setUser(savedUser);
-                profile.setPtLevel(PtLevel.NEW);
-                profile.setSpecialty("Huấn luyện viên thể hình");
-                profile.setBaseSalary(BigDecimal.ZERO);
-                profile.setTeachingRate(new BigDecimal("0.30"));
-                profile.setSalesCommissionRate(new BigDecimal("0.10"));
-                profile.setActive(true);
-                return ptProfileRepository.save(profile);
-            });
+        if ("PT".equals(targetRoleCode) || "OWNER".equals(targetRoleCode)) {
+            createPtProfileIfMissing(savedUser);
         }
 
         return TeamUserResponse.from(savedUser);
@@ -87,11 +81,13 @@ public class TeamUserService {
 
     @Transactional
     public TeamUserResponse updateRole(Long userId, String roleCode, AuthenticatedUser currentUser) {
-        User user = findUser(userId);
-        String targetRoleCode = "OWNER".equalsIgnoreCase(roleCode) ? "OWNER" : "PT";
+        if (currentUser != null && currentUser.getId().equals(userId)) {
+            throw new BadRequestException("Bạn không thể thay đổi vai trò của chính mình.");
+        }
 
-        boolean isCurrentOwner = user.getRoles().stream().anyMatch(r -> "OWNER".equals(r.getCode()));
-        if (isCurrentOwner && !"OWNER".equals(targetRoleCode)) {
+        User user = findUser(userId);
+        String targetRoleCode = requireTeamRole(roleCode);
+        if ("PT".equals(targetRoleCode)) {
             ensureNotLastActiveOwner(user);
         }
 
@@ -100,15 +96,13 @@ public class TeamUserService {
 
         user.getRoles().clear();
         user.getRoles().add(newRole);
+        if ("OWNER".equals(targetRoleCode)) {
+            user.getRoles().add(teamRole("PT"));
+        }
         User saved = userRepository.save(user);
 
-        if ("PT".equals(targetRoleCode) && ptProfileRepository.findByUserId(saved.getId()).isEmpty()) {
-            PtProfile profile = new PtProfile();
-            profile.setUser(saved);
-            profile.setPtLevel(PtLevel.NEW);
-            profile.setSpecialty("Huấn luyện viên thể hình");
-            profile.setActive(true);
-            ptProfileRepository.save(profile);
+        if ("PT".equals(targetRoleCode) || "OWNER".equals(targetRoleCode)) {
+            createPtProfileIfMissing(saved);
         }
 
         return TeamUserResponse.from(saved);
@@ -158,5 +152,32 @@ public class TeamUserService {
     private User findUser(Long userId) {
         return userRepository.findById(userId)
             .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng với ID " + userId));
+    }
+
+    private Role teamRole(String roleCode) {
+        return roleRepository.findByCode(roleCode)
+            .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy vai trò " + roleCode));
+    }
+
+    private void createPtProfileIfMissing(User user) {
+        ptProfileRepository.findByUserId(user.getId()).orElseGet(() -> {
+            PtProfile profile = new PtProfile();
+            profile.setUser(user);
+            profile.setPtLevel(PtLevel.NEW);
+            profile.setSpecialty("Huấn luyện viên thể hình");
+            profile.setBaseSalary(BigDecimal.ZERO);
+            profile.setTeachingRate(new BigDecimal("0.30"));
+            profile.setSalesCommissionRate(new BigDecimal("0.10"));
+            profile.setActive(true);
+            return ptProfileRepository.save(profile);
+        });
+    }
+
+    private String requireTeamRole(String roleCode) {
+        String normalized = roleCode == null ? "" : roleCode.trim().toUpperCase(Locale.ROOT);
+        if (!"OWNER".equals(normalized) && !"PT".equals(normalized)) {
+            throw new BadRequestException("Vai trò hệ thống chỉ có thể là OWNER hoặc PT.");
+        }
+        return normalized;
     }
 }

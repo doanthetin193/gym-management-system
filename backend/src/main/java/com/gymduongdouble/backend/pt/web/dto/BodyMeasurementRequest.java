@@ -1,5 +1,6 @@
 package com.gymduongdouble.backend.pt.web.dto;
 
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
@@ -35,4 +36,9 @@ public record BodyMeasurementRequest(
 
     String note
 ) {
+    @AssertTrue(message = "Cần nhập ít nhất một chỉ số cơ thể.")
+    public boolean hasMeasurement() {
+        return height != null || weight != null || chest != null || waist != null || abdomen != null
+            || hip != null || thigh != null || arm != null;
+    }
 }

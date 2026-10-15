@@ -176,15 +176,15 @@ Role: PT
 
 ### Mục tiêu test
 
-PT là người hỗ trợ vận hành tại phòng gym nhỏ: xem/tạo/sửa hội viên, xem bảng giá, gia hạn/gán gói, thu tiền, nhắc việc, quản lý lịch PT và chỉ số học viên. PT không được xem báo cáo chủ phòng, mục tiêu kinh doanh, cài đặt hệ thống hoặc quản lý thư viện admin.
+PT là người hỗ trợ vận hành tại phòng gym nhỏ: xem/tạo/sửa hội viên, xem bảng giá, gia hạn/gán gói, thu tiền, nhắc việc, quản lý lịch PT và chỉ số học viên. PT không được xem báo cáo chủ phòng, cài đặt hệ thống hoặc quản lý thư viện admin.
 
 ### Kịch bản 1: Đăng nhập và kiểm tra menu
 
 - Đăng nhập bằng tài khoản PT.
 - Kết quả mong đợi:
   - PT thấy các mục vận hành: Hội viên, Gói tập, Nhắc việc, Thanh toán, Lịch PT.
-  - PT không thấy Báo cáo, Mục tiêu, Cài đặt, Thư viện admin.
-  - PT vào `/dashboard`, `/reports`, `/settings`, `/goals`, `/owner/exercises` thì bị chặn hoặc chuyển hướng.
+  - PT không thấy Báo cáo, Cài đặt, Thư viện admin.
+  - PT vào `/dashboard`, `/reports`, `/settings`, `/owner/exercises` thì bị chặn hoặc chuyển hướng.
 
 ### Kịch bản 2: PT quản lý hội viên
 

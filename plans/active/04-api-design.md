@@ -201,12 +201,7 @@ Quy tắc sau khi tạo membership:
 ```text
 GET    /payments
 POST   /payments
-GET    /financial-categories
-POST   /financial-categories
-GET    /financial-transactions
-POST   /financial-transactions
 GET    /debts
-POST   /debts/{id}/payments
 ```
 
 Create payment:
@@ -218,44 +213,22 @@ Create payment:
   "paymentDate": "2026-09-11",
   "amount": 500000,
   "paymentMethod": "BANK_TRANSFER",
-  "revenueCategory": "SELF_TRAINING",
-  "description": "Thanh toán gói 3 tháng"
+  "note": "Thanh toán gói 3 tháng"
 }
 ```
 
-`revenueCategory` hỗ trợ:
+Quy tắc:
 
-- SELF_TRAINING.
-- GUIDANCE.
-- PT_MAIN.
-- PT_NEW.
-- OTHER_INCOME.
-
-Quy tắc đồng bộ finance:
-
-- `POST /payments` tạo payment nghiệp vụ và backend tự sinh `financial_transactions` loại INCOME tương ứng.
-- UI không cho nhập lại khoản thu khách hàng đó bằng `POST /financial-transactions` để tránh double-count.
-- `POST /financial-transactions` dùng chủ yếu cho expense và các khoản thu khác không gắn với membership/payment.
-
-Create expense:
-
-```json
-{
-  "type": "EXPENSE",
-  "categoryId": 3,
-  "amount": 1200000,
-  "transactionDate": "2026-09-11",
-  "description": "Tiền điện"
-}
-```
+- Payment phải gắn với `debtRecordId` hoặc `membershipId` có công nợ đang mở.
+- Backend suy ra `revenueCategory` từ loại gói; client không được tự gán nhóm doanh thu.
+- `paymentDate` là ngày ghi nhận doanh thu và không được ở tương lai.
+- Không có API nhập chi phí hoặc khoản thu ngoài gói tập trong scope MVP.
 
 Reports:
 
 ```text
-GET /finance/summary?from=2026-09-01&to=2026-09-30
-GET /finance/monthly?year=2026
-GET /finance/daily-income?date=2026-09-11
-GET /finance/expenses?from=2026-09-01&to=2026-09-30
+GET /v1/reports/finance?year=2026
+GET /v1/reports/finance?year=2026&month=9
 ```
 
 Finance summary response:
@@ -263,9 +236,9 @@ Finance summary response:
 ```json
 {
   "totalIncome": 50000000,
-  "totalExpense": 20000000,
-  "profit": 30000000,
-  "debt": 5000000
+  "rows": [
+    { "month": 9, "income": 50000000 }
+  ]
 }
 ```
 
@@ -444,8 +417,6 @@ OWNER dashboard response:
   "newMembersThisMonth": 35,
   "renewedMembersThisMonth": 22,
   "monthlyIncome": 50000000,
-  "monthlyExpense": 20000000,
-  "monthlyProfit": 30000000,
   "totalDebt": 5000000
 }
 ```
@@ -467,55 +438,7 @@ GET /member/me/membership
 GET /member/me/training-content
 ```
 
-## 10. Business Goals API
-
-```text
-GET    /business-goals
-POST   /business-goals
-PUT    /business-goals/{id}
-GET    /business-goals/progress?month=9&year=2026
-```
-
-Create goal:
-
-```json
-{
-  "year": 2026,
-  "month": 9,
-  "category": "FINANCE",
-  "metricName": "REVENUE",
-  "targetValue": 100000000,
-  "unit": "VND",
-  "note": "Mục tiêu doanh thu tháng 9"
-}
-```
-
-Progress response cần thể hiện được các nhóm từ Excel:
-
-```json
-{
-  "month": 9,
-  "year": 2026,
-  "items": [
-    {
-      "category": "FINANCE",
-      "metricName": "REVENUE",
-      "targetValue": 100000000,
-      "actualValue": 45000000,
-      "progressPercent": 45
-    },
-    {
-      "category": "NEW_PT_CUSTOMER",
-      "metricName": "PT_CUSTOMER_COUNT",
-      "targetValue": 4,
-      "actualValue": 2,
-      "progressPercent": 50
-    }
-  ]
-}
-```
-
-## 11. Notification API
+## 10. Notification API
 
 ```text
 GET /v1/notifications
@@ -646,14 +569,10 @@ PUT /v1/membership-plans/{id}/active
 
 Dropdown bán/gia hạn chỉ dùng danh sách gói active.
 
-### Báo cáo và mục tiêu
+### Báo cáo
 
 ```text
 GET /v1/dashboard/owner
-GET /v1/business-goals
-POST /v1/business-goals
-PUT /v1/business-goals/{id}
-GET /v1/business-goals/progress
 GET /v1/reports/finance
 GET /v1/reports/members
 GET /v1/notifications

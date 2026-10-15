@@ -14,7 +14,7 @@ export const revenueCategoryLabels: Record<RevenueCategory, string> = {
   GUIDANCE: 'Kèm cặp / Hướng dẫn',
   PT_MAIN: 'Gói PT Chuẩn',
   PT_NEW: 'Gói PT Mới ra nghề',
-  OTHER_INCOME: 'Thu nhập khác',
+  OTHER_INCOME: 'Gói tập khác',
 }
 
 export type DebtRecord = {

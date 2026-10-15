@@ -22,6 +22,10 @@ public record MemberMembershipResponse(
 ) {
 
     public static MemberMembershipResponse from(MemberMembership membership) {
+        return from(membership, membership.getStatus());
+    }
+
+    public static MemberMembershipResponse from(MemberMembership membership, MembershipStatus status) {
         return new MemberMembershipResponse(
             membership.getId(),
             membership.getMember().getId(),
@@ -34,7 +38,7 @@ public record MemberMembershipResponse(
             membership.getPaidAmount(),
             membership.getDiscountAmount(),
             membership.getDebtAmount(),
-            membership.getStatus(),
+            status,
             membership.getNote()
         );
     }

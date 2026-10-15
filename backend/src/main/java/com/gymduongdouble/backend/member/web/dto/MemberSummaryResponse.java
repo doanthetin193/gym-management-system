@@ -25,6 +25,14 @@ public record MemberSummaryResponse(
 ) {
 
     public static MemberSummaryResponse from(Member member, MemberMembership membership) {
+        return from(member, membership, membership == null ? null : membership.getStatus());
+    }
+
+    public static MemberSummaryResponse from(
+        Member member,
+        MemberMembership membership,
+        MembershipStatus membershipStatus
+    ) {
         Long daysUntilExpiration = membership == null
             ? null
             : ChronoUnit.DAYS.between(AppClock.today(), membership.getEndDate());
@@ -38,7 +46,7 @@ public record MemberSummaryResponse(
             membership == null ? null : membership.getId(),
             membership == null ? null : membership.getPlan().getName(),
             membership == null ? null : membership.getPlan().getPlanType(),
-            membership == null ? null : membership.getStatus(),
+            membershipStatus,
             membership == null ? null : membership.getStartDate(),
             membership == null ? null : membership.getEndDate(),
             daysUntilExpiration

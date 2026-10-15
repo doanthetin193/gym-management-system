@@ -10,8 +10,6 @@ public record OwnerDashboardResponse(
     long newMembersThisMonth,
     long renewedMembersThisMonth,
     BigDecimal monthlyIncome,
-    BigDecimal monthlyExpense,
-    BigDecimal monthlyProfit,
     BigDecimal totalDebt,
     long unreadNotifications
 ) {

@@ -4,8 +4,6 @@ import java.math.BigDecimal;
 
 public record FinanceReportRowResponse(
     Integer month,
-    BigDecimal income,
-    BigDecimal expense,
-    BigDecimal profit
+    BigDecimal income
 ) {
 }

@@ -231,9 +231,10 @@ export function RemindersPage() {
       setLoading(true)
       setError(null)
       const [memberList, debtList] = await Promise.all([listMembers(), listDebts()])
-      const detailList = await Promise.all(memberList.map((member) => getMemberDetail(member.id)))
+      const activeMembers = memberList.filter((member) => member.status === 'ACTIVE')
+      const detailList = await Promise.all(activeMembers.map((member) => getMemberDetail(member.id)))
       const detailMap = new Map(detailList.map((detail) => [detail.profile.id, detail]))
-      setItems(buildReminderItems(memberList, detailMap, debtList))
+      setItems(buildReminderItems(activeMembers, detailMap, debtList))
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : 'Không thể tải danh sách nhắc việc.')
     } finally {

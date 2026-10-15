@@ -17,7 +17,6 @@ const PaymentsPage = lazy(() => import('../features/payments/pages/PaymentsPage'
 const ReportsPage = lazy(() => import('../features/reports/pages/ReportsPage').then((module) => ({ default: module.ReportsPage })))
 const RemindersPage = lazy(() => import('../features/reminders/pages/RemindersPage').then((module) => ({ default: module.RemindersPage })))
 const PtSchedulePage = lazy(() => import('../features/pt-schedule/pages/PtSchedulePage').then((module) => ({ default: module.PtSchedulePage })))
-const GoalsPage = lazy(() => import('../features/goals/pages/GoalsPage').then((module) => ({ default: module.GoalsPage })))
 const OwnerExercisesPage = lazy(() => import('../features/exercises/pages/OwnerExercisesPage').then((module) => ({ default: module.OwnerExercisesPage })))
 const PublicExerciseDetailPage = lazy(() => import('../features/exercises/pages/PublicExerciseDetailPage').then((module) => ({ default: module.PublicExerciseDetailPage })))
 const PublicExercisesPage = lazy(() => import('../features/exercises/pages/PublicExercisesPage').then((module) => ({ default: module.PublicExercisesPage })))
@@ -59,7 +58,6 @@ export default function App() {
             <Route path="/reports" element={<RoleGuard allowedRoles={['OWNER']}><ReportsPage /></RoleGuard>} />
             <Route path="/pt-schedule" element={<RoleGuard allowedRoles={['OWNER', 'PT']}><PtSchedulePage /></RoleGuard>} />
             <Route path="/owner/exercises" element={<RoleGuard allowedRoles={['OWNER']}><OwnerExercisesPage /></RoleGuard>} />
-            <Route path="/goals" element={<RoleGuard allowedRoles={['OWNER']}><GoalsPage /></RoleGuard>} />
             <Route path="/settings" element={<RoleGuard allowedRoles={['OWNER']}><SettingsPage /></RoleGuard>} />
             <Route path="/profile" element={<ProfilePage />} />
           </Route>

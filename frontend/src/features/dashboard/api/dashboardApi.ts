@@ -1,8 +1,5 @@
-import { apiGet, apiPost, apiPut } from '../../../shared/api/apiClient'
+import { apiGet } from '../../../shared/api/apiClient'
 import type {
-  BusinessGoal,
-  BusinessGoalPayload,
-  BusinessGoalProgress,
   FinanceReport,
   MemberReport,
   OperationNotification,
@@ -16,22 +13,6 @@ type PeriodParams = {
 
 export function getOwnerDashboard(params: PeriodParams = {}) {
   return apiGet<OwnerDashboard>('/v1/dashboard/owner', { params })
-}
-
-export function listBusinessGoals(params: PeriodParams = {}) {
-  return apiGet<BusinessGoal[]>('/v1/business-goals', { params })
-}
-
-export function createBusinessGoal(payload: BusinessGoalPayload) {
-  return apiPost<BusinessGoal, BusinessGoalPayload>('/v1/business-goals', payload)
-}
-
-export function updateBusinessGoal(id: number, payload: BusinessGoalPayload) {
-  return apiPut<BusinessGoal, BusinessGoalPayload>(`/v1/business-goals/${id}`, payload)
-}
-
-export function getBusinessGoalProgress(params: PeriodParams = {}) {
-  return apiGet<BusinessGoalProgress>('/v1/business-goals/progress', { params })
 }
 
 export function getFinanceReport(params: PeriodParams = {}) {

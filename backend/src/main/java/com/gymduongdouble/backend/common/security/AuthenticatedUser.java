@@ -3,6 +3,7 @@ package com.gymduongdouble.backend.common.security;
 import com.gymduongdouble.backend.common.enums.UserStatus;
 import com.gymduongdouble.backend.user.domain.User;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.List;
 import lombok.Getter;
 import org.springframework.security.core.GrantedAuthority;
@@ -26,6 +27,7 @@ public class AuthenticatedUser implements UserDetails {
         this.password = user.getPasswordHash();
         this.status = user.getStatus();
         this.authorities = user.getRoles().stream()
+            .sorted(Comparator.comparingInt(role -> "OWNER".equals(role.getCode()) ? 0 : 1))
             .map(role -> new SimpleGrantedAuthority("ROLE_" + role.getCode()))
             .map(GrantedAuthority.class::cast)
             .toList();

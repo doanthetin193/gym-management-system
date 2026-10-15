@@ -8,7 +8,7 @@ Mục tiêu cốt lõi:
 
 - Theo dõi khách sắp hết hạn/hết hạn mà không phải dò sổ hằng ngày.
 - Lưu lịch sử đăng ký/gia hạn gói.
-- Ghi nhận thu, chi, công nợ và tự động tổng hợp tài chính.
+- Ghi nhận tiền gói tập, công nợ và tự động tổng hợp doanh thu thực thu.
 - Quản lý khách PT/chương trình: số buổi, check-in, chỉ số cơ thể, mục tiêu và tiến độ.
 - Quản lý thư viện bài tập/video TikTok public để học viên xem và chia sẻ.
 - Tạo nền tảng dữ liệu sạch cho báo cáo, payroll và AI sau này.
@@ -28,12 +28,11 @@ Chủ phòng đang có 10 mẫu Excel/phiếu giấy chính:
 | STT | Tài liệu thủ công | Ý nghĩa |
 | --- | --- | --- |
 | 1 | Lịch dạy PT | Lịch theo giờ/ngày trong tuần |
-| 2 | Quản lý khách hàng tháng | Khách, hạn gói, sinh nhật, chi phí |
+| 2 | Quản lý khách hàng tháng | Khách, hạn gói, sinh nhật, công nợ |
 | 3 | Tính lương PT | Lương cố định, dạy khách, sale, thưởng/phạt |
-| 4 | Mục tiêu tháng | Mục tiêu doanh thu/khách theo 3 giai đoạn |
-| 5 | Tài chính năm | Tổng thu, tổng chi, lợi nhuận theo tháng |
+| 5 | Tài chính năm | Doanh thu gói tập theo tháng |
 | 6 | Thu hằng ngày | Thu theo tự tập, giáo án, sinh viên, PT |
-| 7 | Tổng chi | Chi phí nhà, điện, nước, marketing, PT |
+| 7 | Tổng chi | Tài liệu cũ, không đưa vào phạm vi hệ thống |
 | 8 | Theo dõi khách theo tuần | Chỉ số cơ thể |
 | 9 | Check-in | Buổi PT và buổi ôn tập |
 | 10 | Chương trình theo mục tiêu | Mục tiêu tuần, thực tế, kết quả |
@@ -46,7 +45,7 @@ Chủ phòng, toàn quyền quản lý:
 
 - Khách hàng.
 - Gói tập.
-- Thanh toán, thu chi, công nợ.
+- Thanh toán và công nợ gói tập.
 - PT và lịch dạy.
 - Dashboard/báo cáo.
 - Bài tập/nội dung.
@@ -81,7 +80,7 @@ Khách hàng:
 - Theo dõi khách sắp hết hạn/hết hạn.
 - Thống kê khách mới, khách cũ/tái tục theo tháng.
 - Ghi nhận payment.
-- Ghi nhận thu/chi cơ bản.
+- Ghi nhận tiền thu từ gói tập.
 - Theo dõi công nợ cơ bản.
 - Dashboard OWNER.
 - Gán PT cho khách.
@@ -182,16 +181,15 @@ Acceptance:
 Chức năng:
 
 - Ghi nhận thu hằng ngày.
-- Ghi nhận chi phí.
 - Theo dõi công nợ.
-- Tự tính tổng thu/tổng chi/lợi nhuận.
-- Xem tài chính theo ngày/tháng/năm.
+- Tự tính doanh thu thực thu từ phiếu thanh toán.
+- Xem doanh thu theo ngày/tháng/năm.
 
 Mapping từ Excel:
 
-- `TỔNG THU` -> payment/income.
-- `TỔNG CHI` -> expense.
-- `TỔNG 2026` -> report tài chính năm.
+- `TỔNG THU` -> payment gắn với lượt đăng ký gói.
+- `TỔNG CHI` -> ngoài phạm vi hệ thống.
+- `TỔNG 2026` -> báo cáo doanh thu gói tập theo năm.
 
 Nhóm thu cần hỗ trợ:
 
@@ -199,25 +197,12 @@ Nhóm thu cần hỗ trợ:
 - Giáo án/Hướng Dẫn.
 - PT chính.
 - PT mới.
-- Thu khác.
-
-Nhóm chi cần hỗ trợ:
-
-- Nhà/mặt bằng.
-- Quảng cáo/marketing.
-- Điện.
-- Nước.
-- Rác.
-- Wifi.
-- Nước lọc.
-- Tiền PT/nhân sự.
-- Thưởng lễ/thưởng khác.
-- Chi khác.
+- Gói tập khác.
 
 Acceptance:
 
 - OWNER nhập một payment và dashboard doanh thu thay đổi.
-- OWNER nhập một expense và lợi nhuận được tính lại.
+- Payment bắt buộc gắn với công nợ/lượt đăng ký gói của hội viên.
 - Không cần nhập tay bảng tổng năm.
 
 ### 5.4 PT Tracking
@@ -273,25 +258,7 @@ Acceptance:
 - Không có weekly target/actual trong Sprint 5.
 - Không có khóa nội dung theo VIP/premium trong Sprint 5.
 
-### 5.7 Business Goals
-
-Chức năng:
-
-- Tạo mục tiêu tháng.
-- Theo dõi tài chính: doanh thu, lợi nhuận.
-- Theo dõi số khách member/tự tập.
-- Theo dõi khách hướng dẫn/giáo án.
-- Theo dõi khách PT mới.
-- Theo dõi khách PT chính.
-- Theo dõi tiến độ theo giai đoạn ngày 1-10, 11-20, 21-hết tháng.
-
-Acceptance:
-
-- OWNER tạo được mục tiêu theo tháng.
-- Hệ thống tính được actual từ dữ liệu nguồn nếu có.
-- Các nhóm `Khách Hướng Dẫn/Giáo án`, `Khách PT mới`, `Khách PT chính` được cấu hình rõ để hệ thống tính actual đúng.
-
-### 5.8 Public TikTok Exercise Library
+### 5.7 Public TikTok Exercise Library
 
 Chức năng:
 
@@ -323,8 +290,6 @@ Acceptance:
 - Khách mới tháng này.
 - Khách cũ/tái tục tháng này.
 - Doanh thu tháng.
-- Tổng chi tháng.
-- Lợi nhuận tháng.
 - Công nợ.
 - Sinh nhật hôm nay.
 - Khách PT còn ít buổi.
@@ -369,9 +334,7 @@ Acceptance:
 Thông tin đã làm rõ:
 
 - `Kiệt` là tên nhân sự/PT.
-- `Tiên PT` là khoản liên quan chị Tiên với vai trò PT.
-- `Tiên MKT` là khoản liên quan chị Tiên với vai trò marketing.
-- Các khoản chi theo tên người hoặc vai trò không nên hard-code; OWNER tự tạo danh mục chi hoặc ghi chú khi nhập expense.
+- Các khoản chi phí vận hành do chủ phòng theo dõi ngoài hệ thống; MVP chỉ quản lý doanh thu từ gói tập và công nợ hội viên.
 
 ## 9. Tiêu chí hoàn thành MVP
 
@@ -379,7 +342,7 @@ MVP hoàn thành khi:
 
 - OWNER thay được bảng quản lý khách/gói bằng hệ thống.
 - OWNER xem được khách hết hạn/sắp hết hạn.
-- OWNER nhập được thu/chi và xem lợi nhuận cơ bản.
+- OWNER ghi nhận được tiền gói tập, xem doanh thu và công nợ chính xác theo ngày thu.
 - PT nhập được buổi tập và chỉ số.
 - Public TikTok exercise library xem/chia sẻ được.
 - Hệ thống chạy ổn định ở môi trường local dev để demo và kiểm thử nghiệp vụ. Deploy production để phase sau.

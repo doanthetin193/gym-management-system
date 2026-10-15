@@ -1,7 +1,6 @@
 package com.gymduongdouble.backend.finance.web.dto;
 
 import com.gymduongdouble.backend.common.enums.PaymentMethod;
-import com.gymduongdouble.backend.common.enums.RevenueCategory;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
@@ -23,8 +22,6 @@ public record CreatePaymentRequest(
 
     @NotNull(message = "Phương thức thanh toán là bắt buộc.")
     PaymentMethod paymentMethod,
-
-    RevenueCategory revenueCategory,
     String note
 ) {
 }

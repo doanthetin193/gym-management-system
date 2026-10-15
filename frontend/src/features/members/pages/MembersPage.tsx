@@ -17,6 +17,7 @@ import {
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ApiClientError } from '../../../shared/api/apiClient'
+import { useAuth } from '../../auth/context/authContext'
 import { createMember, getMemberDetail, listMembers, updateMember } from '../api/memberApi'
 import { MemberFormModal } from '../components/MemberFormModal'
 import type { MemberListFilter, MemberPayload, MemberProfile, MemberSummary } from '../types/member'
@@ -93,6 +94,8 @@ function errorMessage(error: unknown) {
 
 export function MembersPage() {
   const navigate = useNavigate()
+  const { user } = useAuth()
+  const canManageStatus = user?.roles.includes('OWNER') ?? false
   const [members, setMembers] = useState<MemberSummary[]>([])
   const [allMembers, setAllMembers] = useState<MemberSummary[]>([])
   const [keyword, setKeyword] = useState('')
@@ -652,6 +655,7 @@ export function MembersPage() {
         <MemberFormModal
           mode={formMode}
           member={editingMember}
+          canManageStatus={canManageStatus}
           submitting={submitting}
           error={formError}
           onClose={() => {

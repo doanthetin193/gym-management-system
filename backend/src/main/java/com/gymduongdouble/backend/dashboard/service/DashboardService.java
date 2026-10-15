@@ -1,50 +1,36 @@
 package com.gymduongdouble.backend.dashboard.service;
 
-import com.gymduongdouble.backend.common.enums.BusinessGoalCategory;
-import com.gymduongdouble.backend.common.enums.BusinessGoalMetric;
 import com.gymduongdouble.backend.common.enums.DebtStatus;
-import com.gymduongdouble.backend.common.enums.FinancialTransactionType;
+import com.gymduongdouble.backend.common.enums.MemberStatus;
 import com.gymduongdouble.backend.common.enums.MembershipStatus;
 import com.gymduongdouble.backend.common.enums.PlanType;
 import com.gymduongdouble.backend.common.enums.PtLevel;
 import com.gymduongdouble.backend.common.enums.SessionPackageStatus;
-import com.gymduongdouble.backend.common.exception.ResourceNotFoundException;
-import com.gymduongdouble.backend.common.security.SecurityUtils;
 import com.gymduongdouble.backend.common.time.AppClock;
-import com.gymduongdouble.backend.dashboard.domain.BusinessGoal;
-import com.gymduongdouble.backend.dashboard.repository.BusinessGoalRepository;
-import com.gymduongdouble.backend.dashboard.web.dto.BusinessGoalProgressItemResponse;
-import com.gymduongdouble.backend.dashboard.web.dto.BusinessGoalProgressResponse;
-import com.gymduongdouble.backend.dashboard.web.dto.BusinessGoalRequest;
-import com.gymduongdouble.backend.dashboard.web.dto.BusinessGoalResponse;
 import com.gymduongdouble.backend.dashboard.web.dto.FinanceReportResponse;
 import com.gymduongdouble.backend.dashboard.web.dto.FinanceReportRowResponse;
 import com.gymduongdouble.backend.dashboard.web.dto.MemberReportResponse;
 import com.gymduongdouble.backend.dashboard.web.dto.NotificationResponse;
 import com.gymduongdouble.backend.dashboard.web.dto.OwnerDashboardResponse;
 import com.gymduongdouble.backend.finance.domain.DebtRecord;
-import com.gymduongdouble.backend.finance.domain.FinancialTransaction;
 import com.gymduongdouble.backend.finance.repository.DebtRecordRepository;
-import com.gymduongdouble.backend.finance.repository.FinancialTransactionRepository;
+import com.gymduongdouble.backend.finance.repository.PaymentRepository;
 import com.gymduongdouble.backend.member.domain.Member;
 import com.gymduongdouble.backend.member.repository.MemberRepository;
 import com.gymduongdouble.backend.membership.domain.MemberMembership;
 import com.gymduongdouble.backend.membership.repository.MemberMembershipRepository;
+import com.gymduongdouble.backend.membership.service.MembershipLifecyclePolicy;
 import com.gymduongdouble.backend.pt.domain.PtSessionPackage;
 import com.gymduongdouble.backend.pt.repository.PtSessionPackageRepository;
-import com.gymduongdouble.backend.user.domain.User;
-import com.gymduongdouble.backend.user.repository.UserRepository;
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.YearMonth;
-import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -56,19 +42,18 @@ public class DashboardService {
     private static final int EXPIRING_SOON_DAYS = 7;
     private static final int LOW_PT_SESSION_THRESHOLD = 2;
 
-    private final BusinessGoalRepository businessGoalRepository;
     private final MemberRepository memberRepository;
     private final MemberMembershipRepository memberMembershipRepository;
-    private final FinancialTransactionRepository financialTransactionRepository;
+    private final PaymentRepository paymentRepository;
     private final DebtRecordRepository debtRecordRepository;
     private final PtSessionPackageRepository ptSessionPackageRepository;
-    private final UserRepository userRepository;
+    private final MembershipLifecyclePolicy membershipLifecyclePolicy;
 
     @Transactional(readOnly = true)
     public OwnerDashboardResponse ownerDashboard(Integer year, Integer month) {
         YearMonth period = resolvePeriod(year, month);
         LocalDate today = AppClock.today();
-        FinanceTotals financeTotals = financeTotals(period.atDay(1), period.atEndOfMonth());
+        BigDecimal monthlyRevenue = revenueBetween(period.atDay(1), period.atEndOfMonth());
         MemberReportResponse memberReport = memberReport(period.getYear(), period.getMonthValue());
         BigDecimal totalDebt = openDebts().stream()
             .map(DebtRecord::getRemainingAmount)
@@ -77,7 +62,7 @@ public class DashboardService {
 
         long totalMembers = memberRepository.count();
         long activeMembers = currentMemberships.stream()
-            .filter(membership -> isActiveMembership(membership, today))
+            .filter(membership -> membershipLifecyclePolicy.isEffective(membership, today))
             .count();
 
         return new OwnerDashboardResponse(
@@ -87,65 +72,10 @@ public class DashboardService {
             memberReport.expired(),
             memberReport.newMembers(),
             memberReport.renewedMembers(),
-            financeTotals.income(),
-            financeTotals.expense(),
-            financeTotals.profit(),
+            monthlyRevenue,
             totalDebt,
             notifications().size()
         );
-    }
-
-    @Transactional(readOnly = true)
-    public List<BusinessGoalResponse> listGoals(Integer year, Integer month) {
-        List<BusinessGoal> goals = year == null || month == null
-            ? businessGoalRepository.findAllByOrderByYearDescMonthDescCategoryAscMetricNameAsc()
-            : businessGoalRepository.findByYearAndMonth(year, month);
-
-        return goals.stream()
-            .map(BusinessGoalResponse::from)
-            .toList();
-    }
-
-    @Transactional
-    public BusinessGoalResponse createGoal(BusinessGoalRequest request) {
-        BusinessGoal goal = new BusinessGoal();
-        applyGoal(goal, request);
-        goal.setCreatedBy(currentUserOrNull());
-        return BusinessGoalResponse.from(businessGoalRepository.save(goal));
-    }
-
-    @Transactional
-    public BusinessGoalResponse updateGoal(Long id, BusinessGoalRequest request) {
-        BusinessGoal goal = businessGoalRepository.findById(id)
-            .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy mục tiêu kinh doanh."));
-        applyGoal(goal, request);
-        return BusinessGoalResponse.from(goal);
-    }
-
-    @Transactional(readOnly = true)
-    public BusinessGoalProgressResponse goalProgress(Integer year, Integer month) {
-        YearMonth period = resolvePeriod(year, month);
-        List<BusinessGoalProgressItemResponse> items = businessGoalRepository
-            .findByYearAndMonth(period.getYear(), period.getMonthValue())
-            .stream()
-            .map(goal -> {
-                boolean manual = goal.getActualValueOverride() != null;
-                BigDecimal actual = manual ? goal.getActualValueOverride() : actualFor(goal, period);
-                return new BusinessGoalProgressItemResponse(
-                    goal.getId(),
-                    goal.getCategory(),
-                    goal.getMetricName(),
-                    goal.getTargetValue(),
-                    actual,
-                    progressPercent(actual, goal.getTargetValue()),
-                    goal.getUnit(),
-                    goal.getNote(),
-                    manual
-                );
-            })
-            .toList();
-
-        return new BusinessGoalProgressResponse(period.getYear(), period.getMonthValue(), items);
     }
 
     @Transactional(readOnly = true)
@@ -154,28 +84,25 @@ public class DashboardService {
 
         if (month != null) {
             YearMonth period = YearMonth.of(resolvedYear, month);
-            FinanceTotals totals = financeTotals(period.atDay(1), period.atEndOfMonth());
+            BigDecimal revenue = revenueBetween(period.atDay(1), period.atEndOfMonth());
             return new FinanceReportResponse(
                 resolvedYear,
                 month,
-                totals.income(),
-                totals.expense(),
-                totals.profit(),
-                List.of(new FinanceReportRowResponse(month, totals.income(), totals.expense(), totals.profit()))
+                revenue,
+                List.of(new FinanceReportRowResponse(month, revenue))
             );
         }
 
         List<FinanceReportRowResponse> rows = java.util.stream.IntStream.rangeClosed(1, 12)
             .mapToObj(currentMonth -> {
                 YearMonth period = YearMonth.of(resolvedYear, currentMonth);
-                FinanceTotals totals = financeTotals(period.atDay(1), period.atEndOfMonth());
-                return new FinanceReportRowResponse(currentMonth, totals.income(), totals.expense(), totals.profit());
+                BigDecimal revenue = revenueBetween(period.atDay(1), period.atEndOfMonth());
+                return new FinanceReportRowResponse(currentMonth, revenue);
             })
             .toList();
 
         BigDecimal totalIncome = rows.stream().map(FinanceReportRowResponse::income).reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal totalExpense = rows.stream().map(FinanceReportRowResponse::expense).reduce(BigDecimal.ZERO, BigDecimal::add);
-        return new FinanceReportResponse(resolvedYear, null, totalIncome, totalExpense, totalIncome.subtract(totalExpense), rows);
+        return new FinanceReportResponse(resolvedYear, null, totalIncome, rows);
     }
 
     @Transactional(readOnly = true)
@@ -217,7 +144,7 @@ public class DashboardService {
 
         List<MemberMembership> currentMemberships = currentMembershipsByMember();
         long expiringSoon = currentMemberships.stream()
-            .filter(membership -> isActiveMembership(membership, today))
+            .filter(membership -> membershipLifecyclePolicy.isEffective(membership, today))
             .filter(membership -> !membership.getEndDate().isAfter(today.plusDays(EXPIRING_SOON_DAYS)))
             .count();
         long expired = currentMemberships.stream()
@@ -243,7 +170,7 @@ public class DashboardService {
         LocalDate today = AppClock.today();
 
         List<NotificationResponse> expiring = currentMembershipsByMember().stream()
-            .filter(membership -> isActiveMembership(membership, today))
+            .filter(membership -> membershipLifecyclePolicy.isEffective(membership, today))
             .filter(membership -> !membership.getEndDate().isAfter(today.plusDays(EXPIRING_SOON_DAYS)))
             .map(membership -> notification(
                 "EXPIRING-" + membership.getId(),
@@ -257,6 +184,7 @@ public class DashboardService {
             .toList();
 
         List<NotificationResponse> birthdays = memberRepository.findAll().stream()
+            .filter(member -> member.getStatus() == MemberStatus.ACTIVE)
             .filter(member -> member.getDateOfBirth() != null)
             .filter(member -> isBirthdayInNextDays(member.getDateOfBirth(), today, EXPIRING_SOON_DAYS))
             .map(member -> notification(
@@ -285,8 +213,8 @@ public class DashboardService {
         List<NotificationResponse> ptLowSessions = ptSessionPackageRepository
             .findByStatusAndRemainingPtSessionsLessThanEqualOrderByRemainingPtSessionsAsc(SessionPackageStatus.ACTIVE, LOW_PT_SESSION_THRESHOLD)
             .stream()
-            .filter(sessionPackage -> sessionPackage.getMembership().getStatus() != MembershipStatus.CANCELLED)
-            .filter(sessionPackage -> !sessionPackage.getEndDate().isBefore(today))
+            .filter(sessionPackage -> sessionPackage.getMember().getStatus() == MemberStatus.ACTIVE)
+            .filter(sessionPackage -> membershipLifecyclePolicy.isEffective(sessionPackage, today))
             .map(sessionPackage -> notification(
                 "PT-LOW-" + sessionPackage.getId(),
                 "LOW_PT_SESSIONS",
@@ -304,47 +232,8 @@ public class DashboardService {
             .toList();
     }
 
-    private void applyGoal(BusinessGoal goal, BusinessGoalRequest request) {
-        goal.setYear(request.year());
-        goal.setMonth(request.month());
-        goal.setCategory(request.category());
-        goal.setMetricName(request.metricName());
-        goal.setTargetValue(request.targetValue());
-        goal.setActualValueOverride(request.actualValueOverride());
-        goal.setUnit(request.unit());
-        goal.setNote(request.note());
-    }
-
-    private BigDecimal actualFor(BusinessGoal goal, YearMonth period) {
-        FinanceTotals financeTotals = financeTotals(period.atDay(1), period.atEndOfMonth());
-        MemberReportResponse memberReport = memberReport(period.getYear(), period.getMonthValue());
-
-        if (goal.getCategory() == BusinessGoalCategory.FINANCE && goal.getMetricName() == BusinessGoalMetric.REVENUE) {
-            return financeTotals.income();
-        }
-        if (goal.getCategory() == BusinessGoalCategory.FINANCE && goal.getMetricName() == BusinessGoalMetric.PROFIT) {
-            return financeTotals.profit();
-        }
-        return BigDecimal.valueOf(switch (goal.getCategory()) {
-            case SELF_TRAINING_MEMBER -> memberReport.selfTrainingCustomers();
-            case GUIDED_CUSTOMER -> memberReport.guidedCustomers();
-            case NEW_PT_CUSTOMER -> memberReport.newPtCustomers();
-            case MAIN_PT_CUSTOMER -> memberReport.mainPtCustomers();
-            case OTHER, FINANCE -> 0L;
-        });
-    }
-
-    private FinanceTotals financeTotals(LocalDate start, LocalDate end) {
-        List<FinancialTransaction> transactions = financialTransactionRepository.findByTransactionDateBetween(start, end);
-        BigDecimal income = transactions.stream()
-            .filter(transaction -> transaction.getType() == FinancialTransactionType.INCOME)
-            .map(FinancialTransaction::getAmount)
-            .reduce(BigDecimal.ZERO, BigDecimal::add);
-        BigDecimal expense = transactions.stream()
-            .filter(transaction -> transaction.getType() == FinancialTransactionType.EXPENSE)
-            .map(FinancialTransaction::getAmount)
-            .reduce(BigDecimal.ZERO, BigDecimal::add);
-        return new FinanceTotals(income, expense, income.subtract(expense));
+    private BigDecimal revenueBetween(LocalDate start, LocalDate end) {
+        return paymentRepository.sumAmountByPaymentDateBetween(start, end);
     }
 
     private boolean hasMembershipBefore(Long memberId, LocalDate date) {
@@ -353,30 +242,16 @@ public class DashboardService {
             .anyMatch(membership -> membership.getStartDate().isBefore(date));
     }
 
-    private boolean isActiveMembership(MemberMembership membership, LocalDate today) {
-        return membership.getStatus() != MembershipStatus.CANCELLED
-            && !membership.getStartDate().isAfter(today)
-            && !membership.getEndDate().isBefore(today);
-    }
-
     private List<MemberMembership> currentMembershipsByMember() {
-        Map<Long, MemberMembership> latestByMember = new HashMap<>();
-        memberMembershipRepository.findAll().stream()
+        LocalDate today = AppClock.today();
+        Map<Long, List<MemberMembership>> membershipsByMember = memberMembershipRepository.findAll().stream()
             .filter(membership -> membership.getStatus() != MembershipStatus.CANCELLED)
-            .forEach(membership -> latestByMember.merge(
-                membership.getMember().getId(),
-                membership,
-                this::latestMembership
-            ));
-        return new ArrayList<>(latestByMember.values());
-    }
-
-    private MemberMembership latestMembership(MemberMembership current, MemberMembership candidate) {
-        int endDateCompare = candidate.getEndDate().compareTo(current.getEndDate());
-        if (endDateCompare != 0) {
-            return endDateCompare > 0 ? candidate : current;
-        }
-        return candidate.getStartDate().isAfter(current.getStartDate()) ? candidate : current;
+            .filter(membership -> membership.getMember().getStatus() == MemberStatus.ACTIVE)
+            .collect(Collectors.groupingBy(membership -> membership.getMember().getId()));
+        return membershipsByMember.values().stream()
+            .map(memberships -> membershipLifecyclePolicy.preferredMembership(memberships, today))
+            .flatMap(java.util.Optional::stream)
+            .toList();
     }
 
     private List<DebtRecord> openDebts() {
@@ -410,23 +285,9 @@ public class DashboardService {
         return new NotificationResponse(id, type, title, message, member.getId(), member.getFullName(), dueDate, amount, false);
     }
 
-    private BigDecimal progressPercent(BigDecimal actual, BigDecimal target) {
-        if (target == null || target.compareTo(BigDecimal.ZERO) <= 0) {
-            return BigDecimal.ZERO;
-        }
-        return actual.multiply(BigDecimal.valueOf(100)).divide(target, 2, RoundingMode.HALF_UP);
-    }
-
     private YearMonth resolvePeriod(Integer year, Integer month) {
         LocalDate today = AppClock.today();
         return YearMonth.of(year == null ? today.getYear() : year, month == null ? today.getMonthValue() : month);
     }
 
-    private User currentUserOrNull() {
-        Long currentUserId = SecurityUtils.currentUserIdOrNull();
-        return currentUserId == null ? null : userRepository.findById(currentUserId).orElse(null);
-    }
-
-    private record FinanceTotals(BigDecimal income, BigDecimal expense, BigDecimal profit) {
-    }
 }

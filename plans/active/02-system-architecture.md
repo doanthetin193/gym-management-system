@@ -141,11 +141,10 @@ Khi bán/gia hạn gói có thể gọi `finance` để tạo payment.
 Trách nhiệm:
 
 - Payment.
-- Thu/chi.
 - Công nợ.
-- Tính doanh thu/chi phí/lợi nhuận.
+- Tính doanh thu thực thu từ các payment gắn với gói tập.
 
-Không lưu bảng tổng thu/tổng chi riêng nếu có thể tính từ transaction.
+Không lưu bảng tổng doanh thu riêng; báo cáo tổng hợp trực tiếp từ `payments.payment_date`.
 
 ### `pt`
 
@@ -230,13 +229,13 @@ PT chọn khách
   -> dùng cho progress report
 ```
 
-### 7.4 Ghi nhận thu/chi
+### 7.4 Ghi nhận tiền gói tập
 
 ```text
-Payment/Expense
-  -> financial_transactions
-  -> finance summary
-  -> dashboard lợi nhuận
+Membership + DebtRecord
+  -> Payment theo ngày thu thực tế
+  -> giảm công nợ
+  -> dashboard/báo cáo doanh thu
 ```
 
 ## 8. Phân quyền dữ liệu
@@ -260,17 +259,17 @@ MEMBER:
 
 Báo cáo ưu tiên tính từ dữ liệu nguồn:
 
-- Tổng thu: từ `financial_transactions` loại INCOME.
-- Tổng chi: từ `financial_transactions`.
-- Lợi nhuận: tổng thu - tổng chi.
+- Doanh thu thực thu: tổng `payments.amount` theo `payments.payment_date`.
+- Công nợ: từ `debt_records.remaining_amount` ở trạng thái OPEN/PARTIALLY_PAID.
 - Khách sắp hết hạn: từ `member_memberships.end_date`.
 - Tiến độ PT: từ `pt_session_logs`, `member_activity_logs`, `body_measurements`, `pt_goals`.
 
 Quy tắc tài chính:
 
 - `payments` là bảng nghiệp vụ ghi tiền khách trả.
-- Khi tạo payment, backend sinh transaction INCOME tương ứng.
-- Dashboard/báo cáo tài chính tổng hợp từ `financial_transactions` để tránh double-count.
+- Mỗi payment phải gắn với một lượt đăng ký gói và khoản công nợ tương ứng.
+- Dashboard/báo cáo tổng hợp trực tiếp từ `payments`, tránh lưu trùng cùng một khoản thu ở nhiều bảng.
+- Chi phí vận hành và lợi nhuận nằm ngoài scope MVP.
 
 Nếu performance cần, có thể thêm snapshot/cache sau.
 
@@ -299,7 +298,6 @@ Cần audit:
 - Tạo/sửa member.
 - Gia hạn gói.
 - Ghi/sửa payment.
-- Ghi/sửa expense.
 - Sửa session PT.
 - Sửa payroll sau này.
 
@@ -324,7 +322,7 @@ Tài liệu chốt hiện trạng sau nâng cấp UI nằm tại `plans/active/1
 - `member` module có thêm `MemberAccessService` để gom rule phân quyền dữ liệu theo OWNER/PT/MEMBER.
 - `member` module có thêm `MemberPortalService` và `MemberPortalController` cho portal hội viên.
 - `common` module có thêm `VietQrSettingService`, `SettingsController`, `PublicSettingsController` để tách cấu hình OWNER và cấu hình public read-only.
-- `dashboard` module gom dashboard OWNER, goals, finance/member reports và notification response tính động.
+- `dashboard` module gom dashboard OWNER, finance/member reports và notification response tính động.
 - `reports` xuất `.xlsx` và Google Sheet sync nằm ở frontend, dùng dữ liệu từ report API thay vì backend export file.
 - `exercise` module chỉ xử lý TikTok public library, không còn module training program/LMS trong scope hiện tại.
 - `pt` module là nơi xử lý assignment, schedule, session log, activity log, body measurement và goal.

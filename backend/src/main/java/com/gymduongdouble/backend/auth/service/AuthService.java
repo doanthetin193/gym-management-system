@@ -12,6 +12,7 @@ import com.gymduongdouble.backend.common.security.JwtProperties;
 import com.gymduongdouble.backend.common.security.JwtService;
 import com.gymduongdouble.backend.user.domain.User;
 import com.gymduongdouble.backend.user.repository.UserRepository;
+import java.time.Instant;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -29,11 +30,14 @@ public class AuthService {
     private final JwtService jwtService;
     private final JwtProperties jwtProperties;
 
+    @Transactional
     public LoginResponse login(LoginRequest request) {
         AuthenticatedUser user = loadUser(request.email());
         if (!user.isEnabled() || !user.isAccountNonLocked() || !passwordEncoder.matches(request.password(), user.getPassword())) {
             throw new BadCredentialsException("Email hoặc mật khẩu không đúng.");
         }
+
+        userRepository.findById(user.getId()).ifPresent(account -> account.setLastLoginAt(Instant.now()));
 
         boolean remember = Boolean.TRUE.equals(request.rememberMe());
         long expirationMinutes = remember ? 30L * 24 * 60 : jwtProperties.accessTokenMinutes();

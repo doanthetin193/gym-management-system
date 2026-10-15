@@ -204,7 +204,7 @@ export function ReportsPage() {
       { name: 'Thanh toan', rows: reportRows('payments') },
       { name: 'Cong no', rows: reportRows('debts') },
       { name: 'Goi tap', rows: reportRows('plans') },
-      { name: 'Doanh thu', rows: financeReport?.rows.map((row) => ({ month: row.month, income: row.income, expense: row.expense, profit: row.profit })) ?? [] },
+      { name: 'Doanh thu', rows: financeReport?.rows.map((row) => ({ month: row.month, income: row.income })) ?? [] },
     ])
   }
 
@@ -757,8 +757,8 @@ function AiRetentionAdvisorCard({
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <AiSummaryTile label="Rủi ro cao" value={`${result.summary.highRiskChurn} khách`} tone="rose" />
             <AiSummaryTile label="Sắp hết hạn" value={`${result.summary.nearExpiryMembers} khách`} tone="amber" />
-            <AiSummaryTile label="Công nợ mở" value={`${result.summary.openDebtCount} khoản`} tone="violet" />
-            <AiSummaryTile label="Giá trị rủi ro" value={formatMoney(result.summary.estimatedRevenueAtRisk)} tone="emerald" />
+            <AiSummaryTile label={`Công nợ cần thu (${result.summary.openDebtCount})`} value={formatMoney(result.summary.openDebtAmount)} tone="violet" />
+            <AiSummaryTile label="Cơ hội gia hạn" value={formatMoney(result.summary.renewalOpportunityValue)} tone="emerald" />
           </div>
 
           <div className="rounded-xl border border-[var(--line)] bg-[var(--surface-muted)]/35 p-4">

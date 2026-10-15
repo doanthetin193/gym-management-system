@@ -36,7 +36,6 @@ Frontend cần phục vụ thao tác thực tế hằng ngày của chủ phòng
 /reports
 /pt-schedule
 /owner/exercises
-/goals
 /settings
 /profile
 
@@ -112,8 +111,6 @@ Hiển thị:
 - Khách mới tháng này.
 - Khách cũ/tái tục tháng này.
 - Doanh thu tháng.
-- Tổng chi tháng.
-- Lợi nhuận tháng.
 - Công nợ.
 - Sinh nhật hôm nay.
 - Khách PT còn ít buổi.
@@ -123,7 +120,6 @@ Quick actions:
 - Tạo member.
 - Gia hạn gói.
 - Thêm payment.
-- Thêm expense.
 
 ### Members list
 
@@ -166,13 +162,11 @@ Form bán/gia hạn gói cần có:
 
 Tabs:
 
-- Tổng quan.
-- Thu.
-- Chi.
-- Công nợ.
-- Báo cáo tháng/năm.
+- Công nợ cần thu.
+- Lịch sử thu tiền.
+- Báo cáo doanh thu tháng/năm.
 
-Form expense cần hỗ trợ category linh hoạt để map các khoản từ Excel như nhà, quảng cáo, điện, nước, rác, wifi, nước lọc, tiền PT, tiền MKT, thưởng lễ.
+Form thu tiền chỉ mở từ công nợ của một lượt đăng ký gói. Nhóm doanh thu được backend suy ra từ gói, không cho nhập khoản thu ngoài hệ thống.
 
 ### PT management
 
@@ -189,13 +183,6 @@ Form expense cần hỗ trợ category linh hoạt để map các khoản từ E
 - Form thêm/sửa bài tập cho OWNER.
 - TikTok URL preview/fallback mở TikTok.
 - Copy link/chia sẻ cho học viên.
-
-### Business goals
-
-- Tạo mục tiêu tháng.
-- Xem doanh thu/lợi nhuận mục tiêu và thực tế.
-- Xem số khách tự tập, khách Giáo án/Hướng Dẫn, khách PT mới, khách PT chính.
-- Xem tiến độ theo giai đoạn 1-10, 11-20, 21-hết tháng.
 
 ### Notifications/nhắc việc cơ bản
 
@@ -292,7 +279,6 @@ Toast
 MemberForm
 MembershipRenewForm
 PaymentForm
-ExpenseForm
 PtSessionForm
 ActivityLogForm
 BodyMeasurementForm
@@ -364,12 +350,11 @@ MEMBER:
 2. OWNER dashboard.
 3. Member list/detail.
 4. Membership plan + renew flow.
-5. Payment/expense.
+5. Payment/công nợ.
 6. PT my members.
 7. PT session/body measurement.
 8. Public TikTok exercise library.
-9. Business goals.
-10. Production UI polish: loading, empty, error, responsive.
+9. Production UI polish: loading, empty, error, responsive.
 
 ## 14. Cập nhật route và màn hình theo implementation hiện tại
 
@@ -394,7 +379,6 @@ Route thực tế hiện tại:
 /reports
 /pt-schedule
 /owner/exercises
-/goals
 /settings
 /profile
 ```
@@ -404,7 +388,7 @@ Quy tắc layout/role hiện tại:
 - Public không đăng nhập: `/`, `/exercises`, `/exercises/:slug`.
 - MEMBER: `/my-progress`, `/profile`.
 - PT: `/members`, `/members/:memberId`, `/membership-plans`, `/payments`, `/reminders`, `/pt-schedule`, `/profile`.
-- OWNER: toàn bộ vùng quản trị gồm dashboard, members, plans, payments, reminders, reports, PT schedule, owner exercises, goals, settings, profile.
+- OWNER: toàn bộ vùng quản trị gồm dashboard, members, plans, payments, reminders, reports, PT schedule, owner exercises, settings, profile.
 
 Các màn hình bổ sung so với kế hoạch sơ khai:
 

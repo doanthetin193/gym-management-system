@@ -2,8 +2,10 @@ package com.gymduongdouble.backend.pt.web.dto;
 
 import com.gymduongdouble.backend.common.enums.PtLevel;
 import com.gymduongdouble.backend.pt.domain.PtProfile;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import java.math.BigDecimal;
 
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public record PtProfileResponse(
     Long id,
     Long userId,
@@ -18,6 +20,10 @@ public record PtProfileResponse(
 ) {
 
     public static PtProfileResponse from(PtProfile profile) {
+        return from(profile, true);
+    }
+
+    public static PtProfileResponse from(PtProfile profile, boolean includeFinancialDetails) {
         return new PtProfileResponse(
             profile.getId(),
             profile.getUser().getId(),
@@ -25,9 +31,9 @@ public record PtProfileResponse(
             profile.getPtLevel(),
             profile.getSpecialty(),
             profile.getBio(),
-            profile.getBaseSalary(),
-            profile.getTeachingRate(),
-            profile.getSalesCommissionRate(),
+            includeFinancialDetails ? profile.getBaseSalary() : null,
+            includeFinancialDetails ? profile.getTeachingRate() : null,
+            includeFinancialDetails ? profile.getSalesCommissionRate() : null,
             profile.isActive()
         );
     }

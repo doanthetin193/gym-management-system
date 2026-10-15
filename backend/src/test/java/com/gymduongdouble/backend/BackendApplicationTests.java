@@ -2,12 +2,22 @@ package com.gymduongdouble.backend;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.gymduongdouble.backend.ai.config.GroqAiProperties;
 import com.gymduongdouble.backend.auth.web.dto.LoginRequest;
 import com.gymduongdouble.backend.common.enums.PaymentMethod;
+import com.gymduongdouble.backend.common.enums.MembershipStatus;
+import com.gymduongdouble.backend.common.enums.PtAssignmentStatus;
 import com.gymduongdouble.backend.finance.web.dto.CreatePaymentRequest;
+import com.gymduongdouble.backend.membership.domain.MemberMembership;
+import com.gymduongdouble.backend.membership.service.MembershipLifecyclePolicy;
+import com.gymduongdouble.backend.pt.domain.PtAssignment;
+import com.gymduongdouble.backend.pt.service.PtAssignmentPolicy;
+import com.gymduongdouble.backend.pt.web.dto.BodyMeasurementRequest;
 import jakarta.validation.Validation;
+import java.time.LocalDate;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import java.math.BigDecimal;
 
@@ -45,7 +55,6 @@ class BackendApplicationTests {
 				null,
 				BigDecimal.ZERO,
 				null,
-				null,
 				"Thu thử"
 			);
 
@@ -66,11 +75,63 @@ class BackendApplicationTests {
 				null,
 				BigDecimal.valueOf(300_000),
 				PaymentMethod.CASH,
-				null,
 				"Thu học phí"
 			);
 
 			assertEquals(0, validator.validate(request).size());
 		}
+	}
+
+	@Test
+	void ptAssignmentPolicyHonorsAssignmentDates() {
+		PtAssignment assignment = new PtAssignment();
+		assignment.setStatus(PtAssignmentStatus.ACTIVE);
+		assignment.setStartDate(LocalDate.of(2026, 10, 1));
+		assignment.setEndDate(LocalDate.of(2026, 10, 10));
+		PtAssignmentPolicy policy = new PtAssignmentPolicy(null, null, null);
+
+		assertFalse(policy.isEffective(assignment, LocalDate.of(2026, 9, 30)));
+		assertTrue(policy.isEffective(assignment, LocalDate.of(2026, 10, 10)));
+		assertFalse(policy.isEffective(assignment, LocalDate.of(2026, 10, 11)));
+	}
+
+	@Test
+	void membershipLifecyclePrefersEffectiveMembershipAndReportsExpiration() {
+		MemberMembership expired = membership(LocalDate.of(2026, 8, 1), LocalDate.of(2026, 8, 31));
+		MemberMembership active = membership(LocalDate.of(2026, 10, 1), LocalDate.of(2026, 10, 31));
+		MemberMembership future = membership(LocalDate.of(2026, 11, 1), LocalDate.of(2026, 11, 30));
+		MembershipLifecyclePolicy policy = new MembershipLifecyclePolicy();
+
+		assertEquals(active, policy.preferredMembership(List.of(expired, active, future), LocalDate.of(2026, 10, 15)).orElseThrow());
+		assertEquals(MembershipStatus.EXPIRED, policy.effectiveStatus(expired, LocalDate.of(2026, 10, 15)));
+		assertTrue(policy.isEffective(active, LocalDate.of(2026, 10, 15)));
+
+		MemberMembership pendingPayment = membership(LocalDate.of(2026, 10, 1), LocalDate.of(2026, 10, 31));
+		pendingPayment.setStatus(MembershipStatus.PENDING_PAYMENT);
+		assertFalse(policy.isEffective(pendingPayment, LocalDate.of(2026, 10, 15)));
+	}
+
+	@Test
+	void bodyMeasurementRequiresAtLeastOneMetric() {
+		try (var validatorFactory = Validation.buildDefaultValidatorFactory()) {
+			var validator = validatorFactory.getValidator();
+			BodyMeasurementRequest emptyMeasurement = new BodyMeasurementRequest(
+				LocalDate.of(2026, 10, 15), null, null, null, null, null, null, null, null, null
+			);
+			BodyMeasurementRequest validMeasurement = new BodyMeasurementRequest(
+				LocalDate.of(2026, 10, 15), null, BigDecimal.valueOf(70), null, null, null, null, null, null, null
+			);
+
+			assertEquals(1, validator.validate(emptyMeasurement).size());
+			assertEquals(0, validator.validate(validMeasurement).size());
+		}
+	}
+
+	private MemberMembership membership(LocalDate startDate, LocalDate endDate) {
+		MemberMembership membership = new MemberMembership();
+		membership.setStatus(MembershipStatus.ACTIVE);
+		membership.setStartDate(startDate);
+		membership.setEndDate(endDate);
+		return membership;
 	}
 }

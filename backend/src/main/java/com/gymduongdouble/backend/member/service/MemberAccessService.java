@@ -1,12 +1,12 @@
 package com.gymduongdouble.backend.member.service;
 
-import com.gymduongdouble.backend.common.enums.PtAssignmentStatus;
 import com.gymduongdouble.backend.common.security.AuthenticatedUser;
 import com.gymduongdouble.backend.common.security.SecurityUtils;
 import com.gymduongdouble.backend.common.time.AppClock;
-import com.gymduongdouble.backend.pt.domain.PtAssignment;
-import com.gymduongdouble.backend.pt.repository.PtAssignmentRepository;
-import java.time.LocalDate;
+import com.gymduongdouble.backend.common.enums.PlanType;
+import com.gymduongdouble.backend.common.enums.MemberStatus;
+import com.gymduongdouble.backend.member.repository.MemberRepository;
+import com.gymduongdouble.backend.pt.service.PtAssignmentPolicy;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
@@ -15,7 +15,8 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class MemberAccessService {
 
-    private final PtAssignmentRepository ptAssignmentRepository;
+    private final MemberRepository memberRepository;
+    private final PtAssignmentPolicy ptAssignmentPolicy;
 
     public boolean canAccessMember(Long memberId) {
         if (hasRole("OWNER")) {
@@ -25,17 +26,30 @@ public class MemberAccessService {
         if (currentUserId == null || !hasRole("PT")) {
             return false;
         }
-
-        var activeAssignments = ptAssignmentRepository.findByMemberId(memberId).stream()
-            .filter(this::isActive)
-            .toList();
-        return activeAssignments.isEmpty() || activeAssignments.stream()
-            .anyMatch(assignment -> assignment.getPtUser().getId().equals(currentUserId));
+        return memberRepository.findById(memberId)
+            .filter(member -> member.getStatus() == MemberStatus.ACTIVE)
+            .map(member -> ptAssignmentPolicy.canAccessMember(memberId, currentUserId, AppClock.today()))
+            .orElse(false);
     }
 
     public void ensureCanAccessMember(Long memberId) {
         if (!canAccessMember(memberId)) {
             throw new AccessDeniedException("PT chỉ được thao tác với khách chưa có PT hoặc khách được phân công cho chính mình.");
+        }
+    }
+
+    public void ensureCanCreateMembership(Long memberId, PlanType planType) {
+        if (canAccessMember(memberId)) {
+            return;
+        }
+        boolean canStartPtEnrollment = planType == PlanType.PT
+            && hasRole("PT")
+            && memberRepository.findById(memberId)
+                .filter(member -> member.getStatus() == MemberStatus.ACTIVE)
+                .map(member -> !ptAssignmentPolicy.hasEffectiveAssignment(memberId, AppClock.today()))
+                .orElse(false);
+        if (!canStartPtEnrollment) {
+            throw new AccessDeniedException("PT chỉ có thể đăng ký gói PT cho khách chưa được phân công hoặc khách do mình phụ trách.");
         }
     }
 
@@ -47,10 +61,4 @@ public class MemberAccessService {
             .anyMatch(authority -> authority.getAuthority().equals("ROLE_" + roleCode));
     }
 
-    private boolean isActive(PtAssignment assignment) {
-        LocalDate today = AppClock.today();
-        return assignment.getStatus() == PtAssignmentStatus.ACTIVE
-            && (assignment.getStartDate() == null || !assignment.getStartDate().isAfter(today))
-            && (assignment.getEndDate() == null || !assignment.getEndDate().isBefore(today));
-    }
 }

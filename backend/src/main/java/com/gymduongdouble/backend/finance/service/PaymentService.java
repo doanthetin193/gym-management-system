@@ -1,8 +1,6 @@
 package com.gymduongdouble.backend.finance.service;
 
 import com.gymduongdouble.backend.common.enums.DebtStatus;
-import com.gymduongdouble.backend.common.enums.FinancialCategoryType;
-import com.gymduongdouble.backend.common.enums.FinancialTransactionType;
 import com.gymduongdouble.backend.common.enums.PaymentMethod;
 import com.gymduongdouble.backend.common.enums.PlanType;
 import com.gymduongdouble.backend.common.enums.PtLevel;
@@ -12,12 +10,8 @@ import com.gymduongdouble.backend.common.exception.ResourceNotFoundException;
 import com.gymduongdouble.backend.common.security.SecurityUtils;
 import com.gymduongdouble.backend.common.time.AppClock;
 import com.gymduongdouble.backend.finance.domain.DebtRecord;
-import com.gymduongdouble.backend.finance.domain.FinancialCategory;
-import com.gymduongdouble.backend.finance.domain.FinancialTransaction;
 import com.gymduongdouble.backend.finance.domain.Payment;
 import com.gymduongdouble.backend.finance.repository.DebtRecordRepository;
-import com.gymduongdouble.backend.finance.repository.FinancialCategoryRepository;
-import com.gymduongdouble.backend.finance.repository.FinancialTransactionRepository;
 import com.gymduongdouble.backend.finance.repository.PaymentRepository;
 import com.gymduongdouble.backend.finance.web.dto.CreatePaymentRequest;
 import com.gymduongdouble.backend.finance.web.dto.DebtRecordResponse;
@@ -43,8 +37,6 @@ import org.springframework.transaction.annotation.Transactional;
 public class PaymentService {
 
     private final PaymentRepository paymentRepository;
-    private final FinancialCategoryRepository financialCategoryRepository;
-    private final FinancialTransactionRepository financialTransactionRepository;
     private final DebtRecordRepository debtRecordRepository;
     private final MemberService memberService;
     private final MemberMembershipService memberMembershipService;
@@ -63,17 +55,17 @@ public class PaymentService {
         if (membership != null && !membership.getMember().getId().equals(member.getId())) {
             throw new BadRequestException("Lượt đăng ký gói không thuộc khách hàng này.");
         }
-        if (debtRecord != null) {
-            validateDebtRecord(debtRecord, member, membership);
-            membership = debtRecord.getMembership() == null ? membership : debtRecord.getMembership();
-            validatePaymentAmount(request.amount(), debtRecord);
-        } else if (request.membershipId() != null) {
-            throw new BadRequestException("Lượt đăng ký gói này không còn khoản công nợ cần thu.");
+        if (debtRecord == null) {
+            throw new BadRequestException("Phiếu thu phải thuộc một khoản công nợ của gói tập.");
         }
+        validateDebtRecord(debtRecord, member, membership);
+        membership = debtRecord.getMembership();
+        if (membership == null) {
+            throw new BadRequestException("Khoản công nợ không gắn với lượt đăng ký gói tập.");
+        }
+        validatePaymentAmount(request.amount(), debtRecord);
 
-        RevenueCategory revenueCategory = request.revenueCategory() == null
-            ? inferRevenueCategory(membership)
-            : request.revenueCategory();
+        RevenueCategory revenueCategory = inferRevenueCategory(membership);
         LocalDate paymentDate = resolvePaymentDate(request.paymentDate());
 
         Payment payment = new Payment();
@@ -89,7 +81,6 @@ public class PaymentService {
 
         Payment savedPayment = paymentRepository.save(payment);
         syncDebtAndMembership(debtRecord, membership, request.amount());
-        createIncomeTransaction(savedPayment, revenueCategory);
 
         return PaymentResponse.from(savedPayment);
     }
@@ -130,10 +121,6 @@ public class PaymentService {
     }
 
     private RevenueCategory inferRevenueCategory(MemberMembership membership) {
-        if (membership == null) {
-            return RevenueCategory.OTHER_INCOME;
-        }
-
         MembershipPlan plan = membership.getPlan();
         if (plan.getPlanType() == PlanType.SELF_TRAINING) {
             return RevenueCategory.SELF_TRAINING;
@@ -231,30 +218,6 @@ public class PaymentService {
             return debtRecord.getStatus() == DebtStatus.OPEN || debtRecord.getStatus() == DebtStatus.PARTIALLY_PAID;
         }
         return debtRecord.getStatus() == status;
-    }
-
-    private void createIncomeTransaction(Payment payment, RevenueCategory revenueCategory) {
-        FinancialCategory category = financialCategoryRepository.findByCode(revenueCategory.name())
-            .orElseGet(() -> {
-                FinancialCategory newCategory = new FinancialCategory();
-                newCategory.setType(FinancialCategoryType.INCOME);
-                newCategory.setCode(revenueCategory.name());
-                newCategory.setName(revenueCategory.name());
-                newCategory.setActive(true);
-                return financialCategoryRepository.save(newCategory);
-            });
-
-        FinancialTransaction transaction = new FinancialTransaction();
-        transaction.setType(FinancialTransactionType.INCOME);
-        transaction.setCategory(category);
-        transaction.setAmount(payment.getAmount());
-        transaction.setTransactionDate(payment.getPaymentDate());
-        transaction.setMember(payment.getMember());
-        transaction.setMembership(payment.getMembership());
-        transaction.setPayment(payment);
-        transaction.setDescription(payment.getDescription());
-        transaction.setCreatedBy(payment.getCreatedBy());
-        financialTransactionRepository.save(transaction);
     }
 
     private User currentUserOrNull() {

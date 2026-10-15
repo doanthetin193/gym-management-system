@@ -669,6 +669,7 @@ export function MemberDetailPage() {
         <MemberFormModal
           mode="edit"
           member={detail.profile}
+          canManageStatus={canManagePortal}
           submitting={editSubmitting}
           error={editError}
           onClose={() => {

@@ -87,9 +87,7 @@ Backend đã implement:
 
 - `payments`.
 - `debt_records`.
-- `financial_categories`.
-- `financial_transactions`.
-- Đồng bộ payment sang financial transaction.
+- Payment là nguồn doanh thu duy nhất, bắt buộc thuộc lượt đăng ký gói/công nợ.
 - API thu tiền/công nợ.
 - API dashboard OWNER.
 - API VietQR setting.
@@ -187,7 +185,7 @@ Done hiện tại:
 - OWNER quản lý được video TikTok.
 - Scope không còn YouTube, LMS hoặc training program theo tuần.
 
-## Sprint 6 - Báo cáo, mục tiêu, nhắc việc và xuất dữ liệu
+## Sprint 6 - Báo cáo, nhắc việc và xuất dữ liệu
 
 Mục tiêu:
 
@@ -195,8 +193,6 @@ Mục tiêu:
 
 Backend đã implement:
 
-- `business_goals`.
-- API mục tiêu/progress.
 - API report finance/member.
 - API notification động từ dữ liệu nguồn.
 - API member portal.
@@ -210,7 +206,6 @@ Frontend đã implement:
 - Biểu đồ doanh thu 6 tháng gần nhất.
 - Export `.xlsx` theo nhóm dữ liệu và full backup nhiều sheet.
 - Đồng bộ Google Sheet qua Apps Script URL + token.
-- Trang mục tiêu tháng.
 - Trang nhắc việc Zalo thủ công: hết hạn/sắp hết hạn, công nợ, sinh nhật.
 - Portal `/my-progress` cho MEMBER.
 - Tạo tài khoản portal nhanh cho hội viên.
@@ -221,7 +216,6 @@ Done hiện tại:
 - OWNER xem tổng hội viên, doanh thu, công nợ, lượt đăng ký/gia hạn.
 - OWNER xuất được dữ liệu `.xlsx`.
 - OWNER đồng bộ Google Sheet thủ công và thấy lỗi thật nếu Apps Script lỗi.
-- OWNER tạo mục tiêu tháng và xem progress.
 - OWNER/PT dùng nhắc việc để copy tin nhắn và mở Zalo thủ công.
 - MEMBER xem được gói, công nợ, lịch sử thanh toán, lịch PT, chỉ số, biểu đồ tiến trình và mục tiêu.
 
@@ -343,7 +337,7 @@ Done hiện tại:
 
 MVP được xem là đạt khi:
 
-- OWNER quản lý được hội viên, gói tập, thu tiền, công nợ, VietQR, báo cáo, mục tiêu, nhắc việc và thư viện TikTok.
+- OWNER quản lý được hội viên, gói tập, thu tiền, công nợ, VietQR, báo cáo, nhắc việc và thư viện TikTok.
 - PT quản lý được khách PT được giao, đặt lịch, ghi buổi, cập nhật chỉ số và mục tiêu.
 - MEMBER xem được tiến trình cá nhân nhưng không can thiệp nghiệp vụ quản trị.
 - Khách vãng lai xem được trang giới thiệu, bảng giá và thư viện TikTok.

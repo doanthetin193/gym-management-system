@@ -7,8 +7,6 @@ public record FinanceReportResponse(
     Integer year,
     Integer month,
     BigDecimal totalIncome,
-    BigDecimal totalExpense,
-    BigDecimal profit,
     List<FinanceReportRowResponse> rows
 ) {
 }

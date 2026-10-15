@@ -25,7 +25,7 @@ Nguyên tắc:
 MVP hiện tại tối ưu nhưng đủ nghĩa:
 
 ```text
-22 bảng nghiệp vụ/runtime
+20 bảng nghiệp vụ/runtime
 ```
 
 Full phase sau:
@@ -34,7 +34,7 @@ Full phase sau:
 Khoảng 34-42 bảng
 ```
 
-Lý do MVP active nhiều hơn bản siêu gọn: dữ liệu từ 10 ảnh cho thấy hệ thống không chỉ có member/gói tập, mà còn có thu chi, lịch PT, check-in chương trình, chỉ số cơ thể, mục tiêu tập luyện và mục tiêu tháng.
+Thiết kế giữ đúng dữ liệu nguồn cho hội viên, gói tập, thanh toán/công nợ, lịch PT, chỉ số cơ thể và mục tiêu tập luyện.
 
 ## 3. Nhóm bảng MVP đề xuất
 
@@ -48,9 +48,7 @@ members
 membership_plans
 member_memberships
 
-payment_transactions
-financial_categories
-financial_transactions
+payments
 debt_records
 
 pt_profiles
@@ -65,18 +63,15 @@ pt_goals
 exercise_categories
 exercises
 
-business_goals
-
 system_settings
 ```
 
-Tổng hiện tại: 22 bảng. Các bảng `member_notes`, `notifications`, `audit_logs` từng nằm trong thiết kế sơ khai nhưng đã được loại khỏi DB dev vì implementation hiện tại không dùng entity/persistence riêng cho các phần này.
+Tổng hiện tại: 19 bảng, gồm 18 entity và bảng nối `user_roles`. Các bảng `business_goals`, `financial_categories`, `financial_transactions`, `member_notes`, `notifications`, `audit_logs` từng nằm trong thiết kế sơ khai nhưng đã được loại khỏi DB dev vì implementation hiện tại không dùng.
 
 Nếu cần giảm scope MVP, ưu tiên hoãn UI/báo cáo nâng cao chứ không bỏ dữ liệu nguồn cốt lõi:
 
 - Không nên bỏ `member_activity_logs` vì bảng này giữ buổi Ôn tập và check-in Giáo án/Hướng Dẫn.
 - Không làm `training_programs`/`training_program_weeks` trong Sprint 5 vì nhu cầu thực tế hiện tại là thư viện video TikTok public, không phải LMS/giáo án theo tuần.
-- Có thể làm `business_goals` ở cuối MVP.
 - Notification nâng cao/persistence riêng được hoãn. Dashboard và trang nhắc việc hiện tính động danh sách sắp hết hạn, sinh nhật, công nợ và khách PT còn ít buổi từ dữ liệu nguồn.
 
 ## 4. Auth và phân quyền
@@ -286,82 +281,9 @@ Ghi chú:
 - `Sinh viên` không còn được dùng như category nghiệp vụ mới. Đây là tên cột Excel cũ của khoản thu gói PT mới.
 - Nếu sau này có gói giảm giá thật cho sinh viên, nên xử lý bằng discount trên `member_memberships`, không tạo lẫn với revenue category hiện tại.
 
-### 7.2 `financial_categories`
+`payments` là nguồn doanh thu duy nhất. Hệ thống không có sổ chi phí hoặc bảng transaction trung gian vì mọi khoản thu trong scope đều là tiền hội viên thanh toán cho gói tập.
 
-Danh mục thu/chi có thể quản trị.
-
-```text
-financial_categories
-  id
-  type
-  code
-  name
-  active
-```
-
-Enum/code:
-
-- `FinancialCategoryType`: INCOME, EXPENSE.
-
-Ví dụ expense category:
-
-- RENT.
-- MARKETING.
-- ELECTRICITY.
-- WATER.
-- WASTE.
-- INTERNET.
-- DRINKING_WATER.
-- PT_SALARY.
-- BONUS.
-- HOLIDAY_BONUS.
-- PT_SUPPORT_EXPENSE.
-- MKT.
-- OTHER_EXPENSE.
-
-Ghi chú:
-
-- Các khoản chi có thể phát sinh linh hoạt, không hard-code trong code.
-- `Kiệt` là tên nhân sự/PT.
-- `Tiên PT` là khoản liên quan chị Tiên với vai trò PT.
-- `Tiên MKT` là khoản liên quan chị Tiên với vai trò marketing.
-- MVP cho OWNER tự tạo/sửa/ẩn danh mục chi trong `financial_categories`, ví dụ `Kiệt`, `Tiên PT`, `Tiên MKT`, `Thưởng lễ`.
-- Phase sau nếu làm payroll/nhân sự chuẩn hơn thì các khoản theo tên người có thể liên kết sang employee/PT thay vì chỉ là category.
-
-### 7.3 `financial_transactions`
-
-Ghi nhận giao dịch thu/chi tổng quát.
-
-```text
-financial_transactions
-  id
-  type
-  category_id
-  amount
-  transaction_date
-  member_id
-  membership_id
-  payment_id
-  description
-  created_by
-  created_at
-  updated_at
-```
-
-Enum/code:
-
-- `FinancialTransactionType`: INCOME, EXPENSE.
-
-Ghi chú:
-
-- Payment có thể tự sinh transaction loại INCOME.
-- Chi phí từ Excel `TỔNG CHI` tạo transaction loại EXPENSE.
-- `Tài chính nĒm` là report từ bảng này.
-- Để tránh tính trùng doanh thu, báo cáo tài chính nên dùng `financial_transactions` làm nguồn tổng hợp chính.
-- `payments` là bảng nghiệp vụ thanh toán của khách; khi tạo/sửa payment phải đồng bộ một transaction INCOME có `payment_id`.
-- Transaction INCOME sinh từ payment không nhập tay lần nữa trên UI.
-
-### 7.4 `debt_records`
+### 7.2 `debt_records`
 
 Theo dõi công nợ rõ ràng.
 
@@ -699,44 +621,7 @@ Nguyên tắc:
 - Không upload/stream video bằng VPS.
 - Frontend ưu tiên TikTok embed; nếu embed bị chặn hoặc không tải được thì hiển thị thumbnail/nút mở TikTok.
 
-## 13. Mục tiêu kinh doanh, notification và audit
-
-### 13.1 `business_goals`
-
-Số hóa bảng `MỤC TIÊU THÁNG`.
-
-```text
-business_goals
-  id
-  year
-  month
-  category
-  metric_name
-  target_value
-  unit
-  note
-  created_by
-  created_at
-  updated_at
-```
-
-Enum/code:
-
-- `BusinessGoalCategory`: FINANCE, SELF_TRAINING_MEMBER, GUIDED_CUSTOMER, NEW_PT_CUSTOMER, MAIN_PT_CUSTOMER, OTHER.
-- `BusinessGoalMetric`: REVENUE, PROFIT, CUSTOMER_COUNT, NEW_CUSTOMER_COUNT, PT_CUSTOMER_COUNT.
-
-Mapping từ Excel `MỤC TIÊU THÁNG`:
-
-- Tài chính / Doanh thu -> category FINANCE, metric REVENUE.
-- Tài chính / Lợi nhuận -> category FINANCE, metric PROFIT.
-- Số khách Member / Khách tự tập -> category SELF_TRAINING_MEMBER.
-- Khách Hướng Dẫn/Giáo án -> category GUIDED_CUSTOMER.
-- Khách PT Mới -> category NEW_PT_CUSTOMER, tính từ gói PT có `pt_level = NEW`.
-- Khách PT Chính -> category MAIN_PT_CUSTOMER, tính từ gói PT có `pt_level = MAIN`.
-
-Khách Hướng Dẫn là khách mua giáo án sau giai đoạn tập PT; nhóm này có thể check-in theo gói 30, 60, 90 buổi.
-
-### 13.2 Nhắc việc động và audit
+## 13. Nhắc việc động và audit
 
 Không dùng entity/table `notifications` riêng trong MVP hiện tại. API nhắc việc được tính động từ:
 
@@ -832,7 +717,6 @@ Dùng cho:
 - `membership_plans`.
 - `member_memberships`.
 - `payments`.
-- `financial_transactions`.
 - `pt_schedules`.
 - `pt_session_logs`.
 - `member_activity_logs`.
@@ -844,13 +728,10 @@ Dùng cho:
 ### Báo cáo nên tự tính
 
 - Tổng thu ngày/tháng/năm.
-- Tổng chi ngày/tháng/năm.
-- Lợi nhuận.
-- Tài chính nĒm.
+- Doanh thu gói tập theo tháng/năm.
 - Số khách mới/cũ.
 - Số khách tái tục/gia hạn theo tháng.
 - Khách sắp hết hạn.
-- % hoàn thành mục tiêu tháng.
 - Bảng lương PT cuối tháng.
 
 ## 16. Index quan trọng
@@ -865,9 +746,6 @@ member_memberships.end_date
 member_memberships.status
 payments.member_id
 payments.payment_date
-financial_transactions.transaction_date
-financial_transactions.type
-financial_transactions.category_id
 pt_schedules.pt_user_id
 pt_schedules.schedule_date
 pt_session_logs.member_id
@@ -914,7 +792,6 @@ Các điều chỉnh database/entity so với thiết kế sơ khai:
 - Không dùng entity `notifications` riêng; nhắc việc hiện tại được tính động từ hạn gói, công nợ và sinh nhật.
 - Không dùng entity `audit_logs` riêng trong scope hiện tại; nếu cần audit đầy đủ sẽ mở lại ở phase hardening.
 - `system_settings` được dùng cho cấu hình VietQR và các cấu hình hệ thống nhỏ.
-- `business_goals` vẫn thuộc scope hiện tại để quản lý mục tiêu tháng.
 - `body_measurements` và `pt_goals` là nguồn dữ liệu cho portal hội viên và theo dõi khách PT.
 
 Danh sách entity hiện tại cần xem là nguồn chính:
@@ -922,9 +799,9 @@ Danh sách entity hiện tại cần xem là nguồn chính:
 - `User`, `Role`.
 - `Member`.
 - `MembershipPlan`, `MemberMembership`.
-- `Payment`, `DebtRecord`, `FinancialCategory`, `FinancialTransaction`.
+- `Payment`, `DebtRecord`.
 - `PtProfile`, `PtAssignment`, `PtSchedule`, `PtSessionPackage`, `PtSessionLog`, `MemberActivityLog`.
 - `BodyMeasurement`, `PtGoal`.
 - `ExerciseCategory`, `Exercise`.
-- `BusinessGoal`, `SystemSetting`.
+- `SystemSetting`.
 

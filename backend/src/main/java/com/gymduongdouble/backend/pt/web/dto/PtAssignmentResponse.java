@@ -18,6 +18,10 @@ public record PtAssignmentResponse(
 ) {
 
     public static PtAssignmentResponse from(PtAssignment assignment) {
+        return from(assignment, assignment.getStatus());
+    }
+
+    public static PtAssignmentResponse from(PtAssignment assignment, PtAssignmentStatus status) {
         return new PtAssignmentResponse(
             assignment.getId(),
             assignment.getPtUser().getId(),
@@ -27,7 +31,7 @@ public record PtAssignmentResponse(
             assignment.getMember().getPhone(),
             assignment.getStartDate(),
             assignment.getEndDate(),
-            assignment.getStatus(),
+            status,
             assignment.getNote()
         );
     }

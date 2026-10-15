@@ -1,7 +1,7 @@
 package com.gymduongdouble.backend.pt.service;
 
 import com.gymduongdouble.backend.common.enums.ActivityType;
-import com.gymduongdouble.backend.common.enums.MembershipStatus;
+import com.gymduongdouble.backend.common.enums.MemberStatus;
 import com.gymduongdouble.backend.common.enums.PlanType;
 import com.gymduongdouble.backend.common.enums.ProgramStatus;
 import com.gymduongdouble.backend.common.enums.PtAssignmentStatus;
@@ -19,6 +19,7 @@ import com.gymduongdouble.backend.member.service.MemberService;
 import com.gymduongdouble.backend.member.web.dto.MemberResponse;
 import com.gymduongdouble.backend.membership.domain.MemberMembership;
 import com.gymduongdouble.backend.membership.repository.MemberMembershipRepository;
+import com.gymduongdouble.backend.membership.service.MembershipLifecyclePolicy;
 import com.gymduongdouble.backend.pt.domain.MemberActivityLog;
 import com.gymduongdouble.backend.pt.domain.PtAssignment;
 import com.gymduongdouble.backend.pt.domain.PtProfile;
@@ -74,6 +75,7 @@ public class PtService {
 
     private final PtProfileRepository ptProfileRepository;
     private final PtAssignmentRepository ptAssignmentRepository;
+    private final PtAssignmentPolicy ptAssignmentPolicy;
     private final PtScheduleRepository ptScheduleRepository;
     private final PtSessionPackageRepository ptSessionPackageRepository;
     private final PtSessionLogRepository ptSessionLogRepository;
@@ -83,14 +85,16 @@ public class PtService {
     private final UserRepository userRepository;
     private final MemberService memberService;
     private final MemberMembershipRepository memberMembershipRepository;
+    private final MembershipLifecyclePolicy membershipLifecyclePolicy;
 
     @Transactional(readOnly = true)
     public List<PtProfileResponse> listProfiles() {
+        boolean includeFinancialDetails = isOwner();
         return ptProfileRepository.findAll().stream()
             .filter(profile -> profile.getUser().getRoles().stream()
                 .anyMatch(role -> role.getCode().equals("PT")))
             .sorted(Comparator.comparing(profile -> profile.getUser().getFullName()))
-            .map(PtProfileResponse::from)
+            .map(profile -> PtProfileResponse.from(profile, includeFinancialDetails))
             .toList();
     }
 
@@ -99,22 +103,33 @@ public class PtService {
         User user = findUser(request.userId());
         ensureCanManagePtUser(user.getId());
         ensureUserHasRole(user, "PT", "Chỉ tài khoản PT mới được tạo hồ sơ huấn luyện viên.");
-        PtProfile profile = ptProfileRepository.findByUserId(user.getId()).orElseGet(PtProfile::new);
+        boolean owner = isOwner();
+        PtProfile profile = ptProfileRepository.findByUserId(user.getId()).orElseGet(() -> {
+            if (!owner) {
+                throw new AccessDeniedException("PT cannot create a trainer profile.");
+            }
+            return new PtProfile();
+        });
+        ensurePtCanOnlyUpdateOwnPublicProfile(request, owner);
         profile.setUser(user);
-        profile.setPtLevel(request.ptLevel());
+        if (owner) {
+            profile.setPtLevel(request.ptLevel());
+        }
         profile.setSpecialty(request.specialty());
         profile.setBio(request.bio());
-        if (request.baseSalary() != null) {
+        if (owner && request.baseSalary() != null) {
             profile.setBaseSalary(request.baseSalary());
         }
-        if (request.teachingRate() != null) {
+        if (owner && request.teachingRate() != null) {
             profile.setTeachingRate(request.teachingRate());
         }
-        if (request.salesCommissionRate() != null) {
+        if (owner && request.salesCommissionRate() != null) {
             profile.setSalesCommissionRate(request.salesCommissionRate());
         }
-        profile.setActive(request.active() == null || request.active());
-        return PtProfileResponse.from(ptProfileRepository.save(profile));
+        if (owner) {
+            profile.setActive(request.active() == null || request.active());
+        }
+        return PtProfileResponse.from(ptProfileRepository.save(profile), owner);
     }
 
     @Transactional
@@ -122,22 +137,35 @@ public class PtService {
         User ptUser = findUser(request.ptUserId());
         ensureActivePtUser(ptUser, "Người phụ trách phải là tài khoản PT đang hoạt động.");
         ensureCanManagePtUser(ptUser.getId());
-        ensureAssignmentDates(request.startDate(), request.endDate());
         Member member = memberService.findEntity(request.memberId());
-        ensureMemberHasAssignablePtPackage(member.getId());
+        ensureOperationalMember(member);
+        List<PtSessionPackage> assignablePackages = assignablePtPackages(member.getId(), request.startDate());
+        if (assignablePackages.isEmpty()) {
+            throw new BadRequestException("Chỉ có thể gán PT cho khách đang có gói PT còn hiệu lực.");
+        }
+        LocalDate packageEndDate = assignablePackages.stream()
+            .map(PtSessionPackage::getEndDate)
+            .max(LocalDate::compareTo)
+            .orElseThrow();
+        LocalDate assignmentEndDate = request.endDate() == null ? packageEndDate : request.endDate();
+        ensureAssignmentDates(request.startDate(), assignmentEndDate);
+        if (assignmentEndDate.isAfter(packageEndDate)) {
+            throw new BadRequestException("Phân công PT không thể vượt quá hạn gói PT.");
+        }
         ensureMemberHasNoActivePtAssignment(member.getId(), request.startDate());
 
         PtAssignment assignment = new PtAssignment();
         assignment.setPtUser(ptUser);
         assignment.setMember(member);
         assignment.setStartDate(request.startDate());
-        assignment.setEndDate(request.endDate());
+        assignment.setEndDate(assignmentEndDate);
         assignment.setStatus(PtAssignmentStatus.ACTIVE);
         assignment.setNote(request.note());
 
-        activePtPackages(member.getId()).forEach(sessionPackage -> sessionPackage.setPtUser(ptUser));
+        assignablePackages.forEach(sessionPackage -> sessionPackage.setPtUser(ptUser));
 
-        return PtAssignmentResponse.from(ptAssignmentRepository.save(assignment));
+        PtAssignment saved = ptAssignmentRepository.save(assignment);
+        return PtAssignmentResponse.from(saved, ptAssignmentPolicy.effectiveStatus(saved, AppClock.today()));
     }
 
     @Transactional(readOnly = true)
@@ -148,9 +176,17 @@ public class PtService {
             : ptAssignmentRepository.findByPtUserId(resolvedPtUserId);
 
         return assignments.stream()
-            .filter(assignment -> assignment.getStatus() == PtAssignmentStatus.ACTIVE)
+            .filter(assignment -> assignment.getMember().getStatus() == MemberStatus.ACTIVE)
+            .filter(assignment -> ptAssignmentPolicy.canAccessMember(
+                assignment.getMember().getId(),
+                assignment.getPtUser().getId(),
+                AppClock.today()
+            ))
             .sorted(Comparator.comparing(assignment -> assignment.getMember().getFullName()))
-            .map(PtAssignmentResponse::from)
+            .map(assignment -> PtAssignmentResponse.from(
+                assignment,
+                ptAssignmentPolicy.effectiveStatus(assignment, AppClock.today())
+            ))
             .toList();
     }
 
@@ -161,7 +197,7 @@ public class PtService {
         Member member = request.memberId() == null ? null : memberService.findEntity(request.memberId());
         ensureCanManagePtUser(ptUser.getId());
         if (member != null) {
-            ensureCanAccessMember(member.getId());
+            ensureMemberCanBeScheduled(member, ptUser, request.scheduleDate());
         }
 
         LocalDate today = AppClock.today();
@@ -198,7 +234,7 @@ public class PtService {
         PtSchedule schedule = findSchedule(scheduleId);
         ensureCanManagePtUser(schedule.getPtUser().getId());
         if (schedule.getMember() != null) {
-            ensureCanAccessMember(schedule.getMember().getId());
+            ensureCanAccessMember(schedule.getMember().getId(), schedule.getScheduleDate());
         }
         if (ptSessionLogRepository.existsByScheduleId(scheduleId)) {
             throw new BadRequestException("Không thể xoá lịch dạy này vì buổi tập đã được ghi nhận trong lịch sử.");
@@ -217,6 +253,7 @@ public class PtService {
             : ptScheduleRepository.findByPtUserIdAndScheduleDateBetween(resolvedPtUserId, start, end);
 
         return schedules.stream()
+            .filter(schedule -> schedule.getMember() == null || schedule.getMember().getStatus() == MemberStatus.ACTIVE)
             .sorted(Comparator.comparing(PtSchedule::getScheduleDate).thenComparing(PtSchedule::getStartTime))
             .map(PtScheduleResponse::from)
             .toList();
@@ -226,10 +263,21 @@ public class PtService {
     public PtMemberDetailResponse getMemberDetail(Long memberId) {
         ensureCanAccessMember(memberId);
         Member member = memberService.findEntity(memberId);
+        LocalDate today = AppClock.today();
         return new PtMemberDetailResponse(
             MemberResponse.from(member),
-            ptAssignmentRepository.findByMemberId(memberId).stream().map(PtAssignmentResponse::from).toList(),
-            listSessionPackageEntities(memberId).stream().map(PtSessionPackageSummaryResponse::from).toList(),
+            ptAssignmentRepository.findByMemberId(memberId).stream()
+                .map(assignment -> PtAssignmentResponse.from(
+                    assignment,
+                    ptAssignmentPolicy.effectiveStatus(assignment, today)
+                ))
+                .toList(),
+            listSessionPackageEntities(memberId).stream()
+                .map(sessionPackage -> PtSessionPackageSummaryResponse.from(
+                    sessionPackage,
+                    membershipLifecyclePolicy.effectiveStatus(sessionPackage, today)
+                ))
+                .toList(),
             ptScheduleRepository.findByMemberIdOrderByScheduleDateDesc(memberId).stream().map(PtScheduleResponse::from).toList(),
             ptSessionLogRepository.findByMemberIdOrderBySessionDateDesc(memberId).stream().map(PtSessionLogResponse::from).toList(),
             memberActivityLogRepository.findByMemberIdOrderByActivityDateDesc(memberId).stream().map(MemberActivityLogResponse::from).toList(),
@@ -246,13 +294,16 @@ public class PtService {
             throw new AccessDeniedException("PT chỉ được xem gói buổi của khách được phân công.");
         }
         return listSessionPackageEntities(memberId).stream()
-            .map(PtSessionPackageSummaryResponse::from)
+            .map(sessionPackage -> PtSessionPackageSummaryResponse.from(
+                sessionPackage,
+                membershipLifecyclePolicy.effectiveStatus(sessionPackage, AppClock.today())
+            ))
             .toList();
     }
 
     @Transactional
     public PtSessionLogResponse createSessionLog(Long memberId, PtSessionLogRequest request) {
-        ensureCanAccessMember(memberId);
+        ensureCanAccessMember(memberId, request.sessionDate());
         ensureNotFuture(request.sessionDate(), "Ngày tập");
         PtSessionPackage sessionPackage = findSessionPackage(request.sessionPackageId());
         if (!sessionPackage.getMember().getId().equals(memberId)) {
@@ -267,7 +318,7 @@ public class PtService {
         ensureNoDuplicateSessionLog(sessionPackage, request, status);
         User ptUser = schedule != null
             ? schedule.getPtUser()
-            : sessionPackage.getPtUser() == null ? currentPtUserOrNull() : sessionPackage.getPtUser();
+            : isOwner() ? sessionPackage.getPtUser() : currentUserEntityOrNull();
 
         PtSessionLog log = new PtSessionLog();
         log.setSessionPackage(sessionPackage);
@@ -294,7 +345,7 @@ public class PtService {
 
     @Transactional
     public MemberActivityLogResponse createActivityLog(Long memberId, MemberActivityLogRequest request) {
-        ensureCanAccessMember(memberId);
+        ensureCanAccessMember(memberId, request.activityDate());
         ensureNotFuture(request.activityDate(), "Ngày hoạt động");
         Member member = memberService.findEntity(memberId);
         MemberMembership membership = request.membershipId() == null ? null : findMembership(request.membershipId());
@@ -305,6 +356,10 @@ public class PtService {
         }
         if (sessionPackage != null && !sessionPackage.getMember().getId().equals(memberId)) {
             throw new BadRequestException("Gói buổi PT không thuộc khách hàng này.");
+        }
+        if (membership != null && sessionPackage != null
+            && !sessionPackage.getMembership().getId().equals(membership.getId())) {
+            throw new BadRequestException("Gói buổi PT không thuộc lượt đăng ký gói đã chọn.");
         }
         if (request.activityType() == ActivityType.PRACTICE && sessionPackage == null) {
             throw new BadRequestException("Buổi ôn tập cần chọn gói buổi PT.");
@@ -334,7 +389,7 @@ public class PtService {
 
     @Transactional
     public BodyMeasurementResponse createBodyMeasurement(Long memberId, BodyMeasurementRequest request) {
-        ensureCanAccessMember(memberId);
+        ensureCanAccessMember(memberId, request.recordedAt());
         ensureNotFuture(request.recordedAt(), "Ngày đo");
         Member member = memberService.findEntity(memberId);
 
@@ -380,28 +435,18 @@ public class PtService {
         return PtGoalResponse.from(ptGoalRepository.save(goal));
     }
 
-    private void ensureMemberHasAssignablePtPackage(Long memberId) {
-        if (activePtPackages(memberId).isEmpty()) {
-            throw new BadRequestException("Chỉ có thể gán PT cho khách đang có gói PT còn hiệu lực.");
-        }
-    }
-
     private void ensureMemberHasNoActivePtAssignment(Long memberId, LocalDate newStartDate) {
         boolean hasActiveAssignment = ptAssignmentRepository.findByMemberId(memberId).stream()
-            .anyMatch(assignment -> assignment.getStatus() == PtAssignmentStatus.ACTIVE
-                && (assignment.getEndDate() == null || !assignment.getEndDate().isBefore(newStartDate)));
+            .anyMatch(assignment -> ptAssignmentPolicy.isEffective(assignment, newStartDate));
         if (hasActiveAssignment) {
             throw new BadRequestException("Khách này đã có PT phụ trách. Vui lòng kết thúc phân công cũ trước khi gán PT mới.");
         }
     }
 
-    private List<PtSessionPackage> activePtPackages(Long memberId) {
-        LocalDate today = AppClock.today();
+    private List<PtSessionPackage> assignablePtPackages(Long memberId, LocalDate date) {
         return ptSessionPackageRepository.findByMemberIdOrderByStartDateDesc(memberId).stream()
-            .filter(sessionPackage -> sessionPackage.getStatus() == SessionPackageStatus.ACTIVE)
-            .filter(sessionPackage -> sessionPackage.getMembership().getStatus() != MembershipStatus.CANCELLED)
+            .filter(sessionPackage -> membershipLifecyclePolicy.isEffective(sessionPackage, date))
             .filter(sessionPackage -> sessionPackage.getMembership().getPlan().getPlanType() == PlanType.PT)
-            .filter(sessionPackage -> !sessionPackage.getEndDate().isBefore(today))
             .filter(sessionPackage -> sessionPackage.getRemainingPtSessions() > 0 || sessionPackage.getRemainingPracticeSessions() > 0)
             .toList();
     }
@@ -471,17 +516,8 @@ public class PtService {
     }
 
     private void ensureUsableSessionPackage(PtSessionPackage sessionPackage, LocalDate activityDate, boolean requirePtSession) {
-        if (sessionPackage.getStatus() != SessionPackageStatus.ACTIVE) {
+        if (!membershipLifecyclePolicy.isEffective(sessionPackage, activityDate)) {
             throw new BadRequestException("Gói PT không còn hoạt động.");
-        }
-        if (sessionPackage.getMembership().getStatus() == MembershipStatus.CANCELLED) {
-            throw new BadRequestException("Lượt đăng ký gói PT đã bị hủy.");
-        }
-        if (activityDate.isBefore(sessionPackage.getStartDate())) {
-            throw new BadRequestException("Gói PT chưa đến ngày bắt đầu sử dụng.");
-        }
-        if (sessionPackage.getEndDate().isBefore(activityDate)) {
-            throw new BadRequestException("Gói PT đã hết hạn sử dụng.");
         }
         if (requirePtSession && sessionPackage.getRemainingPtSessions() <= 0) {
             throw new BadRequestException("Gói PT không còn buổi PT để check-in.");
@@ -498,9 +534,7 @@ public class PtService {
         if (membership.getPlan().getPlanType() != PlanType.GUIDANCE) {
             throw new BadRequestException("Chỉ gói hướng dẫn/trị liệu mới được ghi buổi hướng dẫn.");
         }
-        if (membership.getStatus() == MembershipStatus.CANCELLED
-            || activityDate.isBefore(membership.getStartDate())
-            || membership.getEndDate().isBefore(activityDate)) {
+        if (!membershipLifecyclePolicy.isEffective(membership, activityDate)) {
             throw new BadRequestException("Gói hướng dẫn/trị liệu đã hết hiệu lực.");
         }
         Integer totalGuidanceSessions = membership.getPlan().getGuidanceSessionCount();
@@ -645,15 +679,43 @@ public class PtService {
     }
 
     private void ensureCanAccessMember(Long memberId) {
+        ensureCanAccessMember(memberId, AppClock.today());
+    }
+
+    private void ensureCanAccessMember(Long memberId, LocalDate date) {
         if (isOwner()) {
             return;
         }
-        Long currentUserId = currentUserId();
-        boolean assigned = ptAssignmentRepository.findByMemberId(memberId).stream()
-            .anyMatch(assignment -> assignment.getStatus() == PtAssignmentStatus.ACTIVE
-                && assignment.getPtUser().getId().equals(currentUserId));
-        if (!assigned) {
+        Member member = memberService.findEntity(memberId);
+        if (member.getStatus() != MemberStatus.ACTIVE
+            || !ptAssignmentPolicy.canAccessMember(memberId, currentUserId(), date)) {
             throw new AccessDeniedException("PT chỉ được xem khách được phân công.");
+        }
+    }
+
+    private void ensureMemberCanBeScheduled(Member member, User ptUser, LocalDate scheduleDate) {
+        ensureOperationalMember(member);
+        if (!ptAssignmentPolicy.canAccessMember(member.getId(), ptUser.getId(), scheduleDate)
+            || !ptAssignmentPolicy.hasAccessiblePtPackage(member.getId(), ptUser.getId(), scheduleDate)) {
+            throw new BadRequestException("PT phụ trách phải được phân công cho học viên và gói PT còn hiệu lực vào ngày đặt lịch.");
+        }
+    }
+
+    private void ensureOperationalMember(Member member) {
+        if (member.getStatus() != MemberStatus.ACTIVE) {
+            throw new BadRequestException("Hội viên đang ngừng hoạt động hoặc đã lưu trữ, không thể điều phối PT.");
+        }
+    }
+
+    private void ensurePtCanOnlyUpdateOwnPublicProfile(PtProfileRequest request, boolean owner) {
+        if (owner) {
+            return;
+        }
+        if (request.baseSalary() != null
+            || request.teachingRate() != null
+            || request.salesCommissionRate() != null
+            || request.active() != null) {
+            throw new AccessDeniedException("PT cannot change salary, rates, commission, or account status.");
         }
     }
 

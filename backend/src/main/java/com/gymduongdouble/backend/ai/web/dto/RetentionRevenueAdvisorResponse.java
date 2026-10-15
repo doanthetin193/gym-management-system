@@ -27,7 +27,8 @@ public record RetentionRevenueAdvisorResponse(
         long renewalsThisMonth,
         long currentMonthRevenue,
         long previousMonthRevenue,
-        long estimatedRevenueAtRisk
+        long renewalOpportunityValue,
+        long openDebtAmount
     ) {
     }
 

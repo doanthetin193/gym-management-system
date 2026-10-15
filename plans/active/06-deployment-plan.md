@@ -230,7 +230,7 @@ Phase sau:
 - Tạo member test.
 - Tạo/gia hạn gói test.
 - Ghi payment test.
-- Ghi expense test.
+- Kiểm tra công nợ giảm đúng sau khi ghi payment.
 - Tạo PT session test.
 - Kiểm tra backup.
 

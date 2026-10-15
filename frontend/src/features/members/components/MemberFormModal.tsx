@@ -7,6 +7,7 @@ import type { Gender, MemberPayload, MemberProfile, MemberSource, MemberStatus }
 type MemberFormModalProps = {
   mode: 'create' | 'edit'
   member?: MemberProfile | null
+  canManageStatus: boolean
   submitting: boolean
   error: string | null
   onClose: () => void
@@ -56,6 +57,7 @@ function initialState(member?: MemberProfile | null): MemberFormState {
 export function MemberFormModal({
   mode,
   member,
+  canManageStatus,
   submitting,
   error,
   onClose,
@@ -73,7 +75,7 @@ export function MemberFormModal({
       address: form.address.trim() || null,
       zaloPhone: form.zaloPhone.trim() || null,
       source: form.source || null,
-      status: mode === 'edit' ? form.status : null,
+      status: mode === 'edit' && canManageStatus ? form.status : null,
       note: form.note.trim() || null,
     })
   }
@@ -204,7 +206,7 @@ export function MemberFormModal({
             </label>
           </div>
 
-          {mode === 'edit' && (
+          {mode === 'edit' && canManageStatus && (
             <label className="block">
               <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-gray-400">
                 Trạng thái tài khoản

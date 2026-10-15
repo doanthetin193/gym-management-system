@@ -129,8 +129,7 @@ public class ExerciseService {
 
     @Transactional
     public ExerciseResponse incrementView(Long id) {
-        Exercise exercise = exerciseRepository.findByIdAndActiveTrue(id)
-            .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy bài tập/video."));
+        Exercise exercise = findPublicBySlugOrId(String.valueOf(id));
         exercise.setViewCount((exercise.getViewCount() == null ? 0L : exercise.getViewCount()) + 1);
         return ExerciseResponse.from(exercise);
     }
@@ -198,6 +197,9 @@ public class ExerciseService {
 
             if (published != null) {
                 predicates = criteriaBuilder.and(predicates, criteriaBuilder.equal(root.get("active"), published));
+                if (Boolean.TRUE.equals(published)) {
+                    predicates = criteriaBuilder.and(predicates, criteriaBuilder.isTrue(root.get("category").get("active")));
+                }
             }
             if (featured != null) {
                 predicates = criteriaBuilder.and(predicates, criteriaBuilder.equal(root.get("featured"), featured));
@@ -224,10 +226,12 @@ public class ExerciseService {
     private Exercise findPublicBySlugOrId(String slugOrId) {
         if (slugOrId.chars().allMatch(Character::isDigit)) {
             return exerciseRepository.findByIdAndActiveTrue(Long.valueOf(slugOrId))
+                .filter(exercise -> exercise.getCategory() != null && exercise.getCategory().isActive())
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy bài tập/video."));
         }
 
         return exerciseRepository.findBySlugAndActiveTrue(slugOrId)
+            .filter(exercise -> exercise.getCategory() != null && exercise.getCategory().isActive())
             .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy bài tập/video."));
     }
 

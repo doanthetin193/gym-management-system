@@ -9,10 +9,9 @@ import com.gymduongdouble.backend.ai.web.dto.RetentionRevenueAdvisorResponse.Adv
 import com.gymduongdouble.backend.ai.web.dto.RetentionRevenueAdvisorResponse.AdvisorSummary;
 import com.gymduongdouble.backend.common.enums.ActivityType;
 import com.gymduongdouble.backend.common.enums.DebtStatus;
-import com.gymduongdouble.backend.common.enums.MembershipStatus;
+import com.gymduongdouble.backend.common.enums.MemberStatus;
 import com.gymduongdouble.backend.common.enums.PlanType;
 import com.gymduongdouble.backend.common.enums.PtSessionStatus;
-import com.gymduongdouble.backend.common.enums.SessionPackageStatus;
 import com.gymduongdouble.backend.common.time.AppClock;
 import com.gymduongdouble.backend.finance.domain.DebtRecord;
 import com.gymduongdouble.backend.finance.domain.Payment;
@@ -22,6 +21,7 @@ import com.gymduongdouble.backend.member.domain.Member;
 import com.gymduongdouble.backend.member.repository.MemberRepository;
 import com.gymduongdouble.backend.membership.domain.MemberMembership;
 import com.gymduongdouble.backend.membership.repository.MemberMembershipRepository;
+import com.gymduongdouble.backend.membership.service.MembershipLifecyclePolicy;
 import com.gymduongdouble.backend.pt.domain.MemberActivityLog;
 import com.gymduongdouble.backend.pt.domain.PtSessionLog;
 import com.gymduongdouble.backend.pt.domain.PtSessionPackage;
@@ -75,6 +75,7 @@ public class RetentionRevenueAdvisorService {
     private final MemberActivityLogRepository memberActivityLogRepository;
     private final GroqAiClient groqAiClient;
     private final GroqAiProperties groqAiProperties;
+    private final MembershipLifecyclePolicy membershipLifecyclePolicy;
 
     @Transactional(readOnly = true)
     public RetentionRevenueAdvisorResponse analyze(RetentionRevenueAdvisorRequest request) {
@@ -103,7 +104,9 @@ public class RetentionRevenueAdvisorService {
         LocalDate monthEnd = period.atEndOfMonth();
         YearMonth previousPeriod = period.minusMonths(1);
 
-        List<Member> members = memberRepository.findAll();
+        List<Member> members = memberRepository.findAll().stream()
+            .filter(member -> member.getStatus() == MemberStatus.ACTIVE)
+            .toList();
         List<MemberMembership> memberships = memberMembershipRepository.findAll();
         List<Payment> currentPayments = paymentRepository.findByPaymentDateBetween(monthStart, monthEnd);
         List<Payment> previousPayments = paymentRepository.findByPaymentDateBetween(previousPeriod.atDay(1), previousPeriod.atEndOfMonth());
@@ -127,12 +130,14 @@ public class RetentionRevenueAdvisorService {
         long nearExpiryMembers = 0;
         long highRisk = 0;
         long mediumRisk = 0;
-        Map<Long, Long> revenueAtRiskByMember = new LinkedHashMap<>();
+        Map<Long, Long> renewalOpportunityByMember = new LinkedHashMap<>();
 
         for (Member member : members) {
             List<MemberMembership> memberMemberships = membershipsByMember.getOrDefault(member.getId(), List.of());
-            Optional<MemberMembership> latestMembership = latestMembership(memberMemberships);
-            Optional<MemberMembership> activeMembership = activeMembership(memberMemberships, today);
+            Optional<MemberMembership> preferredMembership = membershipLifecyclePolicy.preferredMembership(memberMemberships, today);
+            Optional<MemberMembership> activeMembership = memberMemberships.stream()
+                .filter(membership -> membershipLifecyclePolicy.isEffective(membership, today))
+                .max(Comparator.comparing(MemberMembership::getStartDate).thenComparing(MemberMembership::getEndDate));
             boolean hasOpenDebt = debtsByMember.containsKey(member.getId());
             long memberDebt = debtsByMember.getOrDefault(member.getId(), List.of()).stream()
                 .map(DebtRecord::getRemainingAmount)
@@ -149,7 +154,7 @@ public class RetentionRevenueAdvisorService {
                 if (daysToEnd <= NEAR_EXPIRY_DAYS) {
                     nearExpiryMembers += 1;
                     mediumRisk += 1;
-                    markRevenueAtRisk(revenueAtRiskByMember, member, value);
+                    markRenewalOpportunity(renewalOpportunityByMember, member, value);
                     riskSegments.add(segmentCode(planType, "NEAR_EXPIRY"), segmentLabel(planType, "sắp hết hạn"), value);
                     opportunitySegments.add(segmentCode(planType, "RENEWAL_WINDOW"), segmentLabel(planType, "đang trong cửa sổ gia hạn"), value);
                 }
@@ -168,7 +173,7 @@ public class RetentionRevenueAdvisorService {
                     PtRisk ptRisk = analyzePtRisk(ptPackagesByMember.getOrDefault(member.getId(), List.of()), latestActivityByMember.get(member.getId()), today);
                     if (ptRisk.unusedNearExpiry()) {
                         highRisk += 1;
-                        markRevenueAtRisk(revenueAtRiskByMember, member, value);
+                        markRenewalOpportunity(renewalOpportunityByMember, member, value);
                         riskSegments.add("PT_NEAR_EXPIRY_UNUSED_SESSIONS", "Khách PT gần hết hạn nhưng còn nhiều buổi", value);
                         opportunitySegments.add("PT_RENEWAL_OR_SESSION_RECOVERY", "Khôi phục lịch PT hoặc gia hạn PT", value);
                     }
@@ -177,9 +182,9 @@ public class RetentionRevenueAdvisorService {
                         riskSegments.add("LONG_INACTIVE_PT_MEMBER", "Khách PT gián đoạn lịch tập lâu ngày", value);
                     }
                 }
-            } else if (latestMembership.isPresent() && latestMembership.get().getEndDate().isBefore(today)) {
+            } else if (preferredMembership.isPresent() && preferredMembership.get().getEndDate().isBefore(today)) {
                 expiredMembers += 1;
-                MemberMembership membership = latestMembership.get();
+                MemberMembership membership = preferredMembership.get();
                 long value = money(membership.getActualPrice());
                 long expiredDays = ChronoUnit.DAYS.between(membership.getEndDate(), today);
 
@@ -188,7 +193,7 @@ public class RetentionRevenueAdvisorService {
                 } else {
                     mediumRisk += 1;
                 }
-                markRevenueAtRisk(revenueAtRiskByMember, member, value);
+                markRenewalOpportunity(renewalOpportunityByMember, member, value);
                 riskSegments.add(segmentCode(membership.getPlan().getPlanType(), expiredDays > 7 ? "EXPIRED_OVER_7_DAYS" : "EXPIRED_RECENTLY"), segmentLabel(membership.getPlan().getPlanType(), expiredDays > 7 ? "đã hết hạn hơn 7 ngày" : "vừa hết hạn"), value);
                 opportunitySegments.add(segmentCode(membership.getPlan().getPlanType(), "WINBACK"), segmentLabel(membership.getPlan().getPlanType(), "có thể chăm sóc quay lại"), value);
             }
@@ -197,7 +202,7 @@ public class RetentionRevenueAdvisorService {
         long currentRevenue = currentPayments.stream().map(Payment::getAmount).mapToLong(this::money).sum();
         long previousRevenue = previousPayments.stream().map(Payment::getAmount).mapToLong(this::money).sum();
         long openDebtAmount = activeDebts.stream().map(DebtRecord::getRemainingAmount).mapToLong(this::money).sum();
-        long estimatedRevenueAtRisk = revenueAtRiskByMember.values().stream().mapToLong(Long::longValue).sum();
+        long renewalOpportunityValue = renewalOpportunityByMember.values().stream().mapToLong(Long::longValue).sum();
         long newMembersThisMonth = countNewMembers(membershipsByMember, monthStart, monthEnd);
         long renewalsThisMonth = countRenewals(membershipsByMember, monthStart, monthEnd);
 
@@ -213,7 +218,8 @@ public class RetentionRevenueAdvisorService {
             renewalsThisMonth,
             currentRevenue,
             previousRevenue,
-            estimatedRevenueAtRisk + openDebtAmount
+            renewalOpportunityValue,
+            openDebtAmount
         );
 
         Map<String, Long> sourceMix = members.stream()
@@ -254,8 +260,7 @@ public class RetentionRevenueAdvisorService {
 
     private PtRisk analyzePtRisk(List<PtSessionPackage> packages, LocalDate latestActivity, LocalDate today) {
         return packages.stream()
-            .filter(sessionPackage -> sessionPackage.getStatus() == SessionPackageStatus.ACTIVE)
-            .filter(sessionPackage -> !sessionPackage.getEndDate().isBefore(today))
+            .filter(sessionPackage -> membershipLifecyclePolicy.isEffective(sessionPackage, today))
             .findFirst()
             .map(sessionPackage -> {
                 int total = Math.max(1, sessionPackage.getTotalPtSessions());
@@ -266,19 +271,6 @@ public class RetentionRevenueAdvisorService {
                 return new PtRisk(unusedNearExpiry, longInactive);
             })
             .orElse(new PtRisk(false, false));
-    }
-
-    private Optional<MemberMembership> activeMembership(List<MemberMembership> memberships, LocalDate today) {
-        return memberships.stream()
-            .filter(membership -> membership.getStatus() == MembershipStatus.ACTIVE)
-            .filter(membership -> !membership.getStartDate().isAfter(today))
-            .filter(membership -> !membership.getEndDate().isBefore(today))
-            .max(Comparator.comparing(MemberMembership::getEndDate));
-    }
-
-    private Optional<MemberMembership> latestMembership(List<MemberMembership> memberships) {
-        return memberships.stream()
-            .max(Comparator.comparing(MemberMembership::getEndDate));
     }
 
     private long countNewMembers(Map<Long, List<MemberMembership>> membershipsByMember, LocalDate start, LocalDate end) {
@@ -350,7 +342,8 @@ public class RetentionRevenueAdvisorService {
                 "Theo dõi nhóm sắp hết hạn trong 7 ngày tới."
             ),
             List.of("Số khách hết hạn", "Số khách sắp hết hạn", "Công nợ còn mở", "Giá trị liên quan rủi ro"),
-            "Giá trị liên quan rủi ro cần theo dõi khoảng " + summary.estimatedRevenueAtRisk() + " VND.",
+            "Cơ hội gia hạn/quay lại khoảng " + summary.renewalOpportunityValue()
+                + " VND; công nợ cần thu riêng là " + summary.openDebtAmount() + " VND.",
             providerMessage
         );
     }
@@ -376,9 +369,9 @@ public class RetentionRevenueAdvisorService {
         return value == null ? 0L : value.longValue();
     }
 
-    private void markRevenueAtRisk(Map<Long, Long> revenueAtRiskByMember, Member member, long value) {
+    private void markRenewalOpportunity(Map<Long, Long> renewalOpportunityByMember, Member member, long value) {
         if (member != null && value > 0) {
-            revenueAtRiskByMember.merge(member.getId(), value, Math::max);
+            renewalOpportunityByMember.merge(member.getId(), value, Math::max);
         }
     }
 

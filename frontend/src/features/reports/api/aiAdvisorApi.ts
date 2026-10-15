@@ -12,7 +12,8 @@ export type AiAdvisorSummary = {
   renewalsThisMonth: number
   currentMonthRevenue: number
   previousMonthRevenue: number
-  estimatedRevenueAtRisk: number
+  renewalOpportunityValue: number
+  openDebtAmount: number
 }
 
 export type AiAdvisorSegment = {

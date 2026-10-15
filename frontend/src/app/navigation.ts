@@ -8,7 +8,6 @@ import {
   LibraryBig,
   LineChart,
   Settings,
-  Target,
   Users,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
@@ -31,6 +30,5 @@ export const appNavItems: AppNavItem[] = [
   { icon: ChartNoAxesCombined, label: 'Báo cáo', path: '/reports', status: 'ready', roles: ['OWNER'] },
   { icon: CalendarClock, label: 'Lịch PT', path: '/pt-schedule', status: 'ready', roles: ['OWNER', 'PT'] },
   { icon: LibraryBig, label: 'Thư viện', path: '/owner/exercises', status: 'ready', roles: ['OWNER'] },
-  { icon: Target, label: 'Mục tiêu', path: '/goals', status: 'ready', roles: ['OWNER'] },
   { icon: Settings, label: 'Cài đặt', path: '/settings', status: 'ready', roles: ['OWNER'] },
 ]

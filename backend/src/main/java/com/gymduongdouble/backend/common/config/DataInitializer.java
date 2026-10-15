@@ -2,12 +2,8 @@ package com.gymduongdouble.backend.common.config;
 
 import com.gymduongdouble.backend.common.domain.SystemSetting;
 import com.gymduongdouble.backend.common.enums.ActivityType;
-import com.gymduongdouble.backend.common.enums.BusinessGoalCategory;
-import com.gymduongdouble.backend.common.enums.BusinessGoalMetric;
 import com.gymduongdouble.backend.common.enums.DebtStatus;
 import com.gymduongdouble.backend.common.enums.ExerciseDifficulty;
-import com.gymduongdouble.backend.common.enums.FinancialCategoryType;
-import com.gymduongdouble.backend.common.enums.FinancialTransactionType;
 import com.gymduongdouble.backend.common.enums.Gender;
 import com.gymduongdouble.backend.common.enums.GoalType;
 import com.gymduongdouble.backend.common.enums.MemberSource;
@@ -23,19 +19,13 @@ import com.gymduongdouble.backend.common.enums.ScheduleStatus;
 import com.gymduongdouble.backend.common.enums.SessionPackageStatus;
 import com.gymduongdouble.backend.common.enums.UserStatus;
 import com.gymduongdouble.backend.common.repository.SystemSettingRepository;
-import com.gymduongdouble.backend.dashboard.domain.BusinessGoal;
-import com.gymduongdouble.backend.dashboard.repository.BusinessGoalRepository;
 import com.gymduongdouble.backend.exercise.domain.Exercise;
 import com.gymduongdouble.backend.exercise.domain.ExerciseCategory;
 import com.gymduongdouble.backend.exercise.repository.ExerciseCategoryRepository;
 import com.gymduongdouble.backend.exercise.repository.ExerciseRepository;
 import com.gymduongdouble.backend.finance.domain.DebtRecord;
-import com.gymduongdouble.backend.finance.domain.FinancialCategory;
-import com.gymduongdouble.backend.finance.domain.FinancialTransaction;
 import com.gymduongdouble.backend.finance.domain.Payment;
 import com.gymduongdouble.backend.finance.repository.DebtRecordRepository;
-import com.gymduongdouble.backend.finance.repository.FinancialCategoryRepository;
-import com.gymduongdouble.backend.finance.repository.FinancialTransactionRepository;
 import com.gymduongdouble.backend.finance.repository.PaymentRepository;
 import com.gymduongdouble.backend.member.domain.Member;
 import com.gymduongdouble.backend.member.repository.MemberRepository;
@@ -67,7 +57,6 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.time.YearMonth;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -89,14 +78,12 @@ public class DataInitializer implements ApplicationRunner {
 
     private final RoleRepository roleRepository;
     private final UserRepository userRepository;
-    private final FinancialCategoryRepository financialCategoryRepository;
     private final SystemSettingRepository systemSettingRepository;
     private final MembershipPlanRepository membershipPlanRepository;
     private final MemberRepository memberRepository;
     private final MemberMembershipRepository memberMembershipRepository;
     private final DebtRecordRepository debtRecordRepository;
     private final PaymentRepository paymentRepository;
-    private final FinancialTransactionRepository financialTransactionRepository;
     private final PtProfileRepository ptProfileRepository;
     private final PtAssignmentRepository ptAssignmentRepository;
     private final PtSessionPackageRepository ptSessionPackageRepository;
@@ -107,7 +94,6 @@ public class DataInitializer implements ApplicationRunner {
     private final PtGoalRepository ptGoalRepository;
     private final ExerciseCategoryRepository exerciseCategoryRepository;
     private final ExerciseRepository exerciseRepository;
-    private final BusinessGoalRepository businessGoalRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Value("${app.seed.owner.email}")
@@ -133,14 +119,10 @@ public class DataInitializer implements ApplicationRunner {
     public void run(ApplicationArguments args) {
         seedRoles();
         User owner = seedOwner();
-        seedFinancialCategories();
         seedSystemSettings();
         seedMembershipPlans();
-        normalizeSeedUsers();
 
-        if (demoSeedEnabled) {
-            seedDemoData(owner);
-            normalizeExistingDemoRecords();
+        if (demoSeedEnabled && seedDemoData(owner)) {
             seedAiAdvisorDemoMembers(owner);
             seedDemoMemberLogin();
         }
@@ -168,68 +150,33 @@ public class DataInitializer implements ApplicationRunner {
 
         Role ownerRole = roleRepository.findByCode("OWNER")
             .orElseThrow(() -> new IllegalStateException("OWNER role is missing."));
+        Role ptRole = roleRepository.findByCode("PT")
+            .orElseThrow(() -> new IllegalStateException("PT role is missing."));
 
         User owner = userRepository.findByEmail(ownerEmail).orElseGet(User::new);
         boolean newOwner = owner.getId() == null;
-        owner.setEmail(ownerEmail);
-        if (newOwner || !StringUtils.hasText(owner.getPasswordHash())) {
+        if (newOwner) {
+            owner.setEmail(ownerEmail);
+            owner.setPasswordHash(passwordEncoder.encode(ownerPassword));
+            owner.setFullName(ownerFullName);
+            owner.setPhone(StringUtils.hasText(ownerPhone) ? ownerPhone : null);
+            owner.setStatus(UserStatus.ACTIVE);
+        } else if (!StringUtils.hasText(owner.getPasswordHash())) {
             owner.setPasswordHash(passwordEncoder.encode(ownerPassword));
         }
-        owner.setFullName(ownerFullName);
-        owner.setPhone(StringUtils.hasText(ownerPhone) ? ownerPhone : null);
-        owner.setStatus(UserStatus.ACTIVE);
-        owner.getRoles().clear();
         owner.getRoles().add(ownerRole);
-        return userRepository.save(owner);
-    }
-
-    private void normalizeSeedUsers() {
-        updateSeedUserName(ownerEmail, ownerFullName, ownerPhone);
-        updateSeedUserName("kiet.pt@gymduongdouble.local", "Kiệt PT", "0901000099");
-        updateSeedUserName("tien.pt@gymduongdouble.local", "Tiên PT", "0901000097");
-    }
-
-    private void updateSeedUserName(String email, String fullName, String phone) {
-        if (!StringUtils.hasText(email)) {
-            return;
-        }
-        userRepository.findByEmail(email).ifPresent(user -> {
-            user.setFullName(fullName);
-            user.setPhone(StringUtils.hasText(phone) ? phone : user.getPhone());
-            userRepository.save(user);
-        });
-    }
-
-    private void seedFinancialCategories() {
-        List<SeedFinancialCategory> categories = List.of(
-            new SeedFinancialCategory(FinancialCategoryType.INCOME, "SELF_TRAINING", "Gói tự tập"),
-            new SeedFinancialCategory(FinancialCategoryType.INCOME, "GUIDANCE", "Gói giáo án/hướng dẫn"),
-            new SeedFinancialCategory(FinancialCategoryType.INCOME, "PT_MAIN", "Gói PT chính"),
-            new SeedFinancialCategory(FinancialCategoryType.INCOME, "PT_NEW", "Gói PT mới"),
-            new SeedFinancialCategory(FinancialCategoryType.INCOME, "OTHER_INCOME", "Thu khác"),
-            new SeedFinancialCategory(FinancialCategoryType.EXPENSE, "RENT", "Tiền nhà"),
-            new SeedFinancialCategory(FinancialCategoryType.EXPENSE, "MARKETING", "Quảng cáo"),
-            new SeedFinancialCategory(FinancialCategoryType.EXPENSE, "ELECTRICITY", "Điện"),
-            new SeedFinancialCategory(FinancialCategoryType.EXPENSE, "WATER", "Nước"),
-            new SeedFinancialCategory(FinancialCategoryType.EXPENSE, "WASTE", "Rác"),
-            new SeedFinancialCategory(FinancialCategoryType.EXPENSE, "INTERNET", "Wifi"),
-            new SeedFinancialCategory(FinancialCategoryType.EXPENSE, "DRINKING_WATER", "Nước lọc"),
-            new SeedFinancialCategory(FinancialCategoryType.EXPENSE, "PT_SALARY", "Tiền PT"),
-            new SeedFinancialCategory(FinancialCategoryType.EXPENSE, "MARKETING_SUPPORT", "Tiền MKT"),
-            new SeedFinancialCategory(FinancialCategoryType.EXPENSE, "BONUS", "Thưởng"),
-            new SeedFinancialCategory(FinancialCategoryType.EXPENSE, "HOLIDAY_BONUS", "Thưởng lễ"),
-            new SeedFinancialCategory(FinancialCategoryType.EXPENSE, "PT_SUPPORT_EXPENSE", "Chi hỗ trợ PT"),
-            new SeedFinancialCategory(FinancialCategoryType.EXPENSE, "OTHER_EXPENSE", "Chi khác")
+        owner.getRoles().add(ptRole);
+        User savedOwner = userRepository.save(owner);
+        createPtProfileIfMissing(
+            savedOwner,
+            PtLevel.MAIN,
+            "Chu phong kiem huan luyen vien",
+            "Phu trach van hanh va huan luyen ca nhan.",
+            BigDecimal.ZERO,
+            new BigDecimal("0.30"),
+            new BigDecimal("0.10")
         );
-
-        categories.forEach(category -> financialCategoryRepository.findByCode(category.code()).orElseGet(() -> {
-            FinancialCategory financialCategory = new FinancialCategory();
-            financialCategory.setType(category.type());
-            financialCategory.setCode(category.code());
-            financialCategory.setName(category.name());
-            financialCategory.setActive(true);
-            return financialCategoryRepository.save(financialCategory);
-        }));
+        return savedOwner;
     }
 
     private void seedSystemSettings() {
@@ -257,9 +204,9 @@ public class DataInitializer implements ApplicationRunner {
         });
     }
 
-    private void seedDemoData(User owner) {
+    private boolean seedDemoData(User owner) {
         if (memberRepository.count() > 0) {
-            return;
+            return false;
         }
 
         Role ptRole = roleRepository.findByCode("PT").orElseThrow();
@@ -270,9 +217,6 @@ public class DataInitializer implements ApplicationRunner {
         seedPtProfiles(ptKiet, ptTien);
 
         Map<String, MembershipPlan> plans = seedMembershipPlans();
-        Map<String, FinancialCategory> categories = financialCategoryRepository.findAll().stream()
-            .collect(Collectors.toMap(FinancialCategory::getCode, Function.identity()));
-
         LocalDate today = LocalDate.now();
         Member an = createMember("Nguyễn Văn An", "0901000001", LocalDate.of(1998, 5, 10), Gender.MALE, MemberSource.WALK_IN, "Khách tự tập ổn định.");
         Member binh = createMember("Trần Thị Bình", "0901000002", LocalDate.of(1999, 9, 30), Gender.FEMALE, MemberSource.FACEBOOK, "Sắp hết hạn, cần gọi chăm sóc.");
@@ -289,22 +233,18 @@ public class DataInitializer implements ApplicationRunner {
         MemberMembership lanMembership = createMembership(lan, plans.get("GUIDANCE_30"), owner, today.minusDays(8), today.plusDays(82), bd("900000"), bd("900000"), bd("0"), MembershipStatus.ACTIVE, "Khách giáo án 30 buổi.");
 
         createOpenDebt(duy, duyMembership, bd("6000000"), bd("2000000"), bd("4000000"), today.plusDays(7), "Còn nợ phần còn lại gói PT chính 20 buổi.");
-        createPayment(an, anMembership, null, today, bd("560000"), PaymentMethod.CASH, RevenueCategory.SELF_TRAINING, "Thu đủ gói tự tập 2 tháng.", owner, categories.get("SELF_TRAINING"));
-        createPayment(binh, binhMembership, null, today, bd("300000"), PaymentMethod.BANK_TRANSFER, RevenueCategory.SELF_TRAINING, "Thu đủ gói tự tập 1 tháng.", owner, categories.get("SELF_TRAINING"));
-        createPayment(cuong, cuongMembership, null, today, bd("300000"), PaymentMethod.CASH, RevenueCategory.SELF_TRAINING, "Thu gói tự tập đã hết hạn.", owner, categories.get("SELF_TRAINING"));
-        createPayment(duy, duyMembership, null, today, bd("2000000"), PaymentMethod.BANK_TRANSFER, RevenueCategory.PT_MAIN, "Đóng trước gói PT chính.", owner, categories.get("PT_MAIN"));
-        createPayment(han, hanMembership, null, today, bd("3900000"), PaymentMethod.BANK_TRANSFER, RevenueCategory.PT_NEW, "Thu đủ gói PT mới.", ptKiet, categories.get("PT_NEW"));
-        createPayment(lan, lanMembership, null, today, bd("900000"), PaymentMethod.CASH, RevenueCategory.GUIDANCE, "Thu gói giáo án/hướng dẫn.", owner, categories.get("GUIDANCE"));
-
-        createExpense(today, bd("7000000"), "Tiền nhà tháng này.", categories.get("RENT"), owner);
-        createExpense(today, bd("1200000"), "Chi quảng cáo TikTok/Facebook.", categories.get("MARKETING"), owner);
-        createExpense(today, bd("850000"), "Điện nước, wifi.", categories.get("ELECTRICITY"), owner);
+        createPayment(an, anMembership, null, today, bd("560000"), PaymentMethod.CASH, RevenueCategory.SELF_TRAINING, "Thu đủ gói tự tập 2 tháng.", owner);
+        createPayment(binh, binhMembership, null, today, bd("300000"), PaymentMethod.BANK_TRANSFER, RevenueCategory.SELF_TRAINING, "Thu đủ gói tự tập 1 tháng.", owner);
+        createPayment(cuong, cuongMembership, null, today, bd("300000"), PaymentMethod.CASH, RevenueCategory.SELF_TRAINING, "Thu gói tự tập đã hết hạn.", owner);
+        createPayment(duy, duyMembership, null, today, bd("2000000"), PaymentMethod.BANK_TRANSFER, RevenueCategory.PT_MAIN, "Đóng trước gói PT chính.", owner);
+        createPayment(han, hanMembership, null, today, bd("3900000"), PaymentMethod.BANK_TRANSFER, RevenueCategory.PT_NEW, "Thu đủ gói PT mới.", ptKiet);
+        createPayment(lan, lanMembership, null, today, bd("900000"), PaymentMethod.CASH, RevenueCategory.GUIDANCE, "Thu gói giáo án/hướng dẫn.", owner);
 
         PtSessionPackage duyPackage = createPtPackage(duy, ptTien, duyMembership, 20, 4, 20, 2, today.minusDays(9), today.plusDays(51), SessionPackageStatus.ACTIVE);
         PtSessionPackage hanPackage = createPtPackage(han, ptKiet, hanMembership, 20, 8, 20, 5, today.minusDays(20), today.plusDays(40), SessionPackageStatus.ACTIVE);
 
-        createPtAssignment(duy, ptTien, today.minusDays(9), null, "PT chính theo gói 20 + 20.");
-        createPtAssignment(han, ptKiet, today.minusDays(20), null, "PT mới phụ trách gói 65%.");
+        createPtAssignment(duy, ptTien, today.minusDays(9), duyPackage.getEndDate(), "PT chính theo gói 20 + 20.");
+        createPtAssignment(han, ptKiet, today.minusDays(20), hanPackage.getEndDate(), "PT mới phụ trách gói 65%.");
 
         createSchedule(ptTien, duy, today.plusDays(1), LocalTime.of(17, 0), LocalTime.of(18, 0), ScheduleStatus.SCHEDULED, "Buổi PT thân trên.");
         createSchedule(ptKiet, han, today.plusDays(1), LocalTime.of(18, 0), LocalTime.of(19, 0), ScheduleStatus.SCHEDULED, "Buổi PT chân - mông.");
@@ -329,7 +269,7 @@ public class DataInitializer implements ApplicationRunner {
 
 
         seedExercises();
-        seedBusinessGoals(owner, today);
+        return true;
     }
 
     private User createUser(String email, String fullName, String phone, Role role) {
@@ -372,8 +312,6 @@ public class DataInitializer implements ApplicationRunner {
         }
 
         Map<String, MembershipPlan> plans = seedMembershipPlans();
-        Map<String, FinancialCategory> categories = financialCategoryRepository.findAll().stream()
-            .collect(Collectors.toMap(FinancialCategory::getCode, Function.identity()));
         LocalDate today = LocalDate.now();
         User ptKiet = userRepository.findByEmail("kiet.pt@gymduongdouble.local").orElse(owner);
         User ptTien = userRepository.findByEmail("tien.pt@gymduongdouble.local").orElse(owner);
@@ -394,13 +332,13 @@ public class DataInitializer implements ApplicationRunner {
         MemberMembership namMembership = createMembership(nam, plans.get("SELF_VIP_4M"), owner, today.minusDays(40), today.plusDays(80), bd("2080000"), bd("2080000"), bd("0"), MembershipStatus.ACTIVE, "Khách VIP ổn định.");
         MemberMembership phucMembership = createMembership(phuc, plans.get("SELF_2M"), owner, today.minusDays(3), today.plusDays(57), bd("560000"), bd("560000"), bd("0"), MembershipStatus.ACTIVE, "Khách mới tháng này.");
 
-        createPayment(mai, maiMembership, null, today.minusDays(27), bd("300000"), PaymentMethod.BANK_TRANSFER, RevenueCategory.SELF_TRAINING, "Thu gói tự tập 1 tháng.", owner, categories.get("SELF_TRAINING"));
-        createPayment(bao, baoMembership, null, today.minusDays(72), bd("560000"), PaymentMethod.CASH, RevenueCategory.SELF_TRAINING, "Thu gói tự tập 2 tháng.", owner, categories.get("SELF_TRAINING"));
-        createPayment(khoa, khoaMembership, null, today.minusDays(55), bd("4000000"), PaymentMethod.BANK_TRANSFER, RevenueCategory.PT_MAIN, "Đóng trước gói PT chính.", owner, categories.get("PT_MAIN"));
-        createPayment(ha, haMembership, null, today.minusDays(46), bd("3900000"), PaymentMethod.BANK_TRANSFER, RevenueCategory.PT_NEW, "Thu đủ gói PT mới.", ptKiet, categories.get("PT_NEW"));
-        createPayment(ngoc, ngocMembership, null, today.minusDays(52), bd("1550000"), PaymentMethod.CASH, RevenueCategory.GUIDANCE, "Đóng trước gói cổ vai gáy.", owner, categories.get("GUIDANCE"));
-        createPayment(nam, namMembership, null, today.minusDays(40), bd("2080000"), PaymentMethod.BANK_TRANSFER, RevenueCategory.SELF_TRAINING, "Thu gói VIP 4 tháng.", owner, categories.get("SELF_TRAINING"));
-        createPayment(phuc, phucMembership, null, today.minusDays(3), bd("560000"), PaymentMethod.CASH, RevenueCategory.SELF_TRAINING, "Thu gói tự tập khách mới.", owner, categories.get("SELF_TRAINING"));
+        createPayment(mai, maiMembership, null, today.minusDays(27), bd("300000"), PaymentMethod.BANK_TRANSFER, RevenueCategory.SELF_TRAINING, "Thu gói tự tập 1 tháng.", owner);
+        createPayment(bao, baoMembership, null, today.minusDays(72), bd("560000"), PaymentMethod.CASH, RevenueCategory.SELF_TRAINING, "Thu gói tự tập 2 tháng.", owner);
+        createPayment(khoa, khoaMembership, null, today.minusDays(55), bd("4000000"), PaymentMethod.BANK_TRANSFER, RevenueCategory.PT_MAIN, "Đóng trước gói PT chính.", owner);
+        createPayment(ha, haMembership, null, today.minusDays(46), bd("3900000"), PaymentMethod.BANK_TRANSFER, RevenueCategory.PT_NEW, "Thu đủ gói PT mới.", ptKiet);
+        createPayment(ngoc, ngocMembership, null, today.minusDays(52), bd("1550000"), PaymentMethod.CASH, RevenueCategory.GUIDANCE, "Đóng trước gói cổ vai gáy.", owner);
+        createPayment(nam, namMembership, null, today.minusDays(40), bd("2080000"), PaymentMethod.BANK_TRANSFER, RevenueCategory.SELF_TRAINING, "Thu gói VIP 4 tháng.", owner);
+        createPayment(phuc, phucMembership, null, today.minusDays(3), bd("560000"), PaymentMethod.CASH, RevenueCategory.SELF_TRAINING, "Thu gói tự tập khách mới.", owner);
 
         createOpenDebt(khoa, khoaMembership, bd("6000000"), bd("4000000"), bd("2000000"), today.plusDays(2), "Còn nợ phần sau của gói PT chính.");
         createOpenDebt(ngoc, ngocMembership, bd("2550000"), bd("1550000"), bd("1000000"), today.plusDays(5), "Còn nợ gói cổ vai gáy.");
@@ -408,8 +346,8 @@ public class DataInitializer implements ApplicationRunner {
         PtSessionPackage khoaPackage = createPtPackage(khoa, ptTien, khoaMembership, 20, 6, 20, 4, today.minusDays(55), today.plusDays(5), SessionPackageStatus.ACTIVE);
         PtSessionPackage haPackage = createPtPackage(ha, ptKiet, haMembership, 20, 5, 20, 3, today.minusDays(46), today.plusDays(14), SessionPackageStatus.ACTIVE);
 
-        createPtAssignment(khoa, ptTien, today.minusDays(55), null, "Cần phục hồi lịch PT trước khi hết hạn.");
-        createPtAssignment(ha, ptKiet, today.minusDays(46), null, "Khách PT mới cần kéo lại nhịp tập.");
+        createPtAssignment(khoa, ptTien, today.minusDays(55), khoaPackage.getEndDate(), "Cần phục hồi lịch PT trước khi hết hạn.");
+        createPtAssignment(ha, ptKiet, today.minusDays(46), haPackage.getEndDate(), "Khách PT mới cần kéo lại nhịp tập.");
 
         createSessionLog(khoaPackage, khoa, ptTien, today.minusDays(52), 1, bd("81.0"), PtSessionStatus.COMPLETED, "Đánh giá form squat, push, pull.", "Khởi đầu tốt.");
         createSessionLog(khoaPackage, khoa, ptTien, today.minusDays(40), 2, bd("80.4"), PtSessionStatus.COMPLETED, "Upper body strength.", "Cần đều lịch hơn.");
@@ -445,45 +383,6 @@ public class DataInitializer implements ApplicationRunner {
                 "Chỉ số demo phục vụ kiểm thử AI retention."
             );
         }
-    }
-
-    private void normalizeExistingDemoRecords() {
-        LocalDate today = LocalDate.now();
-        Map<String, String> demoNames = Map.of(
-            "0901000001", "Nguyễn Văn An",
-            "0901000002", "Trần Thị Bình",
-            "0901000003", "Lê Quốc Cường",
-            "0901000004", "Phạm Minh Duy",
-            "0901000005", "Hoàng Gia Hân",
-            "0901000006", "Võ Thanh Lan"
-        );
-
-        memberRepository.findAll().forEach(member -> {
-            String normalizedName = demoNames.get(member.getPhone());
-            if (normalizedName != null) {
-                member.setFullName(normalizedName);
-                member.setZaloPhone(member.getPhone());
-                memberRepository.save(member);
-            }
-        });
-
-        paymentRepository.findAll().stream()
-            .filter(payment -> isDemoMember(payment.getMember()))
-            .forEach(payment -> {
-                payment.setPaymentDate(today);
-                paymentRepository.save(payment);
-            });
-
-        financialTransactionRepository.findAll().stream()
-            .filter(transaction -> transaction.getMember() == null || isDemoMember(transaction.getMember()))
-            .forEach(transaction -> {
-                transaction.setTransactionDate(today);
-                financialTransactionRepository.save(transaction);
-            });
-    }
-
-    private boolean isDemoMember(Member member) {
-        return member != null && member.getPhone() != null && member.getPhone().startsWith("090100000");
     }
 
     private void seedPtProfiles(User ptKiet, User ptTien) {
@@ -658,7 +557,7 @@ public class DataInitializer implements ApplicationRunner {
         return debtRecordRepository.save(debt);
     }
 
-    private Payment createPayment(Member member, MemberMembership membership, DebtRecord debt, LocalDate date, BigDecimal amount, PaymentMethod method, RevenueCategory revenueCategory, String description, User createdBy, FinancialCategory category) {
+    private Payment createPayment(Member member, MemberMembership membership, DebtRecord debt, LocalDate date, BigDecimal amount, PaymentMethod method, RevenueCategory revenueCategory, String description, User createdBy) {
         Payment payment = new Payment();
         payment.setMember(member);
         payment.setMembership(membership);
@@ -669,31 +568,7 @@ public class DataInitializer implements ApplicationRunner {
         payment.setRevenueCategory(revenueCategory);
         payment.setDescription(description);
         payment.setCreatedBy(createdBy);
-        Payment savedPayment = paymentRepository.save(payment);
-
-        FinancialTransaction transaction = new FinancialTransaction();
-        transaction.setType(FinancialTransactionType.INCOME);
-        transaction.setCategory(category);
-        transaction.setAmount(amount);
-        transaction.setTransactionDate(date);
-        transaction.setMember(member);
-        transaction.setMembership(membership);
-        transaction.setPayment(savedPayment);
-        transaction.setDescription(description);
-        transaction.setCreatedBy(createdBy);
-        financialTransactionRepository.save(transaction);
-        return savedPayment;
-    }
-
-    private void createExpense(LocalDate date, BigDecimal amount, String description, FinancialCategory category, User createdBy) {
-        FinancialTransaction transaction = new FinancialTransaction();
-        transaction.setType(FinancialTransactionType.EXPENSE);
-        transaction.setCategory(category);
-        transaction.setAmount(amount);
-        transaction.setTransactionDate(date);
-        transaction.setDescription(description);
-        transaction.setCreatedBy(createdBy);
-        financialTransactionRepository.save(transaction);
+        return paymentRepository.save(payment);
     }
 
     private PtSessionPackage createPtPackage(Member member, User ptUser, MemberMembership membership, int totalPt, int usedPt, int totalPractice, int usedPractice, LocalDate start, LocalDate end, SessionPackageStatus status) {
@@ -871,34 +746,8 @@ public class DataInitializer implements ApplicationRunner {
         });
     }
 
-    private void seedBusinessGoals(User owner, LocalDate today) {
-        YearMonth currentMonth = YearMonth.from(today);
-        createGoalRow(owner, currentMonth, BusinessGoalCategory.FINANCE, BusinessGoalMetric.REVENUE, bd("35000000"), "VND", "Mục tiêu doanh thu tháng.");
-        createGoalRow(owner, currentMonth, BusinessGoalCategory.FINANCE, BusinessGoalMetric.PROFIT, bd("18000000"), "VND", "Mục tiêu lợi nhuận tháng.");
-        createGoalRow(owner, currentMonth, BusinessGoalCategory.SELF_TRAINING_MEMBER, BusinessGoalMetric.CUSTOMER_COUNT, bd("45"), "khách", "Mục tiêu khách tự tập.");
-        createGoalRow(owner, currentMonth, BusinessGoalCategory.GUIDED_CUSTOMER, BusinessGoalMetric.CUSTOMER_COUNT, bd("8"), "khách", "Mục tiêu khách giáo án.");
-        createGoalRow(owner, currentMonth, BusinessGoalCategory.MAIN_PT_CUSTOMER, BusinessGoalMetric.PT_CUSTOMER_COUNT, bd("4"), "khách", "Mục tiêu khách PT chính.");
-        createGoalRow(owner, currentMonth, BusinessGoalCategory.NEW_PT_CUSTOMER, BusinessGoalMetric.PT_CUSTOMER_COUNT, bd("4"), "khách", "Mục tiêu khách PT mới.");
-    }
-
-    private void createGoalRow(User owner, YearMonth month, BusinessGoalCategory category, BusinessGoalMetric metric, BigDecimal target, String unit, String note) {
-        BusinessGoal goal = new BusinessGoal();
-        goal.setYear(month.getYear());
-        goal.setMonth(month.getMonthValue());
-        goal.setCategory(category);
-        goal.setMetricName(metric);
-        goal.setTargetValue(target);
-        goal.setUnit(unit);
-        goal.setNote(note);
-        goal.setCreatedBy(owner);
-        businessGoalRepository.save(goal);
-    }
-
     private BigDecimal bd(String value) {
         return new BigDecimal(value);
-    }
-
-    private record SeedFinancialCategory(FinancialCategoryType type, String code, String name) {
     }
 
     private record SeedPlan(

@@ -1,8 +1,6 @@
 package com.gymduongdouble.backend.membership.service;
 
 import com.gymduongdouble.backend.common.enums.DebtStatus;
-import com.gymduongdouble.backend.common.enums.FinancialCategoryType;
-import com.gymduongdouble.backend.common.enums.FinancialTransactionType;
 import com.gymduongdouble.backend.common.enums.MembershipStatus;
 import com.gymduongdouble.backend.common.enums.PaymentMethod;
 import com.gymduongdouble.backend.common.enums.PlanType;
@@ -12,15 +10,12 @@ import com.gymduongdouble.backend.common.enums.SessionPackageStatus;
 import com.gymduongdouble.backend.common.enums.UserStatus;
 import com.gymduongdouble.backend.common.exception.BadRequestException;
 import com.gymduongdouble.backend.common.exception.ResourceNotFoundException;
+import com.gymduongdouble.backend.common.security.AuthenticatedUser;
 import com.gymduongdouble.backend.common.security.SecurityUtils;
 import com.gymduongdouble.backend.common.time.AppClock;
 import com.gymduongdouble.backend.finance.domain.DebtRecord;
-import com.gymduongdouble.backend.finance.domain.FinancialCategory;
-import com.gymduongdouble.backend.finance.domain.FinancialTransaction;
 import com.gymduongdouble.backend.finance.domain.Payment;
 import com.gymduongdouble.backend.finance.repository.DebtRecordRepository;
-import com.gymduongdouble.backend.finance.repository.FinancialCategoryRepository;
-import com.gymduongdouble.backend.finance.repository.FinancialTransactionRepository;
 import com.gymduongdouble.backend.finance.repository.PaymentRepository;
 import com.gymduongdouble.backend.member.domain.Member;
 import com.gymduongdouble.backend.member.service.MemberAccessService;
@@ -41,6 +36,7 @@ import java.time.LocalDate;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -52,16 +48,14 @@ public class MemberMembershipService {
     private final MemberMembershipRepository memberMembershipRepository;
     private final DebtRecordRepository debtRecordRepository;
     private final PaymentRepository paymentRepository;
-    private final FinancialCategoryRepository financialCategoryRepository;
-    private final FinancialTransactionRepository financialTransactionRepository;
     private final PtSessionPackageRepository ptSessionPackageRepository;
     private final PtProfileRepository ptProfileRepository;
     private final UserRepository userRepository;
     private final MemberAccessService memberAccessService;
+    private final MembershipLifecyclePolicy membershipLifecyclePolicy;
 
     @Transactional
     public MemberMembershipResponse create(Long memberId, CreateMemberMembershipRequest request) {
-        memberAccessService.ensureCanAccessMember(memberId);
         Member member = memberService.findEntity(memberId);
         MembershipPlan plan = membershipPlanRepository.findById(request.planId())
             .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy gói tập."));
@@ -70,8 +64,10 @@ public class MemberMembershipService {
             throw new BadRequestException("Gói tập hiện không hoạt động.");
         }
 
+        memberAccessService.ensureCanCreateMembership(memberId, plan.getPlanType());
         LocalDate startDate = resolveStartDate(member.getId(), request.startDate());
         LocalDate endDate = resolveEndDate(plan, request, startDate);
+        ensureHistoricalDatesDoNotOverlap(member.getId(), startDate, endDate);
         BigDecimal actualPrice = request.actualPrice() == null ? plan.getDefaultPrice() : request.actualPrice();
         BigDecimal discountAmount = request.discountAmount() == null ? BigDecimal.ZERO : request.discountAmount();
         if (discountAmount.compareTo(actualPrice) > 0) {
@@ -90,7 +86,7 @@ public class MemberMembershipService {
         MemberMembership membership = new MemberMembership();
         membership.setMember(member);
         membership.setPlan(plan);
-        membership.setSoldByUser(findUserOrNull(request.soldByUserId()));
+        membership.setSoldByUser(resolveSoldByUser(request.soldByUserId()));
         membership.setStartDate(startDate);
         membership.setEndDate(endDate);
         membership.setActualPrice(actualPrice);
@@ -104,16 +100,20 @@ public class MemberMembershipService {
         MemberMembership saved = memberMembershipRepository.save(membership);
         DebtRecord debtRecord = createDebtIfNeeded(saved, debtAmount);
         createInitialPaymentIfNeeded(saved, debtRecord, initialPaidAmount, request);
-        createPtPackageIfNeeded(saved, request.ptUserId());
+        createPtPackageIfNeeded(saved, resolvePtUserId(request.ptUserId(), plan.getPlanType()));
 
-        return MemberMembershipResponse.from(saved);
+        return MemberMembershipResponse.from(saved, membershipLifecyclePolicy.effectiveStatus(saved, AppClock.today()));
     }
 
     @Transactional(readOnly = true)
     public List<MemberMembershipResponse> listByMember(Long memberId) {
         memberAccessService.ensureCanAccessMember(memberId);
+        LocalDate today = AppClock.today();
         return memberMembershipRepository.findByMemberIdOrderByStartDateDesc(memberId).stream()
-            .map(MemberMembershipResponse::from)
+            .map(membership -> MemberMembershipResponse.from(
+                membership,
+                membershipLifecyclePolicy.effectiveStatus(membership, today)
+            ))
             .toList();
     }
 
@@ -124,6 +124,9 @@ public class MemberMembershipService {
     }
 
     private LocalDate resolveStartDate(Long memberId, LocalDate requestedStartDate) {
+        if (requestedStartDate.isBefore(AppClock.today())) {
+            return requestedStartDate;
+        }
         return memberMembershipRepository.findByMemberIdOrderByStartDateDesc(memberId).stream()
             .filter(membership -> membership.getStatus() != MembershipStatus.CANCELLED)
             .filter(membership -> !membership.getEndDate().isBefore(requestedStartDate))
@@ -131,6 +134,19 @@ public class MemberMembershipService {
             .max(LocalDate::compareTo)
             .map(endDate -> endDate.plusDays(1))
             .orElse(requestedStartDate);
+    }
+
+    private void ensureHistoricalDatesDoNotOverlap(Long memberId, LocalDate startDate, LocalDate endDate) {
+        if (!startDate.isBefore(AppClock.today())) {
+            return;
+        }
+        boolean overlapsExistingMembership = memberMembershipRepository.findByMemberIdOrderByStartDateDesc(memberId).stream()
+            .filter(membership -> membership.getStatus() != MembershipStatus.CANCELLED)
+            .anyMatch(membership -> !membership.getEndDate().isBefore(startDate)
+                && !membership.getStartDate().isAfter(endDate));
+        if (overlapsExistingMembership) {
+            throw new BadRequestException("Gói lịch sử bị chồng thời hạn với gói đã có. Vui lòng kiểm tra lại ngày bắt đầu và kết thúc.");
+        }
     }
 
     private LocalDate resolveEndDate(MembershipPlan plan, CreateMemberMembershipRequest request, LocalDate startDate) {
@@ -187,10 +203,9 @@ public class MemberMembershipService {
         payment.setRevenueCategory(inferRevenueCategory(membership));
         payment.setDescription(request.initialPaymentNote() == null ? request.note() : request.initialPaymentNote());
         payment.setCreatedBy(currentUserOrNull());
-        Payment savedPayment = paymentRepository.save(payment);
+        paymentRepository.save(payment);
 
         syncDebtAndMembership(debtRecord, membership, amount);
-        createIncomeTransaction(savedPayment);
     }
 
     private LocalDate resolveInitialPaymentDate(LocalDate requestedDate) {
@@ -267,33 +282,52 @@ public class MemberMembershipService {
         return RevenueCategory.OTHER_INCOME;
     }
 
-    private void createIncomeTransaction(Payment payment) {
-        RevenueCategory revenueCategory = payment.getRevenueCategory();
-        FinancialCategory category = financialCategoryRepository.findByCode(revenueCategory.name())
-            .orElseGet(() -> {
-                FinancialCategory newCategory = new FinancialCategory();
-                newCategory.setType(FinancialCategoryType.INCOME);
-                newCategory.setCode(revenueCategory.name());
-                newCategory.setName(revenueCategory.name());
-                newCategory.setActive(true);
-                return financialCategoryRepository.save(newCategory);
-            });
-
-        FinancialTransaction transaction = new FinancialTransaction();
-        transaction.setType(FinancialTransactionType.INCOME);
-        transaction.setCategory(category);
-        transaction.setAmount(payment.getAmount());
-        transaction.setTransactionDate(payment.getPaymentDate());
-        transaction.setMember(payment.getMember());
-        transaction.setMembership(payment.getMembership());
-        transaction.setPayment(payment);
-        transaction.setDescription(payment.getDescription());
-        transaction.setCreatedBy(payment.getCreatedBy());
-        financialTransactionRepository.save(transaction);
-    }
-
     private User currentUserOrNull() {
         return SecurityUtils.currentUserIdOrNull() == null ? null : findUserOrNull(SecurityUtils.currentUserIdOrNull());
+    }
+
+    private User resolveSoldByUser(Long requestedUserId) {
+        if (isOwner()) {
+            return findUserOrNull(requestedUserId);
+        }
+        User currentPt = currentPtUser();
+        rejectForeignPtUser(requestedUserId, currentPt.getId());
+        return currentPt;
+    }
+
+    private Long resolvePtUserId(Long requestedPtUserId, PlanType planType) {
+        if (isOwner()) {
+            return requestedPtUserId;
+        }
+        User currentPt = currentPtUser();
+        rejectForeignPtUser(requestedPtUserId, currentPt.getId());
+        return planType == PlanType.PT ? currentPt.getId() : null;
+    }
+
+    private User currentPtUser() {
+        User user = currentUserOrNull();
+        if (user == null || !hasRole("PT")) {
+            throw new AccessDeniedException("Chỉ tài khoản PT mới có thể thực hiện thao tác này.");
+        }
+        return user;
+    }
+
+    private void rejectForeignPtUser(Long requestedUserId, Long currentUserId) {
+        if (requestedUserId != null && !requestedUserId.equals(currentUserId)) {
+            throw new AccessDeniedException("PT chỉ có thể ghi nhận chính mình là người bán hoặc phụ trách gói.");
+        }
+    }
+
+    private boolean isOwner() {
+        return hasRole("OWNER");
+    }
+
+    private boolean hasRole(String roleCode) {
+        return SecurityUtils.currentUser()
+            .map(AuthenticatedUser::getAuthorities)
+            .stream()
+            .flatMap(java.util.Collection::stream)
+            .anyMatch(authority -> authority.getAuthority().equals("ROLE_" + roleCode));
     }
 
     private User findUserOrNull(Long id) {

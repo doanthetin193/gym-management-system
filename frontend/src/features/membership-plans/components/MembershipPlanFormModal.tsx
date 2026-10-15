@@ -179,11 +179,12 @@ export function MembershipPlanFormModal({ submitting, error, onClose, onSubmit }
                   <span className="text-xs font-bold text-[var(--text-strong)]">Số buổi hướng dẫn / ôn tập</span>
                   <input
                     type="number"
-                    min={0}
+                    min={1}
                     value={form.practiceSessionCount}
                     onChange={(event) => setForm((current) => ({ ...current, practiceSessionCount: event.target.value }))}
                     placeholder="VD: 12, 20, 40, 60"
                     className="mt-1.5 h-10 w-full rounded-xl border border-[var(--line)] bg-[var(--input-bg)] px-3 text-xs font-semibold text-[var(--text-strong)] outline-none transition focus:border-amber-500"
+                    required
                   />
                 </label>
               </>
