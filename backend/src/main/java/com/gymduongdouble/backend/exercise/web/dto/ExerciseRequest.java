@@ -32,12 +32,6 @@ public record ExerciseRequest(
     String tiktokUrl,
 
     String thumbnailUrl,
-
-    @Size(max = 120, message = "Tên tác giả tối đa 120 ký tự.")
-    String authorName,
-
-    String authorTiktokUrl,
-
     Boolean featured,
     Boolean published
 ) {

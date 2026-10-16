@@ -7,6 +7,8 @@ import com.gymduongdouble.backend.common.exception.BadRequestException;
 import com.gymduongdouble.backend.common.exception.ConflictException;
 import com.gymduongdouble.backend.common.exception.ResourceNotFoundException;
 import com.gymduongdouble.backend.common.security.AuthenticatedUser;
+import com.gymduongdouble.backend.common.security.PasswordPolicy;
+import com.gymduongdouble.backend.common.validation.VietnamPhoneNormalizer;
 import com.gymduongdouble.backend.common.security.SecurityUtils;
 import com.gymduongdouble.backend.common.time.AppClock;
 import com.gymduongdouble.backend.finance.domain.DebtRecord;
@@ -53,22 +55,26 @@ public class MemberService {
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
+    private final PasswordPolicy passwordPolicy;
     private final MemberAccessService memberAccessService;
     private final MembershipLifecyclePolicy membershipLifecyclePolicy;
+    private final VietnamPhoneNormalizer phoneNormalizer;
 
     @Transactional
     public MemberResponse create(MemberCreateRequest request) {
-        memberRepository.findByPhone(request.phone().trim()).ifPresent(member -> {
+        String normalizedPhone = phoneNormalizer.normalizeRequired(request.phone(), "Số điện thoại");
+        String normalizedZaloPhone = phoneNormalizer.normalizeOptional(request.zaloPhone(), "Số Zalo");
+        memberRepository.findByPhone(normalizedPhone).ifPresent(member -> {
             throw new ConflictException("Số điện thoại đã tồn tại trong hệ thống.");
         });
 
         Member member = new Member();
         member.setFullName(request.fullName().trim());
-        member.setPhone(request.phone().trim());
+        member.setPhone(normalizedPhone);
         member.setDateOfBirth(request.dateOfBirth());
         member.setGender(request.gender());
         member.setAddress(request.address());
-        member.setZaloPhone(StringUtils.hasText(request.zaloPhone()) ? request.zaloPhone().trim() : request.phone().trim());
+        member.setZaloPhone(normalizedZaloPhone == null ? normalizedPhone : normalizedZaloPhone);
         member.setSource(request.source());
         member.setStatus(MemberStatus.ACTIVE);
         member.setNote(request.note());
@@ -119,7 +125,8 @@ public class MemberService {
     public MemberResponse update(Long id, MemberUpdateRequest request) {
         memberAccessService.ensureCanAccessMember(id);
         Member member = findEntity(id);
-        String normalizedPhone = request.phone().trim();
+        String normalizedPhone = phoneNormalizer.normalizeRequired(request.phone(), "Số điện thoại");
+        String normalizedZaloPhone = phoneNormalizer.normalizeOptional(request.zaloPhone(), "Số Zalo");
 
         if (memberRepository.existsByPhoneAndIdNot(normalizedPhone, id)) {
             throw new ConflictException("Số điện thoại đã tồn tại trong hệ thống.");
@@ -130,7 +137,7 @@ public class MemberService {
         member.setDateOfBirth(request.dateOfBirth());
         member.setGender(request.gender());
         member.setAddress(request.address());
-        member.setZaloPhone(StringUtils.hasText(request.zaloPhone()) ? request.zaloPhone().trim() : normalizedPhone);
+        member.setZaloPhone(normalizedZaloPhone == null ? normalizedPhone : normalizedZaloPhone);
         member.setSource(request.source());
         if (request.status() != null) {
             boolean owner = isOwner();
@@ -230,7 +237,7 @@ public class MemberService {
         String defaultEmail = portalEmailFor(member, cleanPhone);
         User user = findOrCreatePortalUser(member, cleanPhone, defaultEmail);
 
-        String pass = requirePortalPassword(initialPassword);
+        String pass = passwordPolicy.requireValid(initialPassword, defaultEmail, cleanPhone);
         user.setPasswordHash(passwordEncoder.encode(pass));
         user.setStatus(UserStatus.ACTIVE);
         User savedUser = userRepository.save(user);
@@ -261,8 +268,9 @@ public class MemberService {
             throw new BadRequestException("Hội viên chưa có tài khoản Portal.");
         }
 
-        String pass = requirePortalPassword(newPassword);
+        String pass = passwordPolicy.requireValid(newPassword, member.getUser().getEmail(), member.getUser().getPhone());
         member.getUser().setPasswordHash(passwordEncoder.encode(pass));
+        member.getUser().revokeActiveTokens();
         userRepository.save(member.getUser());
         return getDetail(memberId);
     }
@@ -356,14 +364,4 @@ public class MemberService {
         return "member." + (phoneDigits.isEmpty() ? member.getId() : phoneDigits) + "@gymduongdouble.local";
     }
 
-    private String requirePortalPassword(String password) {
-        if (!StringUtils.hasText(password)) {
-            throw new BadRequestException("Mật khẩu portal là bắt buộc.");
-        }
-        String cleanPassword = password.trim();
-        if (cleanPassword.length() < 6) {
-            throw new BadRequestException("Mật khẩu portal tối thiểu 6 ký tự.");
-        }
-        return cleanPassword;
-    }
 }

@@ -56,7 +56,9 @@ function generateTemporaryPassword() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789@#$'
   const bytes = new Uint32Array(10)
   window.crypto.getRandomValues(bytes)
-  return Array.from(bytes, (value) => chars[value % chars.length]).join('')
+  const letters = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
+  const digits = '23456789'
+  return `${letters[bytes[0] % letters.length]}${digits[bytes[1] % digits.length]}${Array.from(bytes.slice(2), (value) => chars[value % chars.length]).join('')}`
 }
 
 function errorMessage(error: unknown) {
@@ -68,6 +70,13 @@ function errorMessage(error: unknown) {
 
 function formatMoney(value: number) {
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(value)
+}
+
+function formatLastLogin(value: string | null) {
+  if (!value) {
+    return 'Chưa đăng nhập'
+  }
+  return new Intl.DateTimeFormat('vi-VN', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(value))
 }
 
 export function SettingsPage() {
@@ -433,6 +442,9 @@ export function SettingsPage() {
                                 <span className="text-xs text-[var(--text-muted)] truncate block">
                                   {account.email}
                                 </span>
+                                <span className="mt-0.5 block text-[11px] font-semibold text-[var(--text-muted)]">
+                                  Lần đăng nhập: {formatLastLogin(account.lastLoginAt)}
+                                </span>
                               </div>
                             </div>
                           </td>
@@ -619,6 +631,7 @@ export function SettingsPage() {
                       <input
                         type="text"
                         required
+                        minLength={8}
                         value={newTeamUserForm.password}
                         onChange={(e) => setNewTeamUserForm({ ...newTeamUserForm, password: e.target.value })}
                         placeholder="Nhập hoặc tạo mật khẩu tạm"
@@ -688,6 +701,7 @@ export function SettingsPage() {
                     <input
                       type="text"
                       required
+                      minLength={8}
                       value={newPasswordInput}
                       onChange={(e) => setNewPasswordInput(e.target.value)}
                       placeholder="Nhập mật khẩu mới..."

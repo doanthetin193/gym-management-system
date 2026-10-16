@@ -5,6 +5,7 @@ type DatePartsSelectProps = {
   minIso?: string
   maxIso?: string
   required?: boolean
+  disabled?: boolean
   allowEmpty?: boolean
   helperText?: string
   yearBack?: number
@@ -55,6 +56,7 @@ export function DatePartsSelect({
   minIso,
   maxIso,
   required,
+  disabled = false,
   allowEmpty,
   helperText,
   yearBack = 10,
@@ -101,6 +103,7 @@ export function DatePartsSelect({
           }}
           className={selectClassName}
           required={required}
+          disabled={disabled}
         >
           {allowEmpty ? <option value="">Ngày</option> : null}
           {days.map((day) => (
@@ -120,6 +123,7 @@ export function DatePartsSelect({
           }}
           className={selectClassName}
           required={required}
+          disabled={disabled}
         >
           {allowEmpty ? <option value="">Tháng</option> : null}
           {months.map((month) => (
@@ -139,6 +143,7 @@ export function DatePartsSelect({
           }}
           className={selectClassName}
           required={required}
+          disabled={disabled}
         >
           {allowEmpty ? <option value="">Năm</option> : null}
           {years.map((year) => (

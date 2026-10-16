@@ -37,6 +37,7 @@ public class JwtService {
         payload.put("uid", user.getId());
         payload.put("name", user.getFullName());
         payload.put("roles", roles(user));
+        payload.put("ver", user.getAuthVersion());
         payload.put("iat", now.getEpochSecond());
         payload.put("exp", expiresAt.getEpochSecond());
 
@@ -46,9 +47,15 @@ public class JwtService {
         return headerPart + "." + payloadPart + "." + signaturePart;
     }
 
-    public String extractEmail(String token) {
-        Map<String, Object> claims = parseAndValidate(token);
+    public String extractEmail(Map<String, Object> claims) {
         return claims.get("sub").toString();
+    }
+
+    public void requireCurrentTokenVersion(Map<String, Object> claims, AuthenticatedUser user) {
+        Object tokenVersion = claims.get("ver");
+        if (!(tokenVersion instanceof Number version) || version.longValue() != user.getAuthVersion()) {
+            throw new BadRequestException("Token đã bị thu hồi.");
+        }
     }
 
     public Map<String, Object> parseAndValidate(String token) {

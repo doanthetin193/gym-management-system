@@ -19,11 +19,8 @@ public record ExerciseResponse(
     String tiktokUrl,
     String tiktokVideoId,
     String thumbnailUrl,
-    String authorName,
-    String authorTiktokUrl,
     boolean featured,
-    boolean published,
-    Long viewCount
+    boolean published
 ) {
 
     public static ExerciseResponse from(Exercise exercise) {
@@ -43,11 +40,8 @@ public record ExerciseResponse(
             exercise.getTiktokUrl(),
             exercise.getTiktokVideoId(),
             exercise.getThumbnailUrl(),
-            exercise.getAuthorName(),
-            exercise.getAuthorTiktokUrl(),
             exercise.isFeatured(),
-            exercise.isActive(),
-            exercise.getViewCount()
+            exercise.isActive()
         );
     }
 }

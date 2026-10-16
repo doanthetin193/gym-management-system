@@ -365,8 +365,6 @@ export function OwnerExercisesPage() {
                       url={exercise.tiktokUrl ?? (videoId ? `https://www.tiktok.com/@video/video/${videoId}` : '')}
                       videoId={videoId}
                       title={exercise.title}
-                      authorName={exercise.authorName ?? undefined}
-                      thumbnailUrl={exercise.thumbnailUrl}
                       onOpenModal={() => setViewingExercise(exercise)}
                     />
                   </div>

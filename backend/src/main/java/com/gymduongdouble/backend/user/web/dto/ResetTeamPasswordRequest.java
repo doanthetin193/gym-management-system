@@ -5,7 +5,7 @@ import jakarta.validation.constraints.Size;
 
 public record ResetTeamPasswordRequest(
     @NotBlank(message = "Mật khẩu mới không được để trống")
-    @Size(min = 6, message = "Mật khẩu tối thiểu 6 ký tự")
+    @Size(min = 8, message = "Mật khẩu tối thiểu 8 ký tự")
     String newPassword
 ) {
     @Override

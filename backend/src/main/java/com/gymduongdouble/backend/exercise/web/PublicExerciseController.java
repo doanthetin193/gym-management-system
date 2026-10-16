@@ -10,7 +10,6 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -44,8 +43,4 @@ public class PublicExerciseController {
         return ApiResponse.ok(exerciseService.getPublicExercise(slugOrId));
     }
 
-    @PostMapping("/exercises/{id}/view")
-    public ApiResponse<ExerciseResponse> incrementView(@PathVariable Long id) {
-        return ApiResponse.ok(exerciseService.incrementView(id));
-    }
 }

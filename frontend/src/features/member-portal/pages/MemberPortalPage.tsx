@@ -16,15 +16,15 @@ import type { FormEvent, ReactNode } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { ApiClientError } from '../../../shared/api/apiClient'
+import { localIsoDate } from '../../../shared/lib/date'
 import { changePassword } from '../../auth/api/authApi'
 import { memberStatusLabels, membershipStatusLabels } from '../../members/types/member'
-import type { MemberMembership } from '../../members/types/member'
 import { paymentMethodLabels } from '../../payments/types/payment'
 import type { BodyMeasurement } from '../../pt-schedule/types/pt'
 import { getMyMemberPortal } from '../api/memberPortalApi'
 import type { MemberPortal } from '../types/memberPortal'
 
-type MeasurementMetric = 'weight' | 'waist' | 'chest' | 'hip'
+type MeasurementMetric = 'weight' | 'waist'
 
 const gymZaloUrl = 'https://zalo.me/0965193907'
 
@@ -34,6 +34,12 @@ const scheduleStatusLabels: Record<string, string> = {
   CANCELLED: 'Đã hủy',
   MISSED: 'Vắng mặt',
   RESCHEDULED: 'Dời lịch',
+}
+
+const sessionStatusLabels: Record<string, string> = {
+  COMPLETED: 'Đã tập',
+  CANCELLED: 'Đã hủy',
+  MISSED: 'Vắng mặt',
 }
 
 const goalTypeLabels: Record<string, string> = {
@@ -64,11 +70,6 @@ function daysUntil(value: string | null | undefined) {
   const target = new Date(`${value}T00:00:00`)
   today.setHours(0, 0, 0, 0)
   return Math.ceil((target.getTime() - today.getTime()) / 86_400_000)
-}
-
-function latestMembership(activeMemberships: MemberMembership[], membershipHistory: MemberMembership[]) {
-  return [...activeMemberships, ...membershipHistory]
-    .sort((left, right) => right.endDate.localeCompare(left.endDate))[0] ?? null
 }
 
 export function MemberPortalPage() {
@@ -145,14 +146,23 @@ export function MemberPortalPage() {
     }
   }, [])
 
-  const memberships = portal ? latestMembership(portal.activeMemberships, portal.membershipHistory) : null
-  const daysLeft = daysUntil(memberships?.endDate)
   const activePtPackage = portal?.ptSessionPackages.find((item) => item.status === 'ACTIVE') ?? portal?.ptSessionPackages[0] ?? null
+  const daysLeft = daysUntil(activePtPackage?.endDate)
+  const activePtMembership = activePtPackage && portal
+    ? [...portal.activeMemberships, ...portal.membershipHistory].find((membership) => membership.id === activePtPackage.membershipId) ?? null
+    : null
   const latestMeasurement = portal?.bodyMeasurements[0] ?? null
   const previousMeasurement = portal?.bodyMeasurements[1] ?? null
   const activeGoal = portal?.goals.find((goal) => goal.status === 'ACTIVE') ?? portal?.goals[0] ?? null
   const measurementTrend = useMemo(() => [...(portal?.bodyMeasurements ?? [])].reverse().slice(-8), [portal])
-
+  const nextSchedule = useMemo(() => (portal?.schedules ?? [])
+    .filter((schedule) => schedule.status === 'SCHEDULED' && schedule.scheduleDate >= localIsoDate())
+    .sort((left, right) => `${left.scheduleDate}T${left.startTime}`.localeCompare(`${right.scheduleDate}T${right.startTime}`))[0] ?? null, [portal])
+  const latestSession = portal?.sessionLogs.find((session) => session.status === 'COMPLETED') ?? portal?.sessionLogs[0] ?? null
+  const hasTrendData = measurementTrend.length >= 2 && (
+    measurementTrend.filter((measurement) => measurement.weight !== null).length >= 2
+    || measurementTrend.filter((measurement) => measurement.waist !== null).length >= 2
+  )
   if (loading) {
     return (
       <div className="grid min-h-[60vh] place-items-center">
@@ -217,27 +227,52 @@ export function MemberPortalPage() {
         </div>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <MetricCard icon={Dumbbell} label="Gói hiện tại" value={memberships?.planName ?? 'Chưa có gói'} detail={memberships ? `${formatDate(memberships.startDate)} - ${formatDate(memberships.endDate)}` : 'Liên hệ quầy để kích hoạt'} tone="blue" />
-        <MetricCard icon={CalendarClock} label="Thời hạn còn lại" value={daysLeft === null ? '-' : daysLeft >= 0 ? `Còn ${daysLeft} ngày` : `Quá hạn ${Math.abs(daysLeft)} ngày`} detail={daysLeft !== null && daysLeft <= 7 ? 'Nên liên hệ gia hạn sớm' : 'Theo dõi hạn gói tập'} tone={daysLeft !== null && daysLeft < 0 ? 'red' : 'yellow'} />
-        <MetricCard icon={CreditCard} label="Công nợ" value={formatMoney(portal.totalDebt)} detail={portal.totalDebt > 0 ? 'Cần thanh toán tại quầy hoặc chuyển khoản' : 'Không còn nợ'} tone={portal.totalDebt > 0 ? 'red' : 'green'} />
-        <MetricCard icon={Activity} label="Buổi PT còn lại" value={activePtPackage ? `${activePtPackage.remainingPtSessions}/${activePtPackage.totalPtSessions}` : 'Không có'} detail={activePtPackage ? `Ôn tập còn ${activePtPackage.remainingPracticeSessions}/${activePtPackage.totalPracticeSessions}` : 'Chỉ áp dụng khách PT'} tone="green" />
-      </section>
-
-      <section className="grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
-        <Panel title="Biểu đồ chỉ số cơ thể" icon={LineChart} action={latestMeasurement ? `Cập nhật gần nhất ${formatDate(latestMeasurement.recordedAt)}` : undefined}>
-          {measurementTrend.length > 0 ? (
-            <div className="grid gap-4 lg:grid-cols-2">
-              <MetricLineChart title="Cân nặng" unit="kg" metric="weight" data={measurementTrend} color="#087ec1" />
-              <MetricLineChart title="Vòng eo" unit="cm" metric="waist" data={measurementTrend} color="#df271b" />
-              <MetricLineChart title="Vòng ngực" unit="cm" metric="chest" data={measurementTrend} color="#facc15" />
-              <MetricLineChart title="Vòng mông" unit="cm" metric="hip" data={measurementTrend} color="#10b981" />
+      <section className="grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
+        <Panel title="Tiến độ gói PT" icon={Dumbbell} action={daysLeft === null ? undefined : daysLeft >= 0 ? `Còn ${daysLeft} ngày` : `Quá hạn ${Math.abs(daysLeft)} ngày`}>
+          {activePtPackage ? (
+            <div className="space-y-5">
+              <div>
+                <p className="text-base font-black text-[var(--text-strong)]">{activePtMembership?.planName ?? 'Gói PT'}</p>
+                <p className="mt-1 text-sm font-semibold text-[var(--text-muted)]">
+                  {formatDate(activePtPackage.startDate)} - {formatDate(activePtPackage.endDate)} · HLV: {activePtPackage.ptFullName ?? 'Chưa phân công'}
+                </p>
+              </div>
+              <div className="space-y-4">
+                <ProgressRow label="Buổi PT cùng HLV" value={activePtPackage.usedPtSessions} total={activePtPackage.totalPtSessions} colorClass="bg-amber-500" />
+                <ProgressRow label="Buổi tự ôn tập" value={activePtPackage.usedPracticeSessions} total={activePtPackage.totalPracticeSessions} colorClass="bg-emerald-500" />
+              </div>
             </div>
           ) : (
-            <EmptyState text="Chưa có chỉ số cơ thể. Chỉ số sẽ được PT cập nhật khi bạn dùng gói PT." />
+            <EmptyState text="Chưa có gói PT hiệu lực." />
           )}
         </Panel>
 
+        <Panel title="Lịch PT tiếp theo" icon={CalendarClock}>
+          {nextSchedule ? (
+            <div className="space-y-4">
+              <div className="rounded-[8px] bg-[var(--surface-muted)] p-4">
+                <p className="text-2xl font-black text-[var(--text-strong)]">{formatDate(nextSchedule.scheduleDate)}</p>
+                <p className="mt-1 text-lg font-black text-[var(--brand-blue)]">
+                  {nextSchedule.startTime.slice(0, 5)}{nextSchedule.endTime ? ` - ${nextSchedule.endTime.slice(0, 5)}` : ''}
+                </p>
+              </div>
+              <div className="text-sm">
+                <p className="font-black text-[var(--text-strong)]">HLV: {nextSchedule.ptFullName}</p>
+                <p className="mt-1 font-semibold text-[var(--text-muted)]">
+                  {nextSchedule.note ?? 'Chưa có ghi chú cho lịch hẹn này.'}
+                </p>
+              </div>
+              <span className="inline-flex rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-[var(--brand-blue)] dark:bg-blue-950/30">
+                {scheduleStatusLabels[nextSchedule.status] ?? nextSchedule.status}
+              </span>
+            </div>
+          ) : (
+            <EmptyState text="Chưa có lịch PT sắp tới. Liên hệ HLV để đặt lịch." />
+          )}
+        </Panel>
+      </section>
+
+      <section className="grid gap-5 xl:grid-cols-2">
         <Panel title="Mục tiêu hiện tại" icon={Goal}>
           {activeGoal ? (
             <div className="space-y-4">
@@ -248,9 +283,8 @@ export function MemberPortalPage() {
                   {formatDate(activeGoal.startDate)} - {formatDate(activeGoal.targetDate)}
                 </p>
               </div>
-              <div className="grid gap-3 sm:grid-cols-3">
+              <div className="grid gap-3 sm:grid-cols-2">
                 <SmallStat label="Cân nặng mục tiêu" value={activeGoal.targetWeight ? `${activeGoal.targetWeight} kg` : '-'} />
-                <SmallStat label="Mỡ mục tiêu" value={activeGoal.targetBodyFat ? `${activeGoal.targetBodyFat}%` : '-'} />
                 <SmallStat label="Eo mục tiêu" value={activeGoal.targetWaist ? `${activeGoal.targetWaist} cm` : '-'} />
               </div>
               {latestMeasurement ? (
@@ -264,6 +298,30 @@ export function MemberPortalPage() {
             </div>
           ) : (
             <EmptyState text="Chưa có mục tiêu PT được ghi nhận." />
+          )}
+        </Panel>
+
+        <Panel title="Buổi tập gần nhất" icon={Activity}>
+          {latestSession ? (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="font-black text-[var(--text-strong)]">{formatDate(latestSession.sessionDate)}</p>
+                  <p className="mt-1 text-sm font-semibold text-[var(--text-muted)]">HLV: {latestSession.ptFullName ?? 'Phòng gym'}</p>
+                </div>
+                <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300">
+                  {sessionStatusLabels[latestSession.status] ?? latestSession.status}
+                </span>
+              </div>
+              {latestSession.content ? <p className="rounded-[8px] bg-[var(--surface-muted)] p-3 text-sm font-semibold leading-6 text-[var(--text-strong)]">{latestSession.content}</p> : null}
+              {latestSession.note ? (
+                <div className="border-l-4 border-[var(--brand-yellow)] pl-3 text-sm font-semibold leading-6 text-[var(--text-muted)]">
+                  {latestSession.note}
+                </div>
+              ) : null}
+            </div>
+          ) : (
+            <EmptyState text="Chưa có buổi PT nào được ghi nhận." />
           )}
         </Panel>
       </section>
@@ -284,23 +342,14 @@ export function MemberPortalPage() {
           )}
         </Panel>
 
-        <Panel title="Lịch PT sắp tới" icon={CalendarClock}>
-          {portal.schedules.length > 0 ? (
-            <div className="space-y-3">
-              {portal.schedules.slice(0, 5).map((schedule) => (
-                <div key={schedule.id} className="flex items-center justify-between gap-3 rounded-[8px] border border-[var(--line)] bg-[var(--surface-muted)] p-3">
-                  <div>
-                    <p className="font-black text-[var(--text-strong)]">{formatDate(schedule.scheduleDate)} · {schedule.startTime.slice(0, 5)}</p>
-                    <p className="mt-1 text-sm font-semibold text-[var(--text-muted)]">{schedule.ptFullName} · {schedule.note ?? 'Buổi tập PT'}</p>
-                  </div>
-                  <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-[var(--text-strong)] shadow-sm dark:bg-slate-900">
-                    {scheduleStatusLabels[schedule.status] ?? schedule.status}
-                  </span>
-                </div>
-              ))}
+        <Panel title="Biểu đồ tiến trình" icon={LineChart} action={latestMeasurement ? `Cập nhật ${formatDate(latestMeasurement.recordedAt)}` : undefined}>
+          {hasTrendData ? (
+            <div className="grid gap-4">
+              <MetricLineChart title="Cân nặng" unit="kg" metric="weight" data={measurementTrend} color="#087ec1" />
+              <MetricLineChart title="Vòng eo" unit="cm" metric="waist" data={measurementTrend} color="#df271b" />
             </div>
           ) : (
-            <EmptyState text="Chưa có lịch PT được xếp." />
+            <EmptyState text="Cần thêm một lần đo nữa để hiển thị biểu đồ thay đổi cân nặng và vòng eo." />
           )}
         </Panel>
       </section>
@@ -466,26 +515,6 @@ export function MemberPortalPage() {
   )
 }
 
-function MetricCard({ icon: Icon, label, value, detail, tone }: { icon: LucideIcon; label: string; value: string; detail: string; tone: 'blue' | 'green' | 'yellow' | 'red' }) {
-  const toneClass = {
-    blue: 'text-blue-600 bg-blue-50 dark:bg-blue-950/30 dark:text-blue-200',
-    green: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 dark:text-emerald-200',
-    yellow: 'text-amber-600 bg-amber-50 dark:bg-amber-950/30 dark:text-amber-200',
-    red: 'text-red-600 bg-red-50 dark:bg-red-950/30 dark:text-red-200',
-  }[tone]
-
-  return (
-    <div className="rounded-[8px] border border-[var(--line)] bg-[var(--surface)] p-4 shadow-sm">
-      <div className={`inline-flex size-11 items-center justify-center rounded-[8px] ${toneClass}`}>
-        <Icon size={21} />
-      </div>
-      <p className="mt-4 text-xs font-black uppercase text-[var(--text-muted)]">{label}</p>
-      <p className="mt-1 text-xl font-black text-[var(--text-strong)]">{value}</p>
-      <p className="mt-1 text-sm font-semibold text-[var(--text-muted)]">{detail}</p>
-    </div>
-  )
-}
-
 function Panel({ title, icon: Icon, action, children }: { title: string; icon: LucideIcon; action?: string; children: ReactNode }) {
   return (
     <div className="rounded-[8px] border border-[var(--line)] bg-[var(--surface)] p-5 shadow-sm">
@@ -563,6 +592,22 @@ function SmallStat({ label, value }: { label: string; value: string }) {
     <div className="rounded-[8px] bg-[var(--surface-muted)] p-3">
       <p className="text-xs font-black uppercase text-[var(--text-muted)]">{label}</p>
       <p className="mt-1 font-black text-[var(--text-strong)]">{value}</p>
+    </div>
+  )
+}
+
+function ProgressRow({ label, value, total, colorClass }: { label: string; value: number; total: number; colorClass: string }) {
+  const progress = total > 0 ? Math.round((value / total) * 100) : 0
+
+  return (
+    <div>
+      <div className="mb-2 flex items-center justify-between gap-3 text-sm">
+        <span className="font-bold text-[var(--text-strong)]">{label}</span>
+        <span className="shrink-0 font-black text-[var(--text-strong)]">{value}/{total} buổi ({progress}%)</span>
+      </div>
+      <div className="h-2.5 overflow-hidden rounded-full bg-[var(--surface-muted)]">
+        <div className={`h-full rounded-full ${colorClass}`} style={{ width: `${progress}%` }} />
+      </div>
     </div>
   )
 }

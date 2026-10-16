@@ -141,7 +141,8 @@ export function MemberFormModal({
               <input
                 value={form.phone}
                 onChange={(event) => setForm((current) => ({ ...current, phone: event.target.value }))}
-                placeholder="Ví dụ: 0901234567"
+                inputMode="tel"
+                placeholder="Ví dụ: 0901 000 004 hoặc +84 901 000 004"
                 className="mt-1.5 h-10 w-full rounded-xl border border-slate-200 bg-slate-50/70 px-3.5 text-xs md:text-sm font-semibold text-slate-900 outline-none transition focus:border-[#087ec1] focus:bg-white focus:ring-2 focus:ring-[#087ec1]/15 dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-[#ffcc08] dark:focus:bg-[#0c1017]"
                 required
               />
@@ -200,7 +201,8 @@ export function MemberFormModal({
               <input
                 value={form.zaloPhone}
                 onChange={(event) => setForm((current) => ({ ...current, zaloPhone: event.target.value }))}
-                placeholder="Để trống nếu trùng SĐT"
+                inputMode="tel"
+                placeholder="Để trống nếu dùng cùng số điện thoại"
                 className="mt-1.5 h-10 w-full rounded-xl border border-slate-200 bg-slate-50/70 px-3.5 text-xs md:text-sm font-semibold text-slate-900 outline-none transition focus:border-[#087ec1] focus:bg-white focus:ring-2 focus:ring-[#087ec1]/15 dark:border-white/10 dark:bg-white/5 dark:text-white dark:focus:border-[#ffcc08] dark:focus:bg-[#0c1017]"
               />
             </label>

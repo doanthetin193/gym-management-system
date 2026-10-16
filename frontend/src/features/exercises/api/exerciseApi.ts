@@ -20,10 +20,6 @@ export function getPublicExercise(slugOrId: string) {
   return apiGet<Exercise>(`/v1/public/exercises/${slugOrId}`)
 }
 
-export function incrementExerciseView(id: number) {
-  return apiPost<Exercise>(`/v1/public/exercises/${id}/view`)
-}
-
 export function listOwnerExerciseCategories() {
   return apiGet<ExerciseCategory[]>('/v1/owner/exercise-categories')
 }

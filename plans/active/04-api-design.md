@@ -1,612 +1,152 @@
-﻿# 04 - THIẾT KẾ API
-
-## 1. Quy ước chung
-
-Base path:
-
-```text
-/api/v1
-```
-
-Chuẩn:
-
-- REST API.
-- JSON.
-- Auth bằng JWT.
-- API list có pagination.
-- Backend luôn kiểm tra quyền.
-
-Pagination response gợi ý:
-
-```json
-{
-  "content": [],
-  "page": 0,
-  "size": 20,
-  "totalElements": 100,
-  "totalPages": 5
-}
-```
-
-Error response gợi ý:
-
-```json
-{
-  "code": "VALIDATION_ERROR",
-  "message": "Dữ liệu không hợp lệ",
-  "details": []
-}
-```
-
-## 2. Auth API
-
-```text
-POST /auth/login
-POST /auth/refresh
-POST /auth/logout
-GET  /auth/me
-POST /auth/change-password
-```
-
-`POST /auth/login`
-
-Request:
-
-```json
-{
-  "email": "0900000000",
-  "password": "secret"
-}
-```
-
-Response:
-
-```json
-{
-  "accessToken": "...",
-  "refreshToken": "...",
-  "user": {
-    "id": 1,
-    "fullName": "Owner",
-    "roles": ["OWNER"]
-  }
-}
-```
-
-## 3. Member API
-
-```text
-GET    /members
-POST   /members
-GET    /members/{id}
-PUT    /members/{id}
-GET    /members/{id}/notes
-POST   /members/{id}/notes
-GET    /members/{id}/memberships
-GET    /members/{id}/payments
-GET    /members/{id}/body-measurements
-```
-
-Filter `GET /members`:
-
-```text
-?keyword=
-&membershipStatus=ACTIVE|EXPIRING_SOON|EXPIRED|NO_MEMBERSHIP
-&birthdayMonth=
-&page=0
-&size=20
-```
-
-Create member request:
-
-```json
-{
-  "fullName": "Nguyễn Văn A",
-  "phone": "0900000000",
-  "dateOfBirth": "1998-09-10",
-  "gender": "MALE",
-  "zaloPhone": "0900000000",
-  "source": "WALK_IN",
-  "note": "Khách mới"
-}
-```
-
-## 4. Membership API
-
-```text
-GET    /membership-plans
-POST   /membership-plans
-PUT    /membership-plans/{id}
-PATCH  /membership-plans/{id}/deactivate
-
-POST   /members/{id}/memberships
-POST   /members/{id}/memberships/{membershipId}/renew
-GET    /memberships/expiring
-GET    /memberships/expired
-```
-
-Create membership plan request:
-
-```json
-{
-  "name": "PT mới 20 + 20",
-  "planType": "PT",
-  "ptLevel": "NEW",
-  "durationDays": 90,
-  "defaultPrice": 3900000,
-  "ptSessionCount": 20,
-  "practiceSessionCount": 20,
-  "guidanceSessionCount": 0,
-  "priceRatio": 0.65
-}
-```
-
-Enum cần thống nhất:
-
-- `planType`: SELF_TRAINING, PT, GUIDANCE, OTHER.
-- `ptLevel`: MAIN, NEW. Chỉ dùng cho gói PT.
-- Gói Giáo án/Hướng Dẫn dùng `planType = GUIDANCE` và `guidanceSessionCount` là 30, 60 hoặc 90.
-- Không dùng `STUDENT`; cột `Sinh viên` trong Excel cũ được hiểu là doanh thu/gói `PT mới`.
-- Không còn `contentAccessLevel` trong request/response vì thư viện TikTok public không phân tầng premium.
-
-Create membership request:
-
-```json
-{
-  "planId": 1,
-  "soldByUserId": 2,
-  "ptUserId": null,
-  "startDate": "2026-09-01",
-  "actualPrice": 900000,
-  "discountAmount": 0,
-  "initialPaidAmount": 500000,
-  "initialPaymentMethod": "BANK_TRANSFER",
-  "initialPaymentDate": "2026-09-01",
-  "initialPaymentNote": "Thanh toán một phần",
-  "note": "Thanh toán một phần"
-}
-```
-
-Ghi chú:
-
-- `soldByUserId` nullable. Nếu PT/chủ phòng trực tiếp sale gói, lưu user đó để phase sau tính hoa hồng sale.
-- `initialPaidAmount` là số tiền trả trước khi tạo/gia hạn gói. Backend tạo payment, debt và income transaction trong cùng transaction.
-- `initialPaymentMethod` bắt buộc khi `initialPaidAmount > 0`.
-- Hoa hồng sale phase sau tính theo số tiền khách thực thanh toán, nhưng người sale nên được lưu ngay từ lúc bán/gia hạn gói.
-
-Response nên có:
-
-```json
-{
-  "id": 10,
-  "memberId": 5,
-  "planName": "Tự tập 3 tháng",
-  "startDate": "2026-09-01",
-  "endDate": "2026-12-01",
-  "actualPrice": 900000,
-  "paidAmount": 500000,
-  "debtAmount": 400000,
-  "sessionPackageId": null,
-  "status": "ACTIVE"
-}
-```
-
-Quy tắc sau khi tạo membership:
-
-- Nếu plan là `PT`, backend tạo `pt_session_packages` và response trả về `sessionPackageId`.
-- Nếu plan là `GUIDANCE`, không tạo `pt_session_packages`; check-in Giáo án dùng `POST /pt/members/{id}/activity-logs` với `activityType = GUIDANCE_CHECKIN`.
-
-## 5. Finance API
-
-```text
-GET    /payments
-POST   /payments
-GET    /debts
-```
-
-Create payment:
-
-```json
-{
-  "memberId": 5,
-  "membershipId": 10,
-  "paymentDate": "2026-09-11",
-  "amount": 500000,
-  "paymentMethod": "BANK_TRANSFER",
-  "note": "Thanh toán gói 3 tháng"
-}
-```
-
-Quy tắc:
-
-- Payment phải gắn với `debtRecordId` hoặc `membershipId` có công nợ đang mở.
-- Backend suy ra `revenueCategory` từ loại gói; client không được tự gán nhóm doanh thu.
-- `paymentDate` là ngày ghi nhận doanh thu và không được ở tương lai.
-- Không có API nhập chi phí hoặc khoản thu ngoài gói tập trong scope MVP.
-
-Reports:
-
-```text
-GET /v1/reports/finance?year=2026
-GET /v1/reports/finance?year=2026&month=9
-```
-
-Finance summary response:
-
-```json
-{
-  "totalIncome": 50000000,
-  "rows": [
-    { "month": 9, "income": 50000000 }
-  ]
-}
-```
-
-## 6. PT API
-
-```text
-GET    /pt/my-members
-GET    /pt/members/{id}
-GET    /pt/schedules
-POST   /pt/schedules
-PUT    /pt/schedules/{id}
-GET    /pt/session-packages
-POST   /pt/session-packages
-GET    /pt/members/{id}/session-logs
-POST   /pt/members/{id}/session-logs
-PUT    /pt/session-logs/{id}
-POST   /pt/members/{id}/activity-logs
-POST   /pt/members/{id}/body-measurements
-POST   /pt/members/{id}/goals
-```
-
-Create PT schedule:
-
-```json
-{
-  "ptUserId": 2,
-  "memberId": 5,
-  "scheduleDate": "2026-10-12",
-  "startTime": "17:00",
-  "endTime": "18:00",
-  "note": "Buổi thân trên"
-}
-```
-
-Quy tắc:
-
-- Lịch mới luôn được tạo với trạng thái `SCHEDULED`.
-- Client không gửi `status` khi tạo lịch mới.
-- Backend chặn lịch trong quá khứ và chặn trùng khung giờ của cùng PT hoặc cùng học viên.
-
-Create PT session:
-
-```json
-{
-  "sessionPackageId": 1,
-  "sessionDate": "2026-09-11",
-  "sessionNumber": 5,
-  "weight": 70.5,
-  "status": "COMPLETED",
-  "content": "Ngực, vai, tay sau",
-  "note": "Tập tốt"
-}
-```
-
-Create activity log cho Ôn tập/Giáo án:
-
-```json
-{
-  "membershipId": 10,
-  "sessionPackageId": 1,
-  "activityType": "PRACTICE",
-  "activityDate": "2026-09-12",
-  "sessionNumber": 5,
-  "weight": 70.2,
-  "note": "Ôn lại bài ngực vai"
-}
-```
-
-Quy tắc:
-
-- `activityType = PRACTICE` dùng cho buổi Ôn tập đi kèm gói PT, nên truyền `sessionPackageId`.
-- `activityType = GUIDANCE_CHECKIN` dùng cho khách Giáo án/Hướng Dẫn, bắt buộc truyền `membershipId`, `sessionPackageId` có thể null.
-- Khách tự tập không dùng activity log.
-- `sessionNumber`, cân nặng, chỉ số cơ thể và mục tiêu cơ thể nếu nhập phải lớn hơn 0.
-- Không ghi được buổi PT/ôn tập/hướng dẫn trước ngày bắt đầu gói hoặc sau ngày hết hạn gói.
-- Ghi trùng cùng buổi/ngày bị chặn để tránh trừ buổi nhiều lần.
-
-Create body measurement:
-
-```json
-{
-  "recordedAt": "2026-09-11",
-  "height": 170,
-  "weight": 70.5,
-  "chest": 95,
-  "waist": 78,
-  "abdomen": 82,
-  "hip": 96,
-  "thigh": 55,
-  "arm": 32,
-  "note": "Tuần 2"
-}
-```
-
-## 7. Training Program API
-
-Không triển khai trong Sprint 5.
-
-Sprint 5 chỉ làm thư viện video TikTok public. Nếu phase sau cần giáo án cá nhân hóa theo tuần, API Training Program sẽ được thiết kế riêng dựa trên nhu cầu thật.
-
-## 8. Public TikTok Exercise Library API
-
-```text
-GET    /public/exercise-categories
-GET    /public/exercises
-GET    /public/exercises/{slugOrId}
-POST   /public/exercises/{id}/view
-
-GET    /owner/exercise-categories
-POST   /owner/exercise-categories
-PUT    /owner/exercise-categories/{id}
-
-GET    /owner/exercises
-POST   /owner/exercises
-PUT    /owner/exercises/{id}
-PATCH  /owner/exercises/{id}/publish
-```
-
-Create exercise:
-
-```json
-{
-  "categoryId": 1,
-  "title": "Bench Press cơ bản",
-  "description": "Video ngắn hướng dẫn form đẩy ngực cho người mới",
-  "instruction": "Giữ vai ổn định, hạ tạ kiểm soát.",
-  "commonMistakes": "Cong lưng quá mức, khóa khuỷu tay.",
-  "level": "BEGINNER",
-  "muscleGroup": "CHEST",
-  "equipment": "BARBELL",
-  "tiktokUrl": "https://www.tiktok.com/@duong.double/video/...",
-  "featured": true,
-  "published": true
-}
-```
-
-Public list filter:
-
-```json
-{
-  "categorySlug": "nguc",
-  "level": "BEGINNER",
-  "keyword": "bench",
-  "featured": true
-}
-```
-
-Nguyên tắc:
-
-- Public API không yêu cầu đăng nhập.
-- Owner/admin API yêu cầu role OWNER.
-- Không hỗ trợ provider video khác trong Sprint 5.
-- Backend chỉ lưu link TikTok/video id/thumbnail nếu lấy được, không upload video lên VPS.
-- Nếu TikTok embed không hoạt động ở frontend, người dùng vẫn có nút mở video trên TikTok.
-
-## 9. Dashboard API
+# 04 - Thiết Kế API
+
+Cập nhật lần cuối: 16/10/2026.
+
+Base URL local dev: http://localhost:8080/api
+
+Tất cả API nghiệp vụ dùng tiền tố /v1. Response thành công theo ApiResponse; lỗi được trả nhất quán qua GlobalExceptionHandler. JSON request/response dùng UTF-8.
+
+## 1. Quy ước bảo mật
+
+- Ngoài trừ login, health và /v1/public/**, request cần Bearer JWT.
+- Method security và service security cùng kiểm tra role/phạm vi dữ liệu.
+- Login và endpoint nhạy cảm có rate limit; khi bị giới hạn trả HTTP 429 và Retry-After.
+- API response có no-cache và security headers.
+- Ngày thu tiền, ngày ghi buổi và ngày đo không được ở tương lai.
+
+## 2. Auth và profile
+
+| Method | Endpoint | Quyền | Mục đích |
+| --- | --- | --- | --- |
+| POST | /v1/auth/login | Public | Đăng nhập bằng email hoặc số điện thoại và password. |
+| GET | /v1/auth/me | Authenticated | Lấy tài khoản hiện tại và roles. |
+| POST | /v1/auth/change-password | Authenticated | Đổi mật khẩu của chính mình, đồng thời thu hồi JWT cũ. |
+
+Login nhận rememberMe để quyết định thời hạn token. Password policy áp dụng cho tạo, reset và đổi mật khẩu.
+
+## 3. Hội viên và Portal
+
+| Method | Endpoint | Quyền | Mục đích |
+| --- | --- | --- | --- |
+| GET | /v1/members | OWNER, PT | Tìm kiếm/lọc hội viên trong phạm vi phân quyền. |
+| POST | /v1/members | OWNER, PT | Tạo hội viên. |
+| GET | /v1/members/{id} | OWNER, PT | Lấy chi tiết hội viên. |
+| PUT | /v1/members/{id} | OWNER, PT | Cập nhật hồ sơ hội viên. |
+| POST | /v1/members/{id}/portal-account | OWNER | Cấp tài khoản Portal MEMBER. |
+| PUT | /v1/members/{id}/portal-account/status | OWNER | Khóa/mở khóa Portal. |
+| POST | /v1/members/{id}/portal-account/reset-password | OWNER | Đặt lại mật khẩu Portal và thu hồi JWT cũ. |
+| DELETE | /v1/members/{id}/portal-account | OWNER | Gỡ liên kết tài khoản Portal khỏi hội viên. |
+| GET | /v1/member-portal/me | MEMBER | Lấy toàn bộ dữ liệu chỉ đọc của chính hội viên. |
+
+PT không được dùng API để xem tùy ý khách tự tập hay khách của PT khác. Service kiểm tra vai trò, phân công và gói PT.
+
+## 4. Bảng giá và đăng ký gói
+
+| Method | Endpoint | Quyền | Mục đích |
+| --- | --- | --- | --- |
+| GET | /v1/membership-plans | OWNER, PT | Lấy gói đang active để bán. |
+| GET | /v1/membership-plans/all | OWNER | Lấy cả gói active/inactive để quản lý. |
+| POST | /v1/membership-plans | OWNER | Tạo bảng giá. |
+| PUT | /v1/membership-plans/{id}/active | OWNER | Bật/tắt gói. |
+| POST | /v1/members/{memberId}/memberships | OWNER, PT | Kích hoạt gói/gia hạn, có thể kèm thu ngay. |
+| GET | /v1/members/{memberId}/memberships | OWNER, PT | Lấy lịch sử gói của hội viên. |
+
+Request tạo membership có planId, startDate, giá, giảm giá, initialPaidAmount và thông tin phiếu thu ban đầu nếu có. Khi initialPaidAmount bằng 0, request không cần tạo payment ngày đó.
+
+## 5. Thu tiền, công nợ và VietQR
+
+| Method | Endpoint | Quyền | Mục đích |
+| --- | --- | --- | --- |
+| POST | /v1/payments | OWNER, PT | Lập phiếu thu mới, bao gồm thu nợ từng phần. |
+| GET | /v1/payments | OWNER, PT | Lọc phiếu thu theo hội viên, khoảng ngày và phương thức. |
+| GET | /v1/debts | OWNER, PT | Lấy công nợ theo phạm vi dữ liệu. |
+| GET | /v1/settings/vietqr | OWNER | Lấy cấu hình VietQR đầy đủ. |
+| PUT | /v1/settings/vietqr | OWNER | Cập nhật cấu hình VietQR. |
+| GET | /v1/public/vietqr-setting | Public | Lấy thông tin VietQR cần hiển thị trong luồng thu tiền. |
+
+CreatePaymentRequest yêu cầu amount dương và paymentMethod. paymentDate nếu bỏ trống sẽ theo quy tắc service, nhưng không bao giờ được là ngày tương lai.
+
+## 6. PT, lịch hẹn và tiến độ
+
+| Method | Endpoint | Quyền | Mục đích |
+| --- | --- | --- | --- |
+| GET | /v1/pt/profiles | OWNER, PT | Danh sách PT phục vụ phân công. |
+| POST | /v1/pt/profiles | OWNER, PT | Tạo/cập nhật profile PT theo phạm vi quyền. |
+| GET | /v1/pt/my-members | OWNER, PT | Danh sách học viên PT. PT chỉ lấy dữ liệu của mình. |
+| POST | /v1/pt/assignments | OWNER, PT | Phân công PT; PT chỉ được tự nhận chính mình. |
+| PUT | /v1/pt/assignments/{id}/reassign | OWNER | Điều chuyển học viên sang PT khác. |
+| GET | /v1/pt/schedules | OWNER, PT | Lấy lịch PT theo PT/khoảng ngày. |
+| POST | /v1/pt/schedules | OWNER, PT | Đặt lịch dạy. |
+| DELETE | /v1/pt/schedules/{id} | OWNER, PT | Xóa lịch phù hợp phạm vi quyền. |
+| GET | /v1/pt/session-packages | OWNER, PT | Lấy gói buổi PT. |
+| GET | /v1/pt/members/{memberId} | OWNER, PT | Lấy hồ sơ vận hành PT của học viên. |
+| POST | /v1/pt/members/{memberId}/session-logs | OWNER, PT | Ghi buổi PT 1-1. |
+| POST | /v1/pt/members/{memberId}/activity-logs | OWNER, PT | Ghi tự ôn tập hoặc check-in hướng dẫn. |
+| POST | /v1/pt/members/{memberId}/body-measurements | OWNER, PT | Lưu số đo cơ thể. |
+| POST | /v1/pt/members/{memberId}/goals | OWNER, PT | Lưu mục tiêu PT. |
+
+Backend xác thực phân công, gói PT, ngày, khách, PT, lịch và session package trước khi chấp nhận request ghi buổi.
+
+## 7. Dashboard, báo cáo và nhắc việc
+
+| Method | Endpoint | Quyền | Mục đích |
+| --- | --- | --- | --- |
+| GET | /v1/dashboard/owner | OWNER | Chỉ số vận hành Dashboard. |
+| GET | /v1/reports/finance | OWNER | Báo cáo doanh thu theo payment_date. |
+| GET | /v1/reports/members | OWNER | Báo cáo tình trạng hội viên. |
+| GET | /v1/notifications | OWNER | Nhắc việc động về hạn gói, công nợ và sinh nhật. |
+| POST | /v1/ai/retention-revenue-advisor | OWNER | Phân tích giữ chân và doanh thu theo tháng. |
+
+XLSX được tạo ở frontend từ dữ liệu API hiện có. Đồng bộ Google Sheet là request trực tiếp từ frontend đến Apps Script URL do OWNER cấu hình; không có API backend riêng cho export hay sync.
+
+## 8. Tài khoản nhân sự
+
+| Method | Endpoint | Quyền | Mục đích |
+| --- | --- | --- | --- |
+| GET | /v1/settings/team-users | OWNER | Danh sách tài khoản OWNER/PT. |
+| POST | /v1/settings/team-users | OWNER | Tạo tài khoản nhân sự. |
+| PUT | /v1/settings/team-users/{id}/role | OWNER | Đổi role hợp lệ. |
+| PUT | /v1/settings/team-users/{id}/status | OWNER | Khóa/mở khóa tài khoản. |
+| POST | /v1/settings/team-users/{id}/reset-password | OWNER | Đặt lại mật khẩu và thu hồi JWT cũ. |
+
+## 9. Thư viện TikTok
+
+Public:
+
+| Method | Endpoint | Mục đích |
+| --- | --- | --- |
+| GET | /v1/public/exercise-categories | Lấy danh mục active. |
+| GET | /v1/public/exercises | Tìm/lọc video public. |
+| GET | /v1/public/exercises/{slugOrId} | Lấy chi tiết bài tập. |
 
 OWNER:
 
-```text
-GET /dashboard/owner
-GET /dashboard/owner/expiring-members
-GET /dashboard/owner/birthdays
-GET /dashboard/owner/revenue
-GET /dashboard/owner/debts
-```
+| Method | Endpoint | Mục đích |
+| --- | --- | --- |
+| GET, POST | /v1/owner/exercise-categories | Liệt kê/tạo danh mục. |
+| PUT | /v1/owner/exercise-categories/{id} | Sửa danh mục. |
+| GET, POST | /v1/owner/exercises | Liệt kê/tạo bài tập. |
+| PUT | /v1/owner/exercises/{id} | Sửa bài tập. |
+| PATCH | /v1/owner/exercises/{id}/published | Ẩn/hiện video public. |
+| DELETE | /v1/owner/exercises/{id} | Xóa bài tập. |
 
-OWNER dashboard response:
+Không có endpoint tăng lượt xem TikTok.
 
-```json
-{
-  "totalMembers": 350,
-  "activeMembers": 260,
-  "expiringSoon": 18,
-  "expired": 42,
-  "newMembersThisMonth": 35,
-  "renewedMembersThisMonth": 22,
-  "monthlyIncome": 50000000,
-  "totalDebt": 5000000
-}
-```
+## 10. Health
 
-PT:
+| Method | Endpoint | Quyền | Mục đích |
+| --- | --- | --- | --- |
+| GET | /v1/health | Public | Kiểm tra backend nhanh. |
+| GET | /actuator/health | Public | Health endpoint của Actuator. |
 
-```text
-GET /dashboard/pt
-GET /dashboard/pt/today-schedule
-GET /dashboard/pt/low-session-members
-GET /dashboard/pt/progress-alerts
-```
+## 11. Endpoint không có trong MVP
 
-MEMBER:
+- Import Excel/CSV.
+- Expense, profit, payroll và business goals.
+- Payment gateway/webhook.
+- Zalo API.
+- Training program theo tuần.
+- AI phân tích chỉ số cá nhân.
+- Video view count.
 
-```text
-GET /dashboard/member
-GET /member/me/membership
-GET /member/me/training-content
-```
-
-## 10. Notification API
-
-```text
-GET /v1/notifications
-```
-
-Notification hiện là dữ liệu tính động từ hạn gói, sinh nhật, công nợ và gói PT còn ít buổi. MVP hiện tại không dùng bảng `notifications`, không có trạng thái read/unread persistent.
-
-## 12. Import API
-
-Import dữ liệu cũ không nằm trong MVP vì chủ phòng đã chốt bắt đầu với dữ liệu mới. Phần này chỉ mở lại ở phase sau nếu có nhu cầu nhập lịch sử Excel.
-
-```text
-POST /imports/members
-POST /imports/memberships
-POST /imports/payments
-GET  /imports/{batchId}
-```
-
-Yêu cầu:
-
-- Có preview/validate trước khi import thật nếu dữ liệu phức tạp.
-- Trả về số dòng thành công/thất bại.
-- Không import mù dữ liệu tài chính nếu chưa kiểm tra.
-
-## 13. API chưa làm trong MVP
-
-- Payroll API.
-- AI chatbot tự do hoặc AI score cá nhân theo từng hội viên.
-- Payment online API.
-- Auto Zalo API.
-- Export PDF API server-side. Xuất `.xlsx` hiện đã xử lý ở frontend/report flow, không còn xếp là API chặn MVP.
-- Import API.
-
-## 14. Quyền truy cập API
-
-OWNER:
-
-- Được gọi tất cả API quản trị.
-
-PT:
-
-- Chỉ gọi API liên quan khách được phân công.
-- Không gọi API finance tổng.
-
-MEMBER:
-
-- Chỉ gọi API `/member/me/*`.
-
-## 15. Ghi chú triển khai
-
-- Các API tạo/sửa dữ liệu tài chính phải ghi audit log.
-- Các API list phải pagination.
-- Các API dashboard không nên query quá nặng; có thể tối ưu sau bằng cache.
-
-## 16. Cập nhật theo implementation hiện tại
-
-Tài liệu chốt hiện trạng sau nâng cấp UI nằm tại `plans/active/10-current-implementation-alignment.md`.
-
-Các nhóm API đã được bổ sung/chốt theo code hiện tại:
-
-### Auth và tài khoản
-
-```text
-POST /v1/auth/login
-GET  /v1/auth/me
-POST /v1/auth/change-password
-
-GET    /v1/settings/team-users
-POST   /v1/settings/team-users
-PUT    /v1/settings/team-users/{id}/role
-PUT    /v1/settings/team-users/{id}/status
-POST   /v1/settings/team-users/{id}/reset-password
-DELETE /v1/settings/team-users/{id}
-```
-
-Không còn endpoint `staff-users`; tên hiện tại là `team-users`, nhưng role vận hành chỉ dùng `PT`.
-
-### Portal hội viên
-
-```text
-GET    /v1/member-portal/me
-
-POST   /v1/members/{id}/portal-account
-PUT    /v1/members/{id}/portal-account/status
-POST   /v1/members/{id}/portal-account/reset-password
-DELETE /v1/members/{id}/portal-account
-```
-
-MEMBER chỉ đọc dữ liệu liên kết với tài khoản của mình, không tự thao tác gói/thanh toán.
-
-### VietQR
-
-```text
-GET /v1/settings/vietqr
-PUT /v1/settings/vietqr
-GET /v1/public/vietqr-setting
-```
-
-`/v1/settings/vietqr` chỉ dành cho OWNER. Public endpoint chỉ dùng để hiển thị QR, không sửa cấu hình.
-
-### PT và phân quyền dữ liệu
-
-```text
-GET    /v1/pt/profiles
-POST   /v1/pt/profiles
-GET    /v1/pt/my-members
-POST   /v1/pt/assignments
-GET    /v1/pt/schedules
-POST   /v1/pt/schedules
-DELETE /v1/pt/schedules/{scheduleId}
-GET    /v1/pt/session-packages
-GET    /v1/pt/members/{memberId}
-POST   /v1/pt/members/{memberId}/session-logs
-POST   /v1/pt/members/{memberId}/activity-logs
-POST   /v1/pt/members/{memberId}/body-measurements
-POST   /v1/pt/members/{memberId}/goals
-```
-
-PT chỉ được truy cập member được phân công hoặc member gói PT chưa có assignment để xử lý đăng ký mới.
-
-### Gói tập active/inactive
-
-```text
-GET /v1/membership-plans
-GET /v1/membership-plans/all
-PUT /v1/membership-plans/{id}/active
-```
-
-Dropdown bán/gia hạn chỉ dùng danh sách gói active.
-
-### Báo cáo
-
-```text
-GET /v1/dashboard/owner
-GET /v1/reports/finance
-GET /v1/reports/members
-GET /v1/notifications
-```
-
-Xuất `.xlsx`, full backup và Google Sheet sync hiện được xử lý phía frontend bằng dữ liệu report API; chưa có export API riêng ở backend.
-
-### AI cố vấn giữ chân và doanh thu
-
-```text
-POST /v1/ai/retention-revenue-advisor
-```
-
-- Chỉ role `OWNER` được gọi.
-- Request body có thể truyền `year` và `month`; nếu bỏ trống backend dùng tháng hiện tại theo local business date.
-- Backend gom dữ liệu tổng hợp đã ẩn danh rồi mới gọi Groq: tổng hội viên, active/expired/near-expiry, doanh thu tháng này/tháng trước, công nợ mở, khách mới/gia hạn, phân nhóm rủi ro và cơ hội.
-- Không gửi tên, SĐT, Zalo, email, địa chỉ hoặc từng giao dịch cá nhân chi tiết sang AI provider.
-- Nếu Groq lỗi hoặc trả JSON không ổn định, API vẫn trả `aiGenerated = false` với phân tích rule-based fallback để trang Báo cáo không bị gãy.
-
-### Thư viện TikTok public
-
-```text
-GET  /v1/public/exercise-categories
-GET  /v1/public/exercises
-GET  /v1/public/exercises/{slugOrId}
-POST /v1/public/exercises/{id}/view
-
-GET    /v1/owner/exercise-categories
-POST   /v1/owner/exercise-categories
-PUT    /v1/owner/exercise-categories/{id}
-GET    /v1/owner/exercises
-POST   /v1/owner/exercises
-PUT    /v1/owner/exercises/{id}
-PATCH  /v1/owner/exercises/{id}/published
-DELETE /v1/owner/exercises/{id}
-```
-
+Tài liệu đối chiếu hiện trạng chi tiết: 08-current-implementation-alignment.md.

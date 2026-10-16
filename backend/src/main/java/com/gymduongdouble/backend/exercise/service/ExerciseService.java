@@ -32,8 +32,6 @@ import org.springframework.transaction.annotation.Transactional;
 public class ExerciseService {
 
     private static final Pattern TIKTOK_VIDEO_PATTERN = Pattern.compile("/video/(\\d+)");
-    private static final String DEFAULT_AUTHOR = "DUONG DOUBLE";
-    private static final String DEFAULT_AUTHOR_TIKTOK = "https://www.tiktok.com/@duong.double";
 
     private final ExerciseRepository exerciseRepository;
     private final ExerciseCategoryRepository categoryRepository;
@@ -128,13 +126,6 @@ public class ExerciseService {
     }
 
     @Transactional
-    public ExerciseResponse incrementView(Long id) {
-        Exercise exercise = findPublicBySlugOrId(String.valueOf(id));
-        exercise.setViewCount((exercise.getViewCount() == null ? 0L : exercise.getViewCount()) + 1);
-        return ExerciseResponse.from(exercise);
-    }
-
-    @Transactional
     public void deleteExercise(Long id) {
         Exercise exercise = exerciseRepository.findById(id)
             .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy bài tập/video."));
@@ -173,13 +164,8 @@ public class ExerciseService {
         exercise.setTiktokUrl(tiktokUrl);
         exercise.setTiktokVideoId(extractTiktokVideoId(tiktokUrl));
         exercise.setThumbnailUrl(trimToNull(request.thumbnailUrl()));
-        exercise.setAuthorName(Optional.ofNullable(trimToNull(request.authorName())).orElse(DEFAULT_AUTHOR));
-        exercise.setAuthorTiktokUrl(Optional.ofNullable(trimToNull(request.authorTiktokUrl())).orElse(DEFAULT_AUTHOR_TIKTOK));
         exercise.setFeatured(Boolean.TRUE.equals(request.featured()));
         exercise.setActive(request.published() == null || request.published());
-        if (exercise.getViewCount() == null) {
-            exercise.setViewCount(0L);
-        }
     }
 
     private Specification<Exercise> exerciseSpec(

@@ -6,6 +6,8 @@ import com.gymduongdouble.backend.common.exception.BadRequestException;
 import com.gymduongdouble.backend.common.exception.ConflictException;
 import com.gymduongdouble.backend.common.exception.ResourceNotFoundException;
 import com.gymduongdouble.backend.common.security.AuthenticatedUser;
+import com.gymduongdouble.backend.common.security.PasswordPolicy;
+import com.gymduongdouble.backend.common.validation.VietnamPhoneNormalizer;
 import com.gymduongdouble.backend.pt.domain.PtProfile;
 import com.gymduongdouble.backend.pt.repository.PtProfileRepository;
 import com.gymduongdouble.backend.user.domain.Role;
@@ -22,7 +24,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.StringUtils;
 
 @Service
 @RequiredArgsConstructor
@@ -32,6 +33,8 @@ public class TeamUserService {
     private final RoleRepository roleRepository;
     private final PtProfileRepository ptProfileRepository;
     private final PasswordEncoder passwordEncoder;
+    private final PasswordPolicy passwordPolicy;
+    private final VietnamPhoneNormalizer phoneNormalizer;
 
     @Transactional(readOnly = true)
     public List<TeamUserResponse> listTeamUsers() {
@@ -49,8 +52,8 @@ public class TeamUserService {
             throw new ConflictException("Email này đã được sử dụng trong hệ thống.");
         }
 
-        if (StringUtils.hasText(request.phone())) {
-            String cleanPhone = request.phone().trim();
+        String cleanPhone = phoneNormalizer.normalizeOptional(request.phone(), "Số điện thoại");
+        if (cleanPhone != null) {
             if (userRepository.findByPhone(cleanPhone).isPresent()) {
                 throw new ConflictException("Số điện thoại này đã được sử dụng.");
             }
@@ -63,8 +66,10 @@ public class TeamUserService {
         User user = new User();
         user.setEmail(cleanEmail);
         user.setFullName(request.fullName().trim());
-        user.setPhone(StringUtils.hasText(request.phone()) ? request.phone().trim() : null);
-        user.setPasswordHash(passwordEncoder.encode(request.password().trim()));
+        user.setPhone(cleanPhone);
+        user.setPasswordHash(passwordEncoder.encode(
+            passwordPolicy.requireValid(request.password(), cleanEmail, cleanPhone)
+        ));
         user.setStatus(UserStatus.ACTIVE);
         user.getRoles().add(role);
         if ("OWNER".equals(targetRoleCode)) {
@@ -129,7 +134,10 @@ public class TeamUserService {
     @Transactional
     public TeamUserResponse resetPassword(Long userId, String newPassword) {
         User user = findUser(userId);
-        user.setPasswordHash(passwordEncoder.encode(newPassword.trim()));
+        user.setPasswordHash(passwordEncoder.encode(
+            passwordPolicy.requireValid(newPassword, user.getEmail(), user.getPhone())
+        ));
+        user.revokeActiveTokens();
         return TeamUserResponse.from(userRepository.save(user));
     }
 

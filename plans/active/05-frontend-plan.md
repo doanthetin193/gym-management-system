@@ -1,401 +1,118 @@
-# 05 - KẾ HOẠCH FRONTEND
+# 05 - Kế Hoạch Frontend
 
-## 1. Mục tiêu frontend
+Cập nhật lần cuối: 16/10/2026.
 
-Frontend cần phục vụ thao tác thực tế hằng ngày của chủ phòng và PT, không mô phỏng Excel một cách máy móc.
+Tài liệu này mô tả giao diện đã được implement. Frontend là ứng dụng React SPA, phục vụ local development qua Vite và gọi backend REST tại http://localhost:8080/api.
 
-Ưu tiên:
+## 1. Stack và nguyên tắc
 
-- OWNER xem nhanh tình trạng phòng.
-- PT cập nhật nhanh buổi tập/chỉ số trên điện thoại.
-- MEMBER xem thông tin gói và truy cập thư viện bài tập/video public.
-- Form ngắn, ít bước.
-- Bảng dữ liệu có lọc/tìm kiếm/pagination.
+- React 19, TypeScript, Vite 8, React Router 7, Axios, Tailwind CSS 4 và Lucide React.
+- AppShell cung cấp sidebar, header, theme và điều hướng theo role.
+- Trang được lazy-load theo feature.
+- Mỗi form hiển thị loading, validation, lỗi API và trạng thái submit.
+- API client tự động gắn Bearer token, xử lý 401 và hiển thị lỗi rate-limit có Retry-After.
+- Ngày nghiệp vụ dùng DatePartsSelect và helper local date để tránh lệch ngày UTC.
+- Không dùng state management library, React Query, React Hook Form hay Zod trong code hiện tại.
 
-## 2. Stack frontend
+## 2. Route thực tế
 
-- React.
-- TypeScript.
-- Tailwind CSS.
-- React Router.
-- TanStack Query.
-- React Hook Form.
-- Zod.
-- Recharts.
+| Route | Quyền | Màn hình |
+| --- | --- | --- |
+| / | Public | Trang giới thiệu, thông tin liên hệ và bảng giá. |
+| /exercises | Public | Thư viện TikTok public. |
+| /exercises/:slug | Public | Chi tiết video/bài tập. |
+| /login | Public only | Đăng nhập. |
+| /my-progress | MEMBER | Portal tiến độ cá nhân. |
+| /dashboard | OWNER | Tổng quan vận hành. |
+| /members | OWNER, PT | Danh sách hội viên. |
+| /members/:memberId | OWNER, PT | Hồ sơ hội viên, gói, thu tiền và Portal. |
+| /membership-plans | OWNER, PT | Xem bảng giá; thao tác quản trị chỉ hiện với OWNER. |
+| /payments | OWNER, PT | Thanh toán và công nợ. |
+| /reminders | OWNER, PT | Nhắc việc. |
+| /reminders/:type | OWNER, PT | Nhắc việc theo nhóm. |
+| /reports | OWNER | Báo cáo và AI Advisor. |
+| /pt-schedule | OWNER, PT | Lịch PT và vận hành học viên PT. |
+| /owner/exercises | OWNER | Quản lý thư viện TikTok. |
+| /settings | OWNER | Tài khoản nhân sự và VietQR. |
+| /profile | Authenticated | Hồ sơ đăng nhập và đổi mật khẩu. |
 
-## 3. Cấu trúc route
+RoleGuard chặn route ở frontend; backend vẫn là lớp quyết định quyền cuối cùng.
 
-```text
-/login
-
-/dashboard
-/members
-/members/:memberId
-/membership-plans
-/payments
-/reports
-/pt-schedule
-/owner/exercises
-/settings
-/profile
-
-/my-progress
-
-/reminders
-/reminders/:type
-
-/exercises
-/exercises/:slug
-/login
-```
-
-## 4. Layout theo role
-
-### OWNER layout
-
-- Sidebar trái.
-- Topbar có thông tin user.
-- Nội dung chính dạng dashboard/table/detail.
-- Ưu tiên desktop/laptop.
-
-Menu:
-
-- Dashboard.
-- Khách hàng.
-- Gói tập.
-- Tài chính.
-- PT.
-- Lịch PT.
-- Chương trình tập.
-- Bài tập.
-- Mục tiêu.
-- Nhắc việc.
-- Cài đặt.
-
-### PT layout
-
-- Mobile-first.
-- Bottom nav hoặc sidebar gọn.
-- Tập trung vào lịch hôm nay và khách được phân công.
-
-Menu:
-
-- Dashboard.
-- Khách của tôi.
-- Lịch dạy.
-- Cập nhật buổi tập.
-
-### MEMBER layout
-
-- Gọn.
-- Dễ dùng trên điện thoại.
-- Ít chức năng.
-
-Menu:
-
-- Trang chủ.
-- Gói tập.
-- Bài tập.
-- Hồ sơ.
-
-## 5. OWNER pages
+## 3. Luồng giao diện OWNER
 
 ### Dashboard
 
-Hiển thị:
+- KPI hội viên, doanh thu, công nợ, nhắc việc và lịch PT cần xử lý.
+- Không hiển thị chi phí, lợi nhuận hay mục tiêu vận hành.
 
-- Tổng member.
-- Active member.
-- Sắp hết hạn.
-- Đã hết hạn.
-- Khách mới tháng này.
-- Khách cũ/tái tục tháng này.
-- Doanh thu tháng.
-- Công nợ.
-- Sinh nhật hôm nay.
-- Khách PT còn ít buổi.
+### Hội viên và chi tiết hội viên
 
-Quick actions:
+- Tìm kiếm, lọc đang tập/sắp hết hạn/hết hạn.
+- Form tạo và sửa hồ sơ.
+- Modal đăng ký/gia hạn gói tách rõ ngày bắt đầu gói và ngày thu tiền.
+- Khi thu ngay bằng 0, frontend vô hiệu hóa ngày thu và phương thức thu để người dùng biết không có phiếu thu được tạo.
+- Modal thu nợ lập phiếu thu riêng, hỗ trợ trả từng phần và phương thức thu riêng.
+- OWNER cấp và quản lý Portal ngay trên hồ sơ hội viên.
 
-- Tạo member.
-- Gia hạn gói.
-- Thêm payment.
+### Bảng giá, thanh toán và báo cáo
 
-### Members list
+- Bảng giá phân biệt gói đang bán và gói đã ngừng bán.
+- Payments hiển thị công nợ, phiếu thu, VietQR và thao tác thu nợ.
+- Reports hiển thị chỉ số tài chính, biểu đồ doanh thu, XLSX, Google Sheet và AI Cố vấn Giữ chân và Doanh thu.
+- Xuất XLSX được tạo ở trình duyệt từ dữ liệu report; không có endpoint export riêng.
+- Apps Script URL và token Google Sheet được lưu trong localStorage của trình duyệt hiện tại, không lưu ở backend.
 
-Chức năng:
+### Cài đặt và thư viện
 
-- Search tên/số điện thoại.
-- Filter trạng thái gói.
-- Filter sắp hết hạn/hết hạn.
-- Pagination.
-- Action: xem chi tiết, gia hạn.
+- Settings quản lý tài khoản PT/nhân sự và VietQR.
+- Owner Exercises quản lý category, TikTok URL, thông tin bài tập và trạng thái hiển thị.
 
-### Member detail
+## 4. Luồng giao diện PT
 
-Tabs:
+PT dùng cùng AppShell nhưng không thấy trang OWNER như Dashboard, Reports, Settings và quản lý thư viện.
 
-- Tổng quan.
-- Gói tập.
-- Thanh toán/công nợ.
-- PT/session.
-- Chỉ số cơ thể.
-- Ghi chú.
+### Hội viên
 
-### Membership plans
+- PT thao tác hồ sơ trong phạm vi backend cho phép.
+- PT không thấy màn hình quản lý tài khoản Portal hay thông tin tài chính của PT.
 
-Form gói tập cần hỗ trợ:
+### Lịch PT
 
-- Loại gói: Tự tập, PT, Giáo án/Hướng Dẫn, Khác.
-- Cấp PT nếu là gói PT: PT chính hoặc PT mới.
-- Số buổi PT và số buổi Ôn tập cho gói PT.
-- Số buổi check-in giáo án cho gói Giáo án/Hướng Dẫn: 30, 60, 90 hoặc nhập tùy chỉnh nếu chủ phòng cần.
-- Quyền xem nội dung: không có, cơ bản, premium.
-- Tỷ lệ giá PT mới, mặc định có thể là 65% so với gói PT chính tương ứng.
+Trang pt-schedule có năm khu vực rõ ràng:
 
-Form bán/gia hạn gói cần có:
+1. Khách PT: tổng quan gói, buổi còn lại, lịch hẹn, ghi chú và tiến độ.
+2. Lịch dạy: đặt/xóa/đổi lịch và kiểm tra trùng giờ.
+3. Ghi buổi tập: ghi buổi PT đã diễn ra hoặc tự ôn tập; chỉ bước này mới trừ buổi.
+4. Chỉ số: ghi đo lường định kỳ.
+5. Mục tiêu: tạo mục tiêu theo loại, mô tả, hạn, cân nặng mục tiêu và vòng eo mục tiêu.
 
-- Người sale/phụ trách bán gói, có thể để trống.
-- Giá thực tế, giảm giá, đã trả, còn nợ.
+Khi đổi học viên ở cột trái, form lịch dạy được đồng bộ sẵn theo đúng học viên được chọn.
 
-### Finance
+## 5. Luồng giao diện MEMBER
 
-Tabs:
+Portal my-progress có chế độ chỉ đọc:
 
-- Công nợ cần thu.
-- Lịch sử thu tiền.
-- Báo cáo doanh thu tháng/năm.
+- Thông tin cơ bản và nút đổi mật khẩu.
+- Gói hiện tại, hạn gói, công nợ và buổi còn lại.
+- Biểu đồ/lịch sử số đo cơ thể được PT nhập.
+- Mục tiêu hiện tại và tiến độ cân nặng/vòng eo khi có đủ dữ liệu.
+- Lịch PT sắp tới và lịch sử gói/thanh toán.
+- Liên hệ Zalo phòng gym.
 
-Form thu tiền chỉ mở từ công nợ của một lượt đăng ký gói. Nhóm doanh thu được backend suy ra từ gói, không cho nhập khoản thu ngoài hệ thống.
+Portal không hiển thị hay thu thập giáo án tự động, không cho mua gói, thu nợ hay sửa dữ liệu PT.
 
-### PT management
+## 6. Public experience
 
-- Danh sách PT.
-- Khách được gán.
-- Lịch dạy.
-- Khách còn ít buổi.
+- Trang chủ là web giới thiệu và bảng giá.
+- Thư viện TikTok có lọc và trang chi tiết bài tập.
+- Video được nhúng để xem, không hiển thị view count hay thống kê TikTok.
 
-### Exercise library
+## 7. Quy tắc UI quan trọng
 
-- Thư viện bài tập/video TikTok public.
-- Nhóm bài tập/chủ đề.
-- Danh sách bài tập dạng card.
-- Form thêm/sửa bài tập cho OWNER.
-- TikTok URL preview/fallback mở TikTok.
-- Copy link/chia sẻ cho học viên.
+- Giấy phép nghiệp vụ không chỉ dựa vào UI. Các nút có thể bị ẩn/disabled để hướng dẫn người dùng, nhưng backend luôn kiểm tra lại.
+- Dữ liệu không có giá trị được hiển thị bằng trạng thái rỗng rõ ràng, không giả lập số liệu.
+- Trạng thái gói, công nợ và buổi còn lại được tải lại từ API sau thao tác thành công.
+- Lỗi API dùng message từ backend nếu có; lỗi hệ thống dùng thông điệp ngắn gọn để tránh gây nhiễu.
+- Đây là UI desktop-first có responsive, không phải mobile native app.
 
-### Notifications/nhắc việc cơ bản
-
-Hiển thị trong topbar hoặc một trang đơn giản:
-
-- Khách sắp hết hạn.
-- Sinh nhật hôm nay/tháng này.
-- Công nợ cần nhắc.
-- Khách PT còn ít buổi.
-- Khách lâu chưa có buổi PT.
-
-Không làm trong MVP:
-
-- Push notification.
-- Email automation.
-- Auto Zalo.
-
-### Import dữ liệu
-
-Không làm trong MVP vì chủ phòng muốn bắt đầu bằng dữ liệu mới. Nếu phase sau cần nhập lịch sử Excel thì mới bổ sung:
-
-- Upload file CSV/Excel.
-- Preview dữ liệu.
-- Hiển thị lỗi theo dòng.
-- Xác nhận import.
-- Xem lịch sử import.
-
-## 6. PT pages
-
-### PT dashboard
-
-Hiển thị:
-
-- Lịch hôm nay.
-- Số khách được phân công.
-- Khách còn ít buổi.
-- Khách lâu chưa có session.
-
-### My members
-
-- Danh sách khách.
-- Số buổi còn lại.
-- Mục tiêu.
-- Trạng thái gần đây.
-
-### PT member detail
-
-Tabs:
-
-- Tổng quan.
-- Session logs.
-- Body measurements.
-- Goals/progress.
-- Ghi chú/đánh giá kết thúc gói nếu cần.
-- Notes.
-
-Actions:
-
-- Thêm buổi tập.
-- Thêm chỉ số.
-- Cập nhật mục tiêu tập luyện.
-
-## 7. MEMBER pages
-
-### Member dashboard
-
-Hiển thị:
-
-- Gói hiện tại.
-- Ngày hết hạn.
-- Lịch sử thanh toán cơ bản.
-- Link vào thư viện bài tập/video public.
-
-### Public exercise/video content
-
-- Danh sách bài tập.
-- Filter nhóm cơ.
-- Xem video TikTok public.
-- Copy link/chia sẻ.
-- Không yêu cầu đăng nhập.
-
-## 8. Component chính
-
-```text
-DataTable
-Pagination
-SearchInput
-DateRangeFilter
-StatusBadge
-MoneyDisplay
-ConfirmDialog
-Toast
-
-MemberForm
-MembershipRenewForm
-PaymentForm
-PtSessionForm
-ActivityLogForm
-BodyMeasurementForm
-TrainingWeekForm
-ExerciseForm
-
-DashboardMetricCard
-RevenueChart
-BodyMeasurementChart
-GoalProgressChart
-```
-
-## 9. Data fetching
-
-TanStack Query dùng cho:
-
-- List/query cache.
-- Refetch dashboard.
-- Mutation create/update.
-- Loading/error state.
-
-Quy ước:
-
-- Query key theo module: `['members', filters]`.
-- Mutation success thì invalidate list/detail liên quan.
-- Không lưu server state thủ công bằng global store nếu không cần.
-
-## 10. Form validation
-
-Dùng React Hook Form + Zod.
-
-Validation quan trọng:
-
-- Phone bắt buộc khi tạo member.
-- Amount > 0.
-- Start date <= end date.
-- Payment không vượt quá số tiền còn nợ nếu áp dụng.
-- Session date không được rỗng.
-- TikTok URL hợp lệ.
-
-## 11. UI states cần có
-
-- Loading skeleton.
-- Empty state.
-- Error state.
-- Form validation errors.
-- Confirm trước khi hủy/xóa/inactive.
-- Toast success/error.
-
-## 12. Thiết kế responsive
-
-OWNER:
-
-- Ưu tiên desktop.
-- Mobile vẫn dùng được cho thao tác cơ bản.
-
-PT:
-
-- Ưu tiên mobile.
-- Form session/body measurement cần nhanh.
-
-MEMBER:
-
-- Mobile-first.
-
-## 13. Thứ tự làm frontend MVP
-
-1. Login/layout theo role.
-2. OWNER dashboard.
-3. Member list/detail.
-4. Membership plan + renew flow.
-5. Payment/công nợ.
-6. PT my members.
-7. PT session/body measurement.
-8. Public TikTok exercise library.
-9. Production UI polish: loading, empty, error, responsive.
-
-## 14. Cập nhật route và màn hình theo implementation hiện tại
-
-Tài liệu chốt hiện trạng sau nâng cấp UI nằm tại `plans/active/10-current-implementation-alignment.md`.
-
-Route thực tế hiện tại:
-
-```text
-/
-/exercises
-/exercises/:slug
-/login
-
-/my-progress
-/dashboard
-/members
-/members/:memberId
-/membership-plans
-/payments
-/reminders
-/reminders/:type
-/reports
-/pt-schedule
-/owner/exercises
-/settings
-/profile
-```
-
-Quy tắc layout/role hiện tại:
-
-- Public không đăng nhập: `/`, `/exercises`, `/exercises/:slug`.
-- MEMBER: `/my-progress`, `/profile`.
-- PT: `/members`, `/members/:memberId`, `/membership-plans`, `/payments`, `/reminders`, `/pt-schedule`, `/profile`.
-- OWNER: toàn bộ vùng quản trị gồm dashboard, members, plans, payments, reminders, reports, PT schedule, owner exercises, settings, profile.
-
-Các màn hình bổ sung so với kế hoạch sơ khai:
-
-- Public home đầy đủ: giới thiệu, bảng giá, cơ sở vật chất, triết lý, thư viện TikTok, liên hệ.
-- Member portal `/my-progress`: gói hiện tại, công nợ, buổi PT, biểu đồ chỉ số cơ thể, mục tiêu, lịch PT, lịch sử thanh toán.
-- Member detail: gán/gia hạn gói, thu nợ, VietQR, tạo/reset/khoá tài khoản portal.
-- Settings: cấu hình VietQR và quản lý tài khoản PT.
-- Reports: biểu đồ vận hành, xuất `.xlsx`, full backup nhiều sheet, đồng bộ Google Sheet qua Apps Script/token.
-- Reminders: copy tin nhắn và mở Zalo cho hết hạn, công nợ, sinh nhật.
-- PT schedule: gán khách PT bằng dropdown/tìm kiếm, chỉ hiển thị khách gói PT phù hợp, khách đã có PT active bị disable.
+Tài liệu đối chiếu hiện trạng chi tiết: 08-current-implementation-alignment.md.

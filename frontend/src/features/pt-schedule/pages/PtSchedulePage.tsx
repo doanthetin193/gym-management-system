@@ -25,7 +25,7 @@ import {
   Zap,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Dispatch, FormEvent, SetStateAction } from 'react'
 import { ApiClientError } from '../../../shared/api/apiClient'
 import { DatePartsSelect } from '../../../shared/components/DatePartsSelect'
@@ -151,6 +151,7 @@ export function PtSchedulePage() {
   const [schedules, setSchedules] = useState<PtSchedule[]>([])
   const [detail, setDetail] = useState<PtMemberDetail | null>(null)
   const [selectedMemberId, setSelectedMemberId] = useState<number | null>(null)
+  const detailRequestId = useRef(0)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -234,7 +235,7 @@ export function PtSchedulePage() {
       setAssignments(assignmentData)
       setSchedules(scheduleData)
       if (!selectedMemberId && assignmentData[0]) {
-        setSelectedMemberId(assignmentData[0].memberId)
+        selectMember(assignmentData[0].memberId)
       }
     } catch (caughtError) {
       setError(errorMessage(caughtError))
@@ -244,14 +245,35 @@ export function PtSchedulePage() {
   }, [selectedMemberId])
 
   const loadDetail = useCallback(async (memberId: number | null) => {
+    const requestId = ++detailRequestId.current
     if (!memberId) {
       setDetail(null)
       return
     }
+    setDetail(null)
     try {
-      setDetail(await getPtMemberDetail(memberId))
+      const nextDetail = await getPtMemberDetail(memberId)
+      if (requestId === detailRequestId.current) {
+        setDetail(nextDetail)
+        const nextActivePackage = nextDetail.sessionPackages.find((item) => item.status === 'ACTIVE')
+          ?? nextDetail.sessionPackages[0]
+        const packageIds = new Set(nextDetail.sessionPackages.map((item) => item.id.toString()))
+        const defaultPackageId = nextActivePackage?.id.toString() ?? ''
+        setSessionForm((current) => (
+          packageIds.has(current.sessionPackageId)
+            ? current
+            : { ...current, sessionPackageId: defaultPackageId }
+        ))
+        setActivityForm((current) => (
+          packageIds.has(current.sessionPackageId)
+            ? current
+            : { ...current, sessionPackageId: defaultPackageId }
+        ))
+      }
     } catch (caughtError) {
-      setError(errorMessage(caughtError))
+      if (requestId === detailRequestId.current) {
+        setError(errorMessage(caughtError))
+      }
     }
   }, [])
 
@@ -323,7 +345,7 @@ export function PtSchedulePage() {
       setMemberKeyword('')
       setSelectedAssignMember(null)
       setReassigningAssignment(null)
-      setSelectedMemberId(assignment.memberId)
+      selectMember(assignment.memberId)
       setIsAssignModalOpen(false)
       await loadData()
     } catch (caughtError) {
@@ -346,6 +368,14 @@ export function PtSchedulePage() {
     setIsAssignModalOpen(false)
     setReassigningAssignment(null)
     setFormError(null)
+  }
+
+  function selectMember(memberId: number | null) {
+    setSelectedMemberId(memberId)
+    setScheduleForm((current) => {
+      const nextMemberId = memberId?.toString() ?? ''
+      return current.memberId === nextMemberId ? current : { ...current, memberId: nextMemberId }
+    })
   }
 
   async function handleCreateSchedule(event: FormEvent<HTMLFormElement>) {
@@ -435,7 +465,7 @@ export function PtSchedulePage() {
       await deletePtSchedule(schedule.id)
       setScheduleToDelete(null)
       if (schedule.memberId) {
-        setSelectedMemberId(schedule.memberId)
+        selectMember(schedule.memberId)
       }
       setScheduleForm((c) => ({
         ...c,
@@ -466,12 +496,20 @@ export function PtSchedulePage() {
 
   async function handleCreateSession(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!selectedMemberId) return
+    const selectedPackageId = Number(sessionForm.sessionPackageId)
+    if (!selectedMemberId || !detail || detail.profile.id !== selectedMemberId) {
+      setFormError('Đang tải đúng hồ sơ học viên. Vui lòng thử lại sau giây lát.')
+      return
+    }
+    if (!detail.sessionPackages.some((item) => item.id === selectedPackageId)) {
+      setFormError('Vui lòng chọn gói PT thuộc đúng học viên đang thao tác.')
+      return
+    }
     setSubmitting(true)
     setFormError(null)
     try {
       await createPtSessionLog(selectedMemberId, {
-        sessionPackageId: Number(sessionForm.sessionPackageId),
+        sessionPackageId: selectedPackageId,
         sessionDate: sessionForm.sessionDate,
         weight: toNumberOrNull(sessionForm.weight),
         status: 'COMPLETED',
@@ -489,12 +527,20 @@ export function PtSchedulePage() {
 
   async function handleCreateActivity(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!selectedMemberId) return
+    const selectedPackageId = Number(activityForm.sessionPackageId)
+    if (!selectedMemberId || !detail || detail.profile.id !== selectedMemberId) {
+      setFormError('Đang tải đúng hồ sơ học viên. Vui lòng thử lại sau giây lát.')
+      return
+    }
+    if (activityForm.activityType === 'PRACTICE' && !detail.sessionPackages.some((item) => item.id === selectedPackageId)) {
+      setFormError('Vui lòng chọn gói PT thuộc đúng học viên đang thao tác.')
+      return
+    }
     setSubmitting(true)
     setFormError(null)
     try {
       await createActivityLog(selectedMemberId, {
-        sessionPackageId: activityForm.activityType === 'PRACTICE' ? Number(activityForm.sessionPackageId) : null,
+        sessionPackageId: activityForm.activityType === 'PRACTICE' ? selectedPackageId : null,
         activityType: activityForm.activityType,
         activityDate: activityForm.activityDate,
         weight: toNumberOrNull(activityForm.weight),
@@ -559,17 +605,6 @@ export function PtSchedulePage() {
       setSubmitting(false)
     }
   }
-
-  useEffect(() => {
-    if (activePackage && !sessionForm.sessionPackageId) {
-      const timeoutId = window.setTimeout(() => {
-        setSessionForm((current) => ({ ...current, sessionPackageId: activePackage.id.toString() }))
-        setActivityForm((current) => ({ ...current, sessionPackageId: activePackage.id.toString() }))
-      }, 0)
-
-      return () => window.clearTimeout(timeoutId)
-    }
-  }, [activePackage, sessionForm.sessionPackageId])
 
   const completedSessionsCount = useMemo(
     () => detail?.sessionLogs.filter((s) => s.status === 'COMPLETED').length ?? 0,
@@ -776,11 +811,11 @@ export function PtSchedulePage() {
                     key={assignment.id}
                     role="button"
                     tabIndex={0}
-                    onClick={() => setSelectedMemberId(assignment.memberId)}
+                    onClick={() => selectMember(assignment.memberId)}
                     onKeyDown={(event) => {
                       if (event.key === 'Enter' || event.key === ' ') {
                         event.preventDefault()
-                        setSelectedMemberId(assignment.memberId)
+                        selectMember(assignment.memberId)
                       }
                     }}
                     className={[
@@ -918,6 +953,7 @@ export function PtSchedulePage() {
                 submitting={submitting}
                 onSubmit={handleCreateSchedule}
                 selectedMemberId={selectedMemberId}
+                onSelectMember={selectMember}
                 onRequestDelete={(sch) => setScheduleToDelete(sch)}
                 onRequestReschedule={handleReschedule}
               />
@@ -1216,6 +1252,9 @@ function MemberOverview({
 
   // Primary active package
   const activePackage = detail.sessionPackages.find((p) => p.status === 'ACTIVE') ?? detail.sessionPackages[0] ?? null
+  const activeAssignment = detail.assignments.find(
+    (assignment) => assignment.status === 'ACTIVE' && assignment.ptUserId === activePackage?.ptUserId,
+  ) ?? detail.assignments.find((assignment) => assignment.status === 'ACTIVE') ?? null
   const totalPtSessions = activePackage?.totalPtSessions ?? 0
   const usedPtSessions = activePackage?.usedPtSessions ?? 0
   const remainingPtSessions = activePackage?.remainingPtSessions ?? 0
@@ -1259,9 +1298,9 @@ function MemberOverview({
               <span className="rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-2.5 py-0.5 text-[10px] font-black shrink-0">
                 {detail.profile.status === 'ACTIVE' ? 'Đang tập' : 'Đang hoạt động'}
               </span>
-              {detail.assignments[0] ? (
+              {activeAssignment ? (
                 <span className="rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30 px-2.5 py-0.5 text-[10px] font-black shrink-0">
-                  HLV: {detail.assignments[0].ptFullName}
+                  HLV: {activeAssignment.ptFullName}
                 </span>
               ) : null}
             </div>
@@ -1786,6 +1825,7 @@ function SchedulePanel({
   submitting,
   onSubmit,
   selectedMemberId,
+  onSelectMember,
   onRequestDelete,
   onRequestReschedule,
 }: {
@@ -1796,18 +1836,18 @@ function SchedulePanel({
   submitting: boolean
   onSubmit: (event: FormEvent<HTMLFormElement>) => Promise<void>
   selectedMemberId: number | null
+  onSelectMember: (memberId: number | null) => void
   onRequestDelete: (schedule: PtSchedule) => void
   onRequestReschedule: (schedule: PtSchedule) => void | Promise<void>
 }) {
-  useEffect(() => {
-    if (selectedMemberId && !form.memberId) {
-      setForm((current) => ({ ...current, memberId: String(selectedMemberId) }))
-    }
-  }, [form.memberId, selectedMemberId, setForm])
-
   function applyTimePreset(start: string, end: string) {
     setForm((c) => ({ ...c, startTime: start, endTime: end }))
   }
+
+  const selectedMember = assignments.find((assignment) => assignment.memberId === selectedMemberId) ?? null
+  const selectedSchedules = selectedMemberId === null
+    ? []
+    : schedules.filter((schedule) => schedule.memberId === selectedMemberId)
 
   const isToday = form.scheduleDate === todayIso()
   const isPastDate = form.scheduleDate < todayIso()
@@ -1834,18 +1874,18 @@ function SchedulePanel({
         <div className="flex items-center justify-between">
           <h3 className="text-xs font-black uppercase tracking-wider text-[var(--text-strong)] flex items-center gap-1.5">
             <Clock size={14} className="text-amber-500" />
-            Lịch hẹn huấn luyện hôm nay ({schedules.length})
+            Lịch hẹn của {selectedMember?.memberName ?? 'học viên'} hôm nay ({selectedSchedules.length})
           </h3>
           <span className="text-xs font-semibold text-[var(--text-muted)]">{formatDate(todayIso())}</span>
         </div>
 
         <div className="space-y-2">
-          {schedules.length === 0 ? (
+          {selectedSchedules.length === 0 ? (
             <p className="rounded-xl border border-dashed border-[var(--line)] p-4 text-center text-xs font-semibold text-[var(--text-muted)]">
-              Chưa có lịch hẹn nào hôm nay. Hãy thêm lịch bên dưới.
+              Chưa có lịch hẹn nào hôm nay cho học viên này. Hãy thêm lịch bên dưới.
             </p>
           ) : (
-            schedules.map((sch) => (
+            selectedSchedules.map((sch) => (
               <div key={sch.id} className="group rounded-xl border border-[var(--line)] bg-[var(--surface)] p-3 hover:border-amber-500/40 transition-colors flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3 min-w-0">
                   <span className="rounded-lg bg-amber-500/15 text-amber-500 border border-amber-500/30 px-2.5 py-1 text-xs font-black shrink-0">
@@ -1899,7 +1939,7 @@ function SchedulePanel({
             <label className="text-[11px] font-bold text-[var(--text-muted)] block mb-1">Chọn học viên</label>
             <select
               value={form.memberId}
-              onChange={(e) => setForm((c) => ({ ...c, memberId: e.target.value }))}
+              onChange={(e) => onSelectMember(e.target.value ? Number(e.target.value) : null)}
               className="h-10 w-full rounded-xl border border-[var(--line)] bg-[var(--input-bg)] px-3 text-xs font-semibold outline-none focus:border-[var(--brand-yellow)]"
               required
             >
@@ -2333,12 +2373,13 @@ function MeasurementPanel({
           ) : null}
         </div>
 
-        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
+        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-7">
           <MetricChip label="Cân nặng" value={latest?.weight ? `${latest.weight} kg` : '-'} diff={weightDiff} />
           <MetricChip label="Vòng eo" value={latest?.waist ? `${latest.waist} cm` : '-'} />
           <MetricChip label="Vòng ngực" value={latest?.chest ? `${latest.chest} cm` : '-'} />
           <MetricChip label="Vòng bụng" value={latest?.abdomen ? `${latest.abdomen} cm` : '-'} />
           <MetricChip label="Vòng mông" value={latest?.hip ? `${latest.hip} cm` : '-'} />
+          <MetricChip label="Vòng đùi" value={latest?.thigh ? `${latest.thigh} cm` : '-'} />
           <MetricChip label="Bắp tay" value={latest?.arm ? `${latest.arm} cm` : '-'} />
         </div>
       </div>
@@ -2385,7 +2426,7 @@ function MeasurementPanel({
           </div>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-4">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           <div>
             <label className="text-[11px] font-bold text-[var(--text-muted)] block mb-1">Vòng eo (cm)</label>
             <input
@@ -2419,6 +2460,18 @@ function MeasurementPanel({
               value={form.hip}
               onChange={(e) => setForm((c) => ({ ...c, hip: e.target.value }))}
               placeholder="VD: 96"
+              className="h-10 w-full rounded-xl border border-[var(--line)] bg-[var(--input-bg)] px-3 text-xs font-semibold outline-none focus:border-[var(--brand-yellow)]"
+            />
+          </div>
+          <div>
+            <label className="text-[11px] font-bold text-[var(--text-muted)] block mb-1">Vòng đùi (cm)</label>
+            <input
+              type="number"
+              min="0.1"
+              step="0.1"
+              value={form.thigh}
+              onChange={(e) => setForm((c) => ({ ...c, thigh: e.target.value }))}
+              placeholder="VD: 55"
               className="h-10 w-full rounded-xl border border-[var(--line)] bg-[var(--input-bg)] px-3 text-xs font-semibold outline-none focus:border-[var(--brand-yellow)]"
             />
           </div>
@@ -2474,6 +2527,7 @@ function MeasurementPanel({
                   <span>Eo: <strong>{m.waist ?? '-'} cm</strong></span>
                   <span>Ngực: <strong>{m.chest ?? '-'} cm</strong></span>
                   <span>Mông: <strong>{m.hip ?? '-'} cm</strong></span>
+                  <span>Đùi: <strong>{m.thigh ?? '-'} cm</strong></span>
                   <span>Tay: <strong>{m.arm ?? '-'} cm</strong></span>
                 </div>
                 {m.note ? <span className="text-[10px] text-[var(--text-muted)] truncate max-w-xs">{m.note}</span> : null}

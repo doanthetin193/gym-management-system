@@ -15,7 +15,7 @@ public record CreateTeamUserRequest(
     String phone,
 
     @NotBlank(message = "Mật khẩu không được để trống")
-    @Size(min = 6, message = "Mật khẩu tối thiểu 6 ký tự")
+    @Size(min = 8, message = "Mật khẩu tối thiểu 8 ký tự")
     String password,
 
     @NotBlank(message = "Vai trò không được để trống")

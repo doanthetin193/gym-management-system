@@ -44,7 +44,9 @@ function generateTemporaryPassword() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789@#$'
   const bytes = new Uint32Array(10)
   window.crypto.getRandomValues(bytes)
-  return Array.from(bytes, (value) => chars[value % chars.length]).join('')
+  const letters = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
+  const digits = '23456789'
+  return `${letters[bytes[0] % letters.length]}${digits[bytes[1] % digits.length]}${Array.from(bytes.slice(2), (value) => chars[value % chars.length]).join('')}`
 }
 
 function errorMessage(error: unknown) {
@@ -761,9 +763,10 @@ export function MemberDetailPage() {
                 </div>
                 <input
                   type="text"
+                  minLength={8}
                   value={portalPassword}
                   onChange={(e) => setPortalPassword(e.target.value)}
-                  placeholder="Nhập mật khẩu (tối thiểu 6 ký tự)"
+                  placeholder="Nhập mật khẩu (ít nhất 8 ký tự, gồm chữ và số)"
                   className="h-10 w-full rounded-xl border border-[var(--line)] bg-[var(--input-bg)] px-3 text-sm font-bold text-[var(--text-strong)] outline-none focus:border-amber-400"
                 />
                 <p className="mt-1 text-[11px] text-[var(--text-muted)]">

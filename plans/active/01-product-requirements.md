@@ -1,363 +1,143 @@
-# 01 - YÊU CẦU SẢN PHẨM
+# 01 - Yêu Cầu Sản Phẩm
+
+Cập nhật lần cuối: 16/10/2026.
+
+Tài liệu này mô tả phạm vi MVP đã hoàn thành của Dương Double Gym Management. Code hiện tại là nguồn sự thật; các ý tưởng chưa làm chỉ được ghi ở tài liệu để triển khai trong một giai đoạn mới, không được hiểu là chức năng đang có.
 
 ## 1. Mục tiêu sản phẩm
 
-GYM DƯƠNG DOUBLE là hệ thống web quản lý phòng gym nhỏ, thay thế quy trình thủ công bằng Excel, sổ và phiếu giấy.
-
-Mục tiêu cốt lõi:
-
-- Theo dõi khách sắp hết hạn/hết hạn mà không phải dò sổ hằng ngày.
-- Lưu lịch sử đăng ký/gia hạn gói.
-- Ghi nhận tiền gói tập, công nợ và tự động tổng hợp doanh thu thực thu.
-- Quản lý khách PT/chương trình: số buổi, check-in, chỉ số cơ thể, mục tiêu và tiến độ.
-- Quản lý thư viện bài tập/video TikTok public để học viên xem và chia sẻ.
-- Tạo nền tảng dữ liệu sạch cho báo cáo, payroll và AI sau này.
-
-## 2. Bối cảnh thực tế
-
-Phòng gym nhỏ, khoảng 50-70 khách mỗi tháng. Tuy vậy, dữ liệu khách mới/cũ tích lũy qua nhiều tháng/năm khá nhiều.
-
-Mô hình vận hành hiện tại:
-
-- Không có lễ tân riêng.
-- Người dùng chính là chủ phòng, PT và member.
-- Các nghiệp vụ nhân sự/lễ tân trong requirement gốc được tối ưu theo quy mô nhỏ: MVP chỉ cần hồ sơ PT và gán khách; chấm công, payroll, doanh số/hoa hồng PT để phase sau.
-
-Chủ phòng đang có 10 mẫu Excel/phiếu giấy chính:
-
-| STT | Tài liệu thủ công | Ý nghĩa |
-| --- | --- | --- |
-| 1 | Lịch dạy PT | Lịch theo giờ/ngày trong tuần |
-| 2 | Quản lý khách hàng tháng | Khách, hạn gói, sinh nhật, công nợ |
-| 3 | Tính lương PT | Lương cố định, dạy khách, sale, thưởng/phạt |
-| 5 | Tài chính năm | Doanh thu gói tập theo tháng |
-| 6 | Thu hằng ngày | Thu theo tự tập, giáo án, sinh viên, PT |
-| 7 | Tổng chi | Tài liệu cũ, không đưa vào phạm vi hệ thống |
-| 8 | Theo dõi khách theo tuần | Chỉ số cơ thể |
-| 9 | Check-in | Buổi PT và buổi ôn tập |
-| 10 | Chương trình theo mục tiêu | Mục tiêu tuần, thực tế, kết quả |
-
-## 3. Nhóm người dùng
-
-### OWNER
-
-Chủ phòng, toàn quyền quản lý:
-
-- Khách hàng.
-- Gói tập.
-- Thanh toán và công nợ gói tập.
-- PT và lịch dạy.
-- Dashboard/báo cáo.
-- Bài tập/nội dung.
-- Cấu hình hệ thống.
-
-### PT
-
-Personal Trainer:
-
-- Xem khách được phân công.
-- Xem lịch dạy.
-- Cập nhật buổi PT.
-- Cập nhật chỉ số cơ thể.
-- Cập nhật tiến độ/mục tiêu.
-
-### MEMBER
-
-Khách hàng:
-
-- Xem thông tin cá nhân.
-- Xem gói hiện tại/ngày hết hạn.
-- Xem thư viện bài tập/video public.
-
-## 4. Phạm vi MVP
-
-### 4.1 Bắt buộc có trong MVP
-
-- Auth/RBAC cho OWNER, PT, MEMBER.
-- Quản lý member.
-- Quản lý gói tập.
-- Đăng ký/gia hạn gói.
-- Theo dõi khách sắp hết hạn/hết hạn.
-- Thống kê khách mới, khách cũ/tái tục theo tháng.
-- Ghi nhận payment.
-- Ghi nhận tiền thu từ gói tập.
-- Theo dõi công nợ cơ bản.
-- Dashboard OWNER.
-- Gán PT cho khách.
-- Gói PT theo số buổi.
-- PT session/check-in.
-- Body measurement.
-- Mục tiêu tập luyện cơ bản.
-- Public TikTok exercise library.
-- Audit log thao tác quan trọng.
-- Lịch dạy PT cơ bản dạng list/tuần.
-- Nhắc việc cơ bản trong hệ thống/dashboard: sắp hết hạn, sinh nhật, công nợ, khách PT còn ít buổi.
+Hệ thống phục vụ phòng gym nhỏ, giúp chủ phòng và PT vận hành một luồng thống nhất:
 
-### 4.2 Cuối MVP, có thể hoãn nếu thiếu thời gian
+1. Lưu hồ sơ hội viên và nguồn khách.
+2. Bán hoặc gia hạn gói tập.
+3. Ghi nhận tiền đã thu, công nợ và báo cáo doanh thu theo ngày thu tiền thực tế.
+4. Điều phối khách có gói PT, lịch hẹn, buổi tập, số đo và mục tiêu.
+5. Cho hội viên gói PT xem tiến độ cá nhân qua Portal.
+6. Hỗ trợ chủ phòng ra quyết định giữ chân khách và doanh thu bằng AI trên dữ liệu tổng hợp đã ẩn danh.
 
-- PT schedule nâng cao dạng calendar kéo-thả.
-- Training program theo tuần.
-- Business goals theo tháng.
-- Báo cáo tiến độ khách PT.
-- Notification nâng cao/push/email/Zalo.
+Hệ thống chỉ quản lý nghiệp vụ gym và dòng tiền thu từ gói tập. Chi phí vận hành, lợi nhuận kế toán, lương PT và thu chi ngoài hệ thống không nằm trong scope MVP.
 
-### 4.3 Không làm trong MVP
+## 2. Người dùng và quyền vận hành
 
-- Payroll PT đầy đủ.
-- Commission rules phức tạp.
-- Chấm công/HR đầy đủ.
-- Import Excel/CSV dữ liệu cũ.
-- Auto Zalo.
-- Payment online.
-- AI/ML thật.
-- Computer Vision.
-- App mobile native.
+### OWNER - Chủ phòng
 
-## 5. Requirement chi tiết theo nghiệp vụ
+- Quản lý toàn bộ hội viên, gói tập, phiếu thu, công nợ và cấu hình VietQR.
+- Tạo, khóa, mở khóa, đổi vai trò và đặt lại mật khẩu tài khoản PT.
+- Cấp, khóa, đặt lại mật khẩu và xóa tài khoản Portal của hội viên.
+- Chọn PT phụ trách hoặc điều chuyển học viên PT.
+- Xem Dashboard, Báo cáo, xuất XLSX, đồng bộ Google Sheet và gọi AI Advisor.
+- Quản lý thư viện video TikTok.
+- Chủ phòng có thể đồng thời có role PT và trực tiếp dạy học viên.
 
-### 5.1 Member Management
+### PT - Huấn luyện viên
 
-Chức năng:
+- Tạo, cập nhật hồ sơ hội viên trong phạm vi được phép.
+- Bán gói và ghi nhận thu tiền cho khách trong phạm vi dữ liệu PT được phép thao tác.
+- Tự nhận một khách có gói PT hợp lệ chưa được phân công; không tự gán khách cho PT khác.
+- Xem học viên đang được phân công, đặt lịch, ghi buổi PT, ghi tự ôn tập, cập nhật số đo và mục tiêu.
+- Không được xem hoặc sửa lương, tỷ lệ dạy, hoa hồng, cấu hình hệ thống, báo cáo OWNER hay thư viện quản trị.
 
-- Tạo/sửa/xem member.
-- Tìm kiếm theo tên/số điện thoại.
-- Lọc theo trạng thái gói.
-- Lưu sinh nhật.
-- Lưu ghi chú.
-- Xem lịch sử gói.
-- Xem lịch sử payment.
+### MEMBER - Hội viên
 
-Thông tin chính:
+- Đăng nhập Portal tại đường dẫn my-progress.
+- Chỉ xem dữ liệu của chính mình: gói hiện hiệu lực, công nợ, lịch sử thu tiền, lịch PT, buổi PT còn lại, số đo, mục tiêu và tiến độ.
+- Không tự mua/gia hạn gói, không tự xác nhận thanh toán và không sửa dữ liệu vận hành.
 
-- Họ tên.
-- Số điện thoại.
-- Zalo phone.
-- Sinh nhật.
-- Giới tính.
-- Địa chỉ.
-- Nguồn khách.
-- Ghi chú.
+### Khách vãng lai
 
-Acceptance:
+- Xem trang giới thiệu, bảng giá, thư viện TikTok public và thông tin liên hệ.
 
-- OWNER tạo được member mới.
-- OWNER tìm được khách bằng số điện thoại.
-- OWNER xem được khách nào sắp hết hạn trong 7 ngày.
-- Hệ thống không ghi đè lịch sử gói cũ khi khách gia hạn.
+## 3. Phạm vi chức năng đã hoàn thành
 
-### 5.2 Membership/Renewal
+### 3.1 Hội viên
 
-Chức năng:
+- Tạo, sửa, tìm kiếm và lọc hội viên theo trạng thái gói.
+- Lưu tên, số điện thoại, ngày sinh, giới tính, địa chỉ, Zalo, nguồn khách và ghi chú.
+- Chuẩn hóa số điện thoại Việt Nam khi lưu và khi đăng nhập bằng số điện thoại; một số điện thoại chỉ có một hồ sơ.
+- Trang chi tiết tổng hợp lịch sử gói, thu tiền, công nợ, gói buổi PT và Portal.
 
-- Tạo gói tập.
-- Bán gói cho khách.
-- Gia hạn gói.
-- Tính ngày hết hạn.
-- Lưu giá thực tế, giảm giá, đã trả, còn nợ.
-- Lưu người sale/phụ trách bán gói nếu có để sau này tính hoa hồng sale.
+### 3.2 Gói tập và gia hạn
 
-Loại gói:
+- Quản lý bảng giá, bật/tắt gói đang bán và giữ lịch sử các gói đã bán.
+- Gói inactive không được bán mới.
+- Lượt đăng ký lưu giá bán thực tế, giảm giá, ngày bắt đầu, ngày kết thúc, người bán và ghi chú.
+- Gia hạn sớm không làm mất gói đang hiệu lực: hệ thống ưu tiên gói có hiệu lực trong ngày khi hiển thị trạng thái hội viên.
+- Gói PT tạo gói buổi riêng để theo dõi buổi PT và buổi tự ôn.
 
-- Tự tập.
-- Giáo án/Hướng Dẫn.
-- PT. Trong gói PT có phân cấp `PT chính` hoặc `PT mới`.
-- Khác.
+### 3.3 Thu tiền, công nợ và VietQR
 
-Ghi chú nghiệp vụ:
+- Khi kích hoạt gói, người dùng có thể thu ngay một phần, thu đủ, hoặc chưa thu.
+- Nếu thu ngay lớn hơn 0, hệ thống tạo một phiếu thu với ngày thu và phương thức thu đã chọn.
+- Nếu thu ngay bằng 0, không tạo phiếu thu; ngày thu và phương thức thu không có ý nghĩa trong giao dịch đó.
+- Phần chưa thu tạo công nợ. Mỗi lần thu nợ sau đó tạo một phiếu thu riêng, nên một gói có thể có nhiều lần thu và nhiều phương thức thu khác nhau.
+- Doanh thu báo cáo dựa trên payment_date, không dựa trên ngày bắt đầu gói. Ngày thu chỉ được phép là hôm nay hoặc quá khứ.
+- VietQR chỉ tạo thông tin chuyển khoản để thu thủ công; không có webhook hay tự động đối soát ngân hàng.
 
-- `Giáo án/Hướng Dẫn` là khách từng tập PT, sau đó mua giáo án để tự duy trì tập. Chủ phòng/PT viết giáo án và hỗ trợ khi khách gặp vấn đề.
-- `PT chính` là gói PT theo bảng giá chuẩn của phòng, hiện do chủ phòng phụ trách.
-- `PT mới` là gói PT do PT mới/học việc phụ trách, giá bằng khoảng 65% gói PT chính. Hiện PT mới là Kiệt.
-- Không dùng nhóm `Sinh viên` như một loại doanh thu riêng trong hệ thống; trong file Excel cũ, cột này thực chất là khoản thu của `PT mới`.
+### 3.4 Vận hành PT
 
-Acceptance:
+- Chỉ hội viên có gói PT đang hiệu lực mới đủ điều kiện được phân công PT. Khách tự tập không xuất hiện trong luồng gán PT.
+- Phân công phụ thuộc vào PT đang hoạt động, ngày bắt đầu/kết thúc và gói PT còn hiệu lực.
+- Lịch hẹn là điều phối thời gian, không trừ buổi và không phát sinh doanh thu.
+- Chỉ khi buổi dạy đã diễn ra, PT mới ghi nhật ký buổi PT và trừ một buổi PT.
+- Tự ôn tập và buổi hướng dẫn được ghi riêng và trừ đúng loại lượt của gói.
+- Hệ thống chặn ghi nhận ở ngày tương lai, ngoài hạn gói, trên gói chờ thanh toán, gói đã hủy/hết hạn, hết lượt, sai khách, sai gói và trùng buổi.
+- PT có thể nhập số đo cơ thể và mục tiêu; số đo và goal chỉ dùng để theo dõi tiến độ, không gọi AI phân tích chỉ số cá nhân.
 
-- Gói đã bán không bị xóa cứng.
-- Gia hạn tạo record mới.
-- Dashboard hiển thị đúng active/sắp hết hạn/hết hạn.
+### 3.5 Portal hội viên
 
-### 5.3 Finance
+- OWNER cấp tài khoản Portal cho hội viên cần theo dõi tiến độ; kịch bản sử dụng chính là khách gói PT.
+- Portal hiển thị dữ liệu đồng bộ từ nghiệp vụ PT: gói, hạn, buổi còn lại, lịch hẹn, nhật ký PT, số đo, mục tiêu, phiếu thu và công nợ.
+- Endpoint cấp Portal hiện cần số điện thoại và chưa ràng buộc plan_type PT. Đây là chủ động để OWNER có thể cấp quyền xem cho hội viên cần thiết; quy trình vận hành ưu tiên cấp cho khách PT.
+- Portal là chế độ chỉ đọc. Mọi thay đổi về gói, tiền và lịch tập do OWNER/PT xử lý.
 
-Chức năng:
+### 3.6 Nhắc việc, báo cáo và dữ liệu
 
-- Ghi nhận thu hằng ngày.
-- Theo dõi công nợ.
-- Tự tính doanh thu thực thu từ phiếu thanh toán.
-- Xem doanh thu theo ngày/tháng/năm.
+- Nhắc việc gia hạn, công nợ và sinh nhật; hệ thống tạo nội dung để nhân viên copy hoặc mở Zalo thủ công.
+- Dashboard cho OWNER và trang Báo cáo theo dõi hội viên, doanh thu, công nợ, xu hướng doanh thu và trạng thái gói.
+- Xuất XLSX cho hội viên, lịch sử thu tiền, công nợ, bảng giá và bản sao lưu nhiều sheet.
+- Đồng bộ Google Sheet qua Apps Script URL và token do chủ phòng cấu hình.
 
-Mapping từ Excel:
+### 3.7 AI Cố vấn Giữ chân và Doanh thu
 
-- `TỔNG THU` -> payment gắn với lượt đăng ký gói.
-- `TỔNG CHI` -> ngoài phạm vi hệ thống.
-- `TỔNG 2026` -> báo cáo doanh thu gói tập theo năm.
+- OWNER chủ động bấm phân tích theo tháng trên trang Báo cáo.
+- Rule nội bộ nhận diện nhóm sắp hết hạn, đã hết hạn, công nợ, khách PT còn nhiều buổi gần hết hạn và khách PT gián đoạn.
+- Groq chỉ nhận số liệu tổng hợp và segment ẩn danh; không gửi tên, số điện thoại, Zalo, email, địa chỉ hay giao dịch cá nhân.
+- Kết quả gồm tổng quan sức khỏe phòng gym, rủi ro, cơ hội doanh thu, kế hoạch 7 ngày và chỉ số cần theo dõi.
+- Nếu AI provider lỗi, hệ thống trả về kết quả rule-based để luồng Báo cáo vẫn hoạt động.
 
-Nhóm thu cần hỗ trợ:
+### 3.8 Thư viện video TikTok
 
-- Tự tập.
-- Giáo án/Hướng Dẫn.
-- PT chính.
-- PT mới.
-- Gói tập khác.
-
-Acceptance:
-
-- OWNER nhập một payment và dashboard doanh thu thay đổi.
-- Payment bắt buộc gắn với công nợ/lượt đăng ký gói của hội viên.
-- Không cần nhập tay bảng tổng năm.
-
-### 5.4 PT Tracking
-
-Chức năng:
-
-- Gán PT cho khách.
-- Tạo gói PT theo số buổi.
-- Ghi nhận từng buổi PT.
-- Ghi nhận buổi ôn tập/thực hành.
-- Theo dõi số buổi còn lại.
-- Ghi chú buổi tập.
-
-Quy tắc gói PT hiện tại:
-
-- Gói 1: 20 buổi PT + 20 buổi Ôn tập.
-- Gói 2: 40 buổi PT + 40 buổi Ôn tập.
-- Gói 3: 60 buổi PT + 60 buổi Ôn tập.
-- Buổi Ôn tập đi kèm gói PT để khách tự ôn lại bài, không có PT trực tiếp.
-- Phiếu `CHECK IN` 24 dòng chỉ là mẫu in sẵn, không đại diện cho số buổi của mọi gói.
-
-Acceptance:
-
-- PT chỉ thấy khách được phân công.
-- OWNER thấy tất cả khách PT.
-- Khi thêm buổi PT, số buổi đã dùng/còn lại cập nhật đúng.
-
-### 5.5 Body Measurement
-
-Chức năng:
-
-- Lưu chiều cao, cân nặng, vòng ngực, eo, bụng, mông, đùi, tay.
-- Xem lịch sử đo.
-- Hiển thị biểu đồ tiến độ cơ bản.
-
-Acceptance:
-
-- PT nhập được chỉ số theo ngày.
-- Member/PT/OWNER xem được tiến độ theo thời gian.
-
-### 5.6 Training Program
-
-Trạng thái:
-
-- Không triển khai trong Sprint 5.
-- Không biến hệ thống thành LMS/khóa học theo tuần vì không sát nhu cầu hiện tại của chủ phòng.
-- Tiến độ PT hiện xử lý bằng `pt_session_logs`, `member_activity_logs`, `body_measurements` và `pt_goals`.
-- Nếu sau này chủ phòng thật sự cần giáo án cá nhân hóa theo tuần cho từng khách PT thì mới mở phase riêng.
-
-Acceptance:
-
-- Sprint 5 không tạo màn Training Program theo tuần.
-- Không có weekly target/actual trong Sprint 5.
-- Không có khóa nội dung theo VIP/premium trong Sprint 5.
-
-### 5.7 Public TikTok Exercise Library
-
-Chức năng:
-
-- Quản lý nhóm bài tập/chủ đề như Ngực, Lưng - Xô, Chân - Mông, Vai - Tay, Bụng - Core, Cardio, Phục hồi.
-- Quản lý bài tập/video hướng dẫn dạng public.
-- Lưu mô tả ngắn, lưu ý kỹ thuật, lỗi sai thường gặp nếu có.
-- Gắn link TikTok của chủ phòng, ưu tiên kênh `@duong.double`.
-- Không hỗ trợ provider video khác trong Sprint 5.
-- Không upload/stream video bằng VPS.
-- Không phân quyền member/VIP/premium; ai có link hoặc vào web đều xem được.
-- Hỗ trợ copy link/chia sẻ để gửi cho học viên và kéo tương tác mạng xã hội.
-
-Acceptance:
-
-- Người dùng vãng lai không cần đăng nhập vẫn xem được thư viện.
-- Owner thêm/sửa/xuất bản được bài tập bằng link TikTok.
-- Trang chi tiết bài tập hiển thị được TikTok embed hoặc fallback nút mở TikTok.
-- Có filter/tìm kiếm cơ bản theo nhóm cơ/chủ đề và từ khóa.
-- Có nút copy link/chia sẻ.
-
-## 6. Dashboard cần có
-
-### OWNER Dashboard
-
-- Tổng member.
-- Active member.
-- Sắp hết hạn.
-- Đã hết hạn.
-- Khách mới tháng này.
-- Khách cũ/tái tục tháng này.
-- Doanh thu tháng.
-- Công nợ.
-- Sinh nhật hôm nay.
-- Khách PT còn ít buổi.
-
-### PT Dashboard
-
-- Lịch hôm nay.
-- Khách được phân công.
-- Khách còn ít buổi.
-- Khách lâu chưa có buổi PT.
-- Cập nhật nhanh session/body measurement.
-
-### MEMBER Dashboard
-
-- Gói hiện tại.
-- Ngày hết hạn.
-- Lịch sử thanh toán cơ bản.
-- Bài tập/chương trình được phép.
-
-## 7. Quy tắc ngoài phạm vi
-
-- Payroll/lương PT không nằm trong MVP, nhưng công thức đã chốt để thiết kế sẵn đường mở rộng.
-- Không làm churn ML cho khách tự tập vì không có check-in đại trà.
-- Không làm auto Zalo nếu chưa xác minh API/chính sách.
-- Không làm streaming video.
-- Không import dữ liệu Excel cũ trong MVP vì chủ phòng muốn bắt đầu bằng dữ liệu mới.
-
-## 8. Thông tin nghiệp vụ đã chốt thêm
-
-- `Khách Hướng Dẫn` hay `Khách Tập Giáo Án` là khách từng tập PT, sau đó mua giáo án để tự duy trì. PT/chủ phòng chỉ hỗ trợ khi khách gặp vấn đề.
-- Khách Giáo Án vẫn check-in theo số buổi của gói giáo án: 30, 60 hoặc 90 buổi.
-- Khách tự tập không check-in.
-- `PT chính` là PT đạt chuẩn phòng tập, bán theo bảng giá chính. Hiện PT chính là chủ phòng.
-- `PT mới` là PT mới học việc xong, kinh nghiệm ít hơn, bán gói bằng khoảng 65% giá PT chính. Hiện PT mới là Kiệt.
-- Cột `Sinh viên` trong bảng thu Excel thực chất là khoản thu gói PT mới, không phải nhóm sinh viên/discount riêng.
-- Gói PT hiện tại gồm `20 PT + 20 Ôn tập`, `40 PT + 40 Ôn tập`, `60 PT + 60 Ôn tập`.
-- Lương dạy PT chỉ tính trên số buổi PT đã dạy, không tính buổi Ôn tập.
-- Công thức lương dạy PT: `số buổi PT đã dạy * 30% * (giá gói / tổng số buổi PT của gói)`.
-- Hoa hồng sale PT: `10% * số tiền khách đã thanh toán`.
-- Chủ phòng không yêu cầu import dữ liệu cũ từ Excel ở MVP; hệ thống bắt đầu với dữ liệu mới.
-
-Thông tin đã làm rõ:
-
-- `Kiệt` là tên nhân sự/PT.
-- Các khoản chi phí vận hành do chủ phòng theo dõi ngoài hệ thống; MVP chỉ quản lý doanh thu từ gói tập và công nợ hội viên.
-
-## 9. Tiêu chí hoàn thành MVP
-
-MVP hoàn thành khi:
-
-- OWNER thay được bảng quản lý khách/gói bằng hệ thống.
-- OWNER xem được khách hết hạn/sắp hết hạn.
-- OWNER ghi nhận được tiền gói tập, xem doanh thu và công nợ chính xác theo ngày thu.
-- PT nhập được buổi tập và chỉ số.
-- Public TikTok exercise library xem/chia sẻ được.
-- Hệ thống chạy ổn định ở môi trường local dev để demo và kiểm thử nghiệp vụ. Deploy production để phase sau.
-
-## 10. Cập nhật theo implementation hiện tại
-
-Sau giai đoạn nâng cấp UI và bổ sung nghiệp vụ, tài liệu chốt hiện trạng là `plans/active/10-current-implementation-alignment.md`.
-
-Các thay đổi sản phẩm đã được chấp nhận vào scope hiện tại:
-
-- Hệ thống không còn role `STAFF`; PT kiêm vận hành cơ bản khi chủ phòng không trực.
-- Có portal hội viên `/my-progress` cho MEMBER xem tiến trình cá nhân, chỉ số cơ thể, mục tiêu, gói hiện tại, công nợ và lịch sử thanh toán.
-- OWNER/PT có thể tạo tài khoản portal nhanh cho hội viên, nhưng hội viên chỉ xem dữ liệu và liên hệ Zalo thủ công, không tự mua gói hay xác nhận thanh toán online.
-- OWNER quản lý tài khoản PT tại `/settings`.
-- VietQR là công cụ hỗ trợ chuyển khoản thủ công, không phải payment gateway tự động.
-- Báo cáo hỗ trợ xuất `.xlsx`, full backup nhiều sheet và đồng bộ Google Sheet qua Apps Script/token.
-- Nhắc việc Zalo là bán tự động: hệ thống soạn/copy tin nhắn và mở Zalo, không tự gửi tin.
-- Thư viện video public chỉ hỗ trợ TikTok trong scope hiện tại.
+- OWNER quản lý danh mục và bài tập/video: tên, slug, mô tả, hướng dẫn, lỗi thường gặp, độ khó, nhóm cơ, dụng cụ, TikTok URL và trạng thái hiển thị.
+- Khách vãng lai xem thư viện public và trang chi tiết.
+- TikTok chỉ được nhúng để xem; MVP không quản lý lượt xem, tác giả TikTok hay phân tích hiệu suất video.
+
+## 4. Bảo mật đã có trong MVP
+
+- JWT stateless, token có thời hạn và token version.
+- Đổi/reset mật khẩu thu hồi hiệu lực JWT cũ ngay lập tức.
+- Đăng nhập giới hạn 5 lần sai trong 15 phút theo cả IP và tài khoản; frontend hiển thị thời gian chờ.
+- Endpoint nhạy cảm có giới hạn theo người dùng: đổi mật khẩu, tạo/reset tài khoản, Portal và AI Advisor.
+- Mật khẩu tối thiểu 8 ký tự, có chữ và số, không trùng email, số điện thoại hay mật khẩu cũ.
+- API có security headers, CSP cơ bản, chặn iframe, no-cache cho dữ liệu JWT/API và CORS local dev rõ ràng.
+- Lưu lastLoginAt sau đăng nhập thành công.
+
+## 5. Ngoài phạm vi đã chốt
+
+- Deploy production, domain, VPS, Docker và quy trình vận hành production.
+- Nhập Excel/CSV tự động.
+- Thanh toán online, webhook ngân hàng và Zalo API gửi tin tự động.
+- Quản lý chi phí, lợi nhuận, payroll, hoa hồng tính lương và mục tiêu vận hành.
+- Training program/LMS theo tuần, chatbot tự do, AI soạn giáo án và AI phân tích chỉ số cá nhân.
+- Ứng dụng mobile native, audit log đầy đủ và soft-delete hoàn chỉnh.
+
+## 6. Tiêu chí nghiệm thu MVP
+
+- OWNER hoàn thành được luồng tạo hội viên, bán gói, thu nợ, xem báo cáo và cấu hình tài khoản.
+- PT chỉ truy cập được học viên/giao dịch trong phạm vi phân quyền và ghi nhận đúng buổi tập thực tế.
+- MEMBER chỉ xem dữ liệu của mình.
+- Dữ liệu doanh thu về đúng kỳ theo ngày thu tiền thực tế; công nợ và phiếu thu nhiều đợt khớp nhau.
+- Ghi nhận PT không làm sai số buổi hoặc thời hạn gói.
+- AI Advisor ẩn danh có fallback.
+- Backend test, frontend lint và frontend build được chạy trong các đợt chốt tính ổn định.
+
+Tài liệu đối chiếu hiện trạng chi tiết: 08-current-implementation-alignment.md.

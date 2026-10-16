@@ -1,338 +1,152 @@
-# 02 - KIẾN TRÚC HỆ THỐNG
+# 02 - Kiến Trúc Hệ Thống
 
-## 1. Mục tiêu kiến trúc
+Cập nhật lần cuối: 16/10/2026.
 
-Kiến trúc phải phù hợp với phòng gym nhỏ, dễ triển khai và dễ bảo trì.
+## 1. Tổng quan
 
-Ưu tiên:
+Dương Double Gym Management là modular monolith chạy local development. Hệ thống tách rõ frontend React, backend Spring Boot và PostgreSQL, nhưng không tách microservice. Cách tổ chức này phù hợp đồ án cá nhân và phòng gym nhỏ: dễ đọc, dễ test, ít chi phí vận hành và không phình code.
 
-- Đơn giản.
-- Sẵn sàng mở rộng lên production ở phase sau.
-- Chạy local dev ổn định cho phạm vi đồ án hiện tại.
-- Dễ backup.
-- Có module rõ để mở rộng.
-- Không over-engineer.
+Luồng tổng quát:
 
-## 2. Kiến trúc tổng thể
+Browser React/Vite
+  -> REST API Spring Boot tại /api/v1
+  -> PostgreSQL
 
-```text
-Browser
-  |
-Vite React Dev Server
-  |
-  |-- Browser
-  |
-  |-- /api -> Spring Boot Modular Monolith
-                  |
-                  -> PostgreSQL local
-```
+Tích hợp ngoài hệ thống khi cần:
 
-## 3. Lý do chọn Modular Monolith
+- Groq cho AI Advisor, chỉ khi OWNER bấm phân tích.
+- VietQR để tạo thông tin chuyển khoản thu công.
+- Google Apps Script để đồng bộ sheet thủ công.
+- TikTok iframe để hiển thị video public.
 
-Không chọn microservices vì:
+Không có hàng đợi, cache server, scheduler, payment webhook hoặc logging/audit service trong scope hiện tại.
 
-- Quy mô phòng gym nhỏ.
-- Traffic không lớn.
-- Team triển khai nhỏ.
-- Microservices tăng chi phí deploy/monitoring.
+## 2. Stack thực tế
 
-Modular monolith vẫn đảm bảo:
-
-- Một backend dễ đóng gói/deploy sau này.
-- Module theo domain.
-- Dễ tách module sau này nếu thật sự cần.
-
-## 4. Stack kỹ thuật
-
-Frontend:
-
-- React.
-- TypeScript.
-- Tailwind CSS.
-- React Router.
-- TanStack Query.
-- React Hook Form + Zod.
-- Recharts.
-
-Backend:
+### Backend
 
 - Java 21.
-- Spring Boot 3.
-- Spring Security.
-- Spring Data JPA.
-- Bean Validation.
-- Flyway dependency được giữ cho tư duy migration/phase sau, dev hiện dùng Hibernate `ddl-auto:update`.
-
-Database:
-
+- Spring Boot 4.1.1.
+- Spring Web MVC, Spring Data JPA, Spring Security, Bean Validation và Actuator.
 - PostgreSQL.
+- Lombok.
+- Maven.
+- Flyway dependency được giữ để phục vụ migration tương lai, nhưng đang tắt trong local dev.
 
-Deploy:
+### Frontend
 
-- Chưa thuộc phạm vi hiện tại.
-- Local dev dùng Vite + Spring Boot + PostgreSQL.
-- Docker/Nginx/VPS/Cloudflare để phase sau.
+- React 19.
+- TypeScript.
+- Vite 8.
+- React Router 7.
+- Axios.
+- Tailwind CSS 4.
+- Lucide React.
 
-## 5. Module backend
+Không sử dụng TanStack Query, React Hook Form, Zod hay Redux trong implementation hiện tại. State và submit form được quản lý bằng React hooks và các module API nhỏ theo từng feature.
 
-```text
-auth
-user
-member
-membership
-finance
-pt
-training
-exercise
-dashboard
-common
-```
+## 3. Cấu trúc backend
 
-## 6. Boundary từng module
+Package chính được tổ chức theo nghiệp vụ:
 
-### `auth`
+| Module | Trách nhiệm |
+| --- | --- |
+| auth | Đăng nhập, thông tin tài khoản hiện tại, đổi mật khẩu. |
+| user | Role, tài khoản OWNER/PT, trạng thái tài khoản và lastLoginAt. |
+| member | Hồ sơ hội viên, phân quyền dữ liệu hội viên và Portal MEMBER. |
+| membership | Bảng giá, lượt đăng ký gói và lifecycle gói. |
+| finance | Phiếu thu, công nợ, VietQR và báo cáo dòng tiền. |
+| pt | Hồ sơ PT, phân công, lịch hẹn, gói buổi, nhật ký PT và tự ôn. |
+| training | Số đo cơ thể và mục tiêu PT. |
+| exercise | Thư viện TikTok public và công cụ OWNER quản lý video. |
+| dashboard | Dashboard OWNER, báo cáo, thông báo/nhắc việc động. |
+| ai | AI Cố vấn Giữ chân và Doanh thu. |
+| common | Base entity, exception, time, security, validation, API response và cấu hình. |
 
-Trách nhiệm:
+Mỗi module có domain, repository, service, web controller và DTO ở mức độ cần thiết. Controller chỉ nhận request/trả response; service giữ quy tắc nghiệp vụ và phân quyền; repository truy cập JPA.
 
-- Login.
-- Logout.
-- Password hashing.
-- Current user.
+## 4. Phân quyền và xác thực
 
-MVP hiện tại dùng JWT access token. Refresh token để phase sau nếu triển khai production.
+### JWT
 
-Không xử lý nghiệp vụ member/PT.
+- API dùng Bearer JWT, không lưu HTTP session.
+- JWT chứa subject, roles, thời hạn và auth version.
+- JwtAuthenticationFilter kiểm tra chữ ký, hạn token, trạng thái tài khoản và auth version trước khi đặt authentication.
+- Khi người dùng đổi/reset mật khẩu, auth version tăng lên; JWT cũ không còn dùng được.
 
-### `user`
+### Role
 
-Trách nhiệm:
+- OWNER: toàn quyền nghiệp vụ và cấu hình.
+- PT: được cấp API của vai trò PT, nhưng service tiếp tục kiểm tra phạm vi học viên/PT của chính người đăng nhập.
+- MEMBER: chỉ lấy Portal của tài khoản liên kết.
 
-- User account.
-- Role.
-- Mapping user với PT/member.
+OWNER seed có cả role OWNER và PT. Vì vậy chủ phòng vẫn giữ quyền quản trị, đồng thời có thể được phân công dạy khách.
 
-### `member`
+### Rate limit và password policy
 
-Trách nhiệm:
+- Login: tối đa 5 lần sai trong cửa sổ 15 phút theo IP và identifier.
+- Endpoint nhạy cảm: 10 request trong 15 phút theo actor cho đổi/reset password, tạo/reset tài khoản, Portal và AI Advisor.
+- Password được mã hóa BCrypt và phải đạt chính sách tối thiểu của hệ thống.
 
-- Hồ sơ khách.
-- Ghi chú khách.
-- Sinh nhật.
-- Tìm kiếm/lọc.
+## 5. Boundary dữ liệu quan trọng
 
-Không xử lý gia hạn hoặc payment trực tiếp.
+### Hội viên và gói tập
 
-### `membership`
+MemberService và MemberAccessService quyết định PT nào được xem/thao tác hồ sơ. MembershipLifecyclePolicy tính trạng thái hiệu lực theo ngày, ưu tiên gói đang hiệu lực trước gói đã mua sẵn cho tương lai.
 
-Trách nhiệm:
+### Tài chính
 
-- Gói tập.
-- Đăng ký/gia hạn.
-- Lịch sử gói.
-- Tính hết hạn/sắp hết hạn.
-- Cấu hình loại gói: Tự tập, PT, Giáo án/Hướng Dẫn.
-- Cấu hình cấp PT trong gói PT: PT chính hoặc PT mới.
-- Cấu hình số buổi PT, số buổi Ôn tập và số buổi check-in Giáo án.
+Payment là nguồn doanh thu thực thu. DebtRecord là khoản còn phải thu. Báo cáo không suy diễn doanh thu từ giá gói hay ngày bắt đầu gói.
 
-Khi bán/gia hạn gói có thể gọi `finance` để tạo payment.
+### PT
 
-### `finance`
+PtAssignmentPolicy xác định một phân công có hiệu lực dựa trên trạng thái, ngày phân công và gói PT. PtService là nơi kiểm soát lịch trùng, phạm vi PT, gói buổi, ngày hợp lệ, trùng log và trừ buổi.
 
-Trách nhiệm:
+### Báo cáo và AI
 
-- Payment.
-- Công nợ.
-- Tính doanh thu thực thu từ các payment gắn với gói tập.
+DashboardService tính chỉ số từ dữ liệu nguồn. AI service tạo payload aggregate ẩn danh, chạy rule segment trước, sau đó mới gọi Groq để diễn giải chiến lược. Nếu provider lỗi, kết quả fallback vẫn được trả về.
 
-Không lưu bảng tổng doanh thu riêng; báo cáo tổng hợp trực tiếp từ `payments.payment_date`.
+## 6. Luồng nghiệp vụ chính
 
-### `pt`
+### 6.1 Bán hoặc gia hạn gói
 
-Trách nhiệm:
+1. OWNER/PT tạo hội viên nếu chưa có.
+2. Chọn gói active và ngày bắt đầu.
+3. Nhập giá thực tế, giảm giá và số tiền thu ngay.
+4. Backend tạo member_membership.
+5. Nếu có thu tiền, tạo payment_transactions. Nếu còn thiếu, tạo debt_records.
+6. Nếu là gói PT, tạo pt_session_packages. Phân công PT là bước vận hành riêng.
 
-- PT profile.
-- Gán PT.
-- Lịch dạy.
-- Gói PT.
-- Buổi PT.
-- Activity/ôn tập.
-- Check-in Giáo án/Hướng Dẫn.
-- Body measurement.
+### 6.2 Thu công nợ
 
-### `training`
+1. Chọn debt record.
+2. Nhập số tiền, ngày thu thực tế và phương thức.
+3. Backend tạo payment mới, cập nhật paid/remaining/status của debt và paid/debt/status của membership.
 
-Trách nhiệm:
+### 6.3 Điều phối PT
 
-- Goal.
-- Body measurement/progress support.
-- Không triển khai Training Program theo tuần trong Sprint 5.
-- Nếu sau này cần giáo án cá nhân hóa theo tuần thì mở phase riêng.
+1. OWNER phân công PT, hoặc PT tự nhận khách PT chưa có phân công.
+2. Đặt lịch là cuộc hẹn, chưa trừ buổi.
+3. Khi buổi thực tế xong, ghi session log để trừ một buổi PT.
+4. Tự ôn tập ghi activity log và trừ lượt tự ôn.
+5. PT cập nhật số đo/mục tiêu theo định kỳ; Portal chỉ đọc kết quả.
 
-### `exercise`
+## 7. Date, time và lifecycle
 
-Trách nhiệm:
+- Backend dùng Asia/Ho_Chi_Minh cho nghiệp vụ ngày.
+- Frontend dùng helper local date, không dựa vào UTC string để tính ngày nghiệp vụ.
+- Ngày thu tiền, ngày ghi buổi, ngày đo chỉ số không được ở tương lai.
+- Trạng thái gói, gói buổi và phân công được tính hiệu lực khi đọc dữ liệu, không cần scheduler chuyển enum hằng ngày.
 
-- Nhóm bài tập.
-- Bài tập/video hướng dẫn public.
-- TikTok video URL/video id.
-- Hỗ trợ chia sẻ link để kéo tương tác TikTok/phễu marketing.
-- Không upload/stream video bằng VPS.
+## 8. Bảo mật HTTP
 
-### `dashboard`
+API có CORS local dev rõ ràng và các header bảo vệ: chặn MIME sniffing, chặn iframe, Referrer-Policy, CSP cơ bản, Permissions-Policy và Cache-Control cho response API. Đây là lớp bổ sung bên cạnh JWT và phân quyền service.
 
-Trách nhiệm:
+## 9. Giới hạn kiến trúc hiện tại
 
-- Tổng hợp số liệu cho OWNER/PT/MEMBER.
-- Không sở hữu dữ liệu nguồn.
+- In-memory rate limit phù hợp một backend local; nếu scale nhiều instance cần thay bằng Redis hay gateway.
+- deleted ở BaseEntity là cột dự phòng, chưa có cơ chế soft-delete đồng bộ trên tất cả query.
+- Flyway đang tắt và Hibernate ddl-auto=update phục vụ local dev. Khi bắt đầu deploy hoặc migration thật, cần chuyển sang migration versioned.
+- Google Sheet và TikTok là tích hợp một chiều/nhúng view, không phải hệ thống đồng bộ hai chiều hay media hosting.
 
-### Nhắc việc động
-
-Trách nhiệm:
-
-- Nhắc hết hạn.
-- Sinh nhật.
-- Công nợ.
-- Khách PT còn ít buổi.
-- Không sở hữu bảng riêng trong MVP; dữ liệu được tính động trong dashboard/reminders từ các bảng nguồn.
-
-## 7. Luồng nghiệp vụ quan trọng
-
-### 7.1 Bán/gia hạn gói
-
-```text
-OWNER chọn member
-  -> chọn membership plan
-  -> tạo member_membership
-  -> tạo payment nếu có trả tiền
-  -> tạo debt nếu chưa trả đủ
-  -> nếu plan_type = PT thì tạo pt_session_package
-  -> nếu plan_type = GUIDANCE thì check-in sau này ghi qua member_activity_logs theo membership_id
-  -> dashboard cập nhật doanh thu/công nợ
-```
-
-### 7.2 Theo dõi hết hạn
-
-```text
-member_memberships.end_date
-  -> tính days_until_expiration
-  -> phân loại active/sắp hết hạn/hết hạn
-  -> dashboard + reminders/notification response động
-```
-
-### 7.3 Ghi nhận buổi PT
-
-```text
-PT chọn khách
-  -> thêm session log
-  -> cập nhật used/remaining sessions
-  -> ghi cân nặng/ghi chú
-  -> dùng cho progress report
-```
-
-### 7.4 Ghi nhận tiền gói tập
-
-```text
-Membership + DebtRecord
-  -> Payment theo ngày thu thực tế
-  -> giảm công nợ
-  -> dashboard/báo cáo doanh thu
-```
-
-## 8. Phân quyền dữ liệu
-
-OWNER:
-
-- Toàn quyền.
-
-PT:
-
-- Chỉ xem khách được gán.
-- Chỉ cập nhật session/body measurement cho khách được gán.
-- Không xem toàn bộ tài chính.
-
-MEMBER:
-
-- Chỉ xem dữ liệu của chính mình.
-- Không xem dữ liệu khách khác.
-
-## 9. Xử lý báo cáo
-
-Báo cáo ưu tiên tính từ dữ liệu nguồn:
-
-- Doanh thu thực thu: tổng `payments.amount` theo `payments.payment_date`.
-- Công nợ: từ `debt_records.remaining_amount` ở trạng thái OPEN/PARTIALLY_PAID.
-- Khách sắp hết hạn: từ `member_memberships.end_date`.
-- Tiến độ PT: từ `pt_session_logs`, `member_activity_logs`, `body_measurements`, `pt_goals`.
-
-Quy tắc tài chính:
-
-- `payments` là bảng nghiệp vụ ghi tiền khách trả.
-- Mỗi payment phải gắn với một lượt đăng ký gói và khoản công nợ tương ứng.
-- Dashboard/báo cáo tổng hợp trực tiếp từ `payments`, tránh lưu trùng cùng một khoản thu ở nhiều bảng.
-- Chi phí vận hành và lợi nhuận nằm ngoài scope MVP.
-
-Nếu performance cần, có thể thêm snapshot/cache sau.
-
-## 10. Scheduler
-
-MVP hiện tại chưa dùng scheduler. Nhắc việc và cảnh báo được tính động khi OWNER/PT mở dashboard/reminders. Scheduler để phase sau nếu cần gửi thông báo tự động.
-
-## 11. Media
-
-Video:
-
-- Sprint 5 chỉ dùng TikTok URL/video id.
-- Database lưu URL, video id/thumbnail nếu có.
-- Frontend ưu tiên TikTok embed; nếu embed không khả dụng thì hiển thị nút mở TikTok.
-- Không stream video bằng VPS.
-
-Ảnh:
-
-- MVP có thể lưu URL ngoài hoặc local upload.
-- Phase sau có thể dùng Cloudinary/S3-compatible storage.
-
-## 12. Logging và audit
-
-Cần audit:
-
-- Tạo/sửa member.
-- Gia hạn gói.
-- Ghi/sửa payment.
-- Sửa session PT.
-- Sửa payroll sau này.
-
-## 13. Khả năng mở rộng
-
-Sau MVP có thể thêm:
-
-- Import Excel/CSV nếu sau này chủ phòng muốn nhập dữ liệu cũ; MVP hiện tại bắt đầu bằng dữ liệu mới.
-- Payroll.
-- Export PDF/Excel.
-- AI scoring batch.
-- RAG chatbot.
-- Payment online.
-
-## 14. Cập nhật kiến trúc theo implementation hiện tại
-
-Tài liệu chốt hiện trạng sau nâng cấp UI nằm tại `plans/active/10-current-implementation-alignment.md`.
-
-Điều chỉnh kiến trúc hiện tại:
-
-- `user` module dùng `TeamUserController/TeamUserService` để OWNER quản lý tài khoản PT, không còn naming `StaffUser`.
-- `member` module có thêm `MemberAccessService` để gom rule phân quyền dữ liệu theo OWNER/PT/MEMBER.
-- `member` module có thêm `MemberPortalService` và `MemberPortalController` cho portal hội viên.
-- `common` module có thêm `VietQrSettingService`, `SettingsController`, `PublicSettingsController` để tách cấu hình OWNER và cấu hình public read-only.
-- `dashboard` module gom dashboard OWNER, finance/member reports và notification response tính động.
-- `reports` xuất `.xlsx` và Google Sheet sync nằm ở frontend, dùng dữ liệu từ report API thay vì backend export file.
-- `exercise` module chỉ xử lý TikTok public library, không còn module training program/LMS trong scope hiện tại.
-- `pt` module là nơi xử lý assignment, schedule, session log, activity log, body measurement và goal.
-
-Các module để phase sau:
-
-- Audit log persistence riêng.
-- Notification persistence/scheduler nâng cao.
-- Payroll.
-- Import Excel.
-- Payment online.
-
-Các phần này là module mở rộng, không làm thay đổi lõi member/membership/finance/PT.
+Tài liệu đối chiếu hiện trạng chi tiết: 08-current-implementation-alignment.md.

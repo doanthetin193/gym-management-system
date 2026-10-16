@@ -9,13 +9,21 @@ export class ApiClientError extends Error {
   status: number
   code?: string
   fields?: Record<string, string>
+  retryAfterSeconds?: number
 
-  constructor(message: string, status: number, code?: string, fields?: Record<string, string>) {
+  constructor(
+    message: string,
+    status: number,
+    code?: string,
+    fields?: Record<string, string>,
+    retryAfterSeconds?: number,
+  ) {
     super(message)
     this.name = 'ApiClientError'
     this.status = status
     this.code = code
     this.fields = fields
+    this.retryAfterSeconds = retryAfterSeconds
   }
 }
 
@@ -61,6 +69,8 @@ function unboxApiResponse(response: AxiosResponse<ApiResponse<unknown>>) {
 function normalizeApiError(error: AxiosError<ApiResponse<unknown>>) {
   const status = error.response?.status ?? 0
   const payload = error.response?.data
+  const retryAfter = Number(error.response?.headers?.['retry-after'])
+  const retryAfterSeconds = Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : undefined
 
   if (status === 401) {
     clearAccessToken()
@@ -77,6 +87,7 @@ function normalizeApiError(error: AxiosError<ApiResponse<unknown>>) {
     status,
     payload?.error?.code,
     payload?.error?.fields,
+    retryAfterSeconds,
   )
 }
 

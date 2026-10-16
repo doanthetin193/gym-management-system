@@ -13,6 +13,7 @@ import {
 import type { FormEvent } from 'react'
 import { useState } from 'react'
 import { ApiClientError } from '../../../shared/api/apiClient'
+import { clearAccessToken } from '../../../shared/lib/authStorage'
 import { fixVietnameseMojibake } from '../../../shared/lib/text'
 import { changePassword } from '../../auth/api/authApi'
 import { useAuth } from '../../auth/context/authContext'
@@ -81,8 +82,9 @@ export function ProfilePage() {
       setCurrentPassword('')
       setNewPassword('')
       setConfirmPassword('')
-      setSuccess('Đã đổi mật khẩu thành công!')
-      setTimeout(() => setSuccess(null), 4000)
+      clearAccessToken()
+      setSuccess('Đã đổi mật khẩu. Vui lòng đăng nhập lại.')
+      window.setTimeout(() => window.location.replace('/login'), 1200)
     } catch (submitError) {
       setError(errorMessage(submitError))
     } finally {

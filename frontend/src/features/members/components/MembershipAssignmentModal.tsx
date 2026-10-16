@@ -10,8 +10,8 @@ import type { MemberMembershipPayload } from '../types/member'
 export type MembershipAssignmentSubmitPayload = {
   membership: MemberMembershipPayload
   paidAmount: number
-  paymentMethod: PaymentMethod
-  paymentDate: string
+  paymentMethod: PaymentMethod | null
+  paymentDate: string | null
 }
 
 type MembershipAssignmentModalProps = {
@@ -64,6 +64,7 @@ export function MembershipAssignmentModal({
   const payableAmount = Math.max(Number(actualPrice || 0) - Number(discountAmount || 0), 0)
   const paidValue = Number(paidAmount || 0)
   const remainingAmount = Math.max(payableAmount - paidValue, 0)
+  const hasInitialPayment = paidValue > 0
 
   function handlePlanChange(value: string) {
     const nextPlan = activePlans.find((plan) => plan.id.toString() === value) ?? null
@@ -89,8 +90,8 @@ export function MembershipAssignmentModal({
         note: note.trim() || null,
       },
       paidAmount: paidValue,
-      paymentMethod,
-      paymentDate,
+      paymentMethod: hasInitialPayment ? paymentMethod : null,
+      paymentDate: hasInitialPayment ? paymentDate : null,
     })
   }
 
@@ -138,7 +139,7 @@ export function MembershipAssignmentModal({
                 </select>
               </label>
 
-              <div className="grid gap-4 lg:grid-cols-3">
+              <div className="grid gap-4 md:grid-cols-2">
                 <DatePartsSelect
                   label="Ngày bắt đầu gói"
                   value={startDate}
@@ -154,20 +155,24 @@ export function MembershipAssignmentModal({
                   value={paymentDate}
                   onChange={setPaymentDate}
                   maxIso={today}
-                  required
-                  helperText="Nhập dữ liệu cũ thì chọn đúng ngày đã thu để báo cáo về đúng tháng."
+                  required={hasInitialPayment}
+                  disabled={!hasInitialPayment}
+                  helperText={hasInitialPayment
+                    ? 'Nhập dữ liệu cũ thì chọn đúng ngày đã thu để báo cáo về đúng tháng.'
+                    : 'Chưa thu tiền nên không tạo phiếu thu.'}
                   wrapperClassName="block"
                   labelClassName="text-sm font-bold text-[var(--text)]"
-                  selectClassName="h-11 w-full rounded-[8px] border border-[var(--line)] bg-[var(--input-bg)] px-2 text-xs font-semibold outline-none focus:border-[var(--brand-blue)]"
+                  selectClassName="h-11 w-full rounded-[8px] border border-[var(--line)] bg-[var(--input-bg)] px-2 text-xs font-semibold outline-none focus:border-[var(--brand-blue)] disabled:cursor-not-allowed disabled:opacity-45"
                 />
 
-                <label className="block text-sm font-bold text-[var(--text)]">
+                <label className="block text-sm font-bold text-[var(--text)] md:col-span-2">
                   Phương thức thu tiền
                   <select
                     value={paymentMethod}
                     onChange={(event) => setPaymentMethod(event.target.value as PaymentMethod)}
-                    className="mt-2 h-11 w-full rounded-[8px] border border-[var(--line)] bg-[var(--input-bg)] px-3 text-sm font-semibold outline-none focus:border-[var(--brand-blue)]"
-                    required
+                    disabled={!hasInitialPayment}
+                    className="mt-2 h-11 w-full rounded-[8px] border border-[var(--line)] bg-[var(--input-bg)] px-3 text-sm font-semibold outline-none focus:border-[var(--brand-blue)] disabled:cursor-not-allowed disabled:opacity-45"
+                    required={hasInitialPayment}
                   >
                     {methodOptions.map((method) => (
                       <option key={method.value} value={method.value}>
@@ -239,7 +244,11 @@ export function MembershipAssignmentModal({
               </div>
 
               <SummaryRow icon={<CalendarDays size={16} />} label="Thời hạn mặc định" value={selectedPlan?.durationDays ? `${selectedPlan.durationDays} ngày` : 'Nhập ngày kết thúc'} />
-              <SummaryRow icon={<CalendarDays size={16} />} label="Ngày thu tiền" value={formatDate(paymentDate)} />
+              <SummaryRow
+                icon={<CalendarDays size={16} />}
+                label="Thu tiền ban đầu"
+                value={hasInitialPayment ? formatDate(paymentDate) : 'Chưa thu tiền'}
+              />
               <SummaryRow icon={<CreditCard size={16} />} label="Cần thu" value={formatMoney(payableAmount)} />
 
               <div className="rounded-[8px] border border-[var(--line)] bg-[var(--surface)] p-3">
@@ -248,7 +257,11 @@ export function MembershipAssignmentModal({
                   {formatMoney(remainingAmount)}
                 </p>
                 <p className="mt-1 text-xs font-semibold text-[var(--text-muted)]">
-                  Thu ngay {formatMoney(paidValue)}; phần còn lại tự sang công nợ.
+                  {hasInitialPayment
+                    ? `Thu ngay ${formatMoney(paidValue)}; phần còn lại tự sang công nợ.`
+                    : remainingAmount > 0
+                      ? `Chưa thu tiền; sẽ tạo công nợ ${formatMoney(remainingAmount)}.`
+                      : 'Gói đã được miễn phí.'}
                 </p>
               </div>
             </aside>
@@ -267,7 +280,13 @@ export function MembershipAssignmentModal({
               disabled={submitting || !selectedPlan || paidValue > payableAmount}
               className="h-10 rounded-[8px] bg-[var(--brand-yellow)] px-4 text-sm font-black text-black transition hover:brightness-95 disabled:opacity-70"
             >
-              {submitting ? 'Đang kích hoạt...' : 'Kích hoạt gói'}
+              {submitting
+                ? 'Đang kích hoạt...'
+                : hasInitialPayment
+                  ? 'Kích hoạt gói & thu tiền'
+                  : remainingAmount > 0
+                    ? 'Kích hoạt gói & tạo công nợ'
+                    : 'Kích hoạt gói'}
             </button>
           </div>
         </form>

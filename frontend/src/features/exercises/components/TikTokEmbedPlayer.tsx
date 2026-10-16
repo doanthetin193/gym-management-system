@@ -4,8 +4,6 @@ interface TikTokEmbedPlayerProps {
   url: string
   videoId?: string | null
   title?: string
-  authorName?: string
-  thumbnailUrl?: string | null
   onOpenModal?: () => void
 }
 

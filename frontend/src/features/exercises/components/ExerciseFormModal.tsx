@@ -114,8 +114,6 @@ export function ExerciseFormModal({
       equipment: equipment.trim() || undefined,
       tiktokUrl: tiktokUrl.trim(),
       thumbnailUrl: thumbnailUrl.trim() || undefined,
-      authorName: 'DUONG DOUBLE',
-      authorTiktokUrl: 'https://www.tiktok.com/@duong.double',
       featured,
       published,
     })

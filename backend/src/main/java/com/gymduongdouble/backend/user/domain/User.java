@@ -44,6 +44,9 @@ public class User extends AuditableEntity {
     @Column(name = "last_login_at")
     private Instant lastLoginAt;
 
+    @Column(name = "auth_version", nullable = false)
+    private long authVersion;
+
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
         name = "user_roles",
@@ -51,4 +54,8 @@ public class User extends AuditableEntity {
         inverseJoinColumns = @JoinColumn(name = "role_id")
     )
     private Set<Role> roles = new HashSet<>();
+
+    public void revokeActiveTokens() {
+        authVersion++;
+    }
 }

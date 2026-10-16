@@ -3,7 +3,6 @@ import {
   Check,
   Copy,
   ExternalLink,
-  Eye,
   Layers,
   Moon,
   Play,
@@ -16,7 +15,7 @@ import { Link, useParams } from 'react-router-dom'
 import { defaultPathForUser, isMemberOnly } from '../../../app/access'
 import { useAuth } from '../../auth/context/authContext'
 import { ApiClientError } from '../../../shared/api/apiClient'
-import { getPublicExercise, incrementExerciseView } from '../api/exerciseApi'
+import { getPublicExercise } from '../api/exerciseApi'
 import type { Exercise, ExerciseLevel } from '../types/exercise'
 
 const THEME_KEY = 'gym_duong_double.theme'
@@ -60,7 +59,6 @@ export function PublicExerciseDetailPage() {
         const data = await getPublicExercise(slug)
         if (!mounted) return
         setExercise(data)
-        void incrementExerciseView(data.id)
       } catch (caughtError) {
         if (mounted) setError(errorMessage(caughtError))
       }
@@ -233,14 +231,6 @@ export function PublicExerciseDetailPage() {
                     <span className="font-black text-slate-900 dark:text-white">{exercise.equipment}</span>
                   </div>
                 )}
-                <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 dark:bg-white/[0.04] border border-slate-200/60 dark:border-white/5 text-sm">
-                  <span className="font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-                    <Eye size={15} /> Lượt xem web:
-                  </span>
-                  <span className="font-black text-amber-600 dark:text-amber-400">
-                    {exercise.viewCount ?? 0}
-                  </span>
-                </div>
               </div>
 
               {/* Instructions */}

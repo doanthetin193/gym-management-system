@@ -59,17 +59,8 @@ public class Exercise extends AuditableEntity {
     @Column(name = "thumbnail_url", columnDefinition = "text")
     private String thumbnailUrl;
 
-    @Column(name = "author_name", length = 120)
-    private String authorName = "DUONG DOUBLE";
-
-    @Column(name = "author_tiktok_url", columnDefinition = "text")
-    private String authorTiktokUrl = "https://www.tiktok.com/@duong.double";
-
     @Column(nullable = false)
     private boolean featured = false;
-
-    @Column(name = "view_count", nullable = false)
-    private Long viewCount = 0L;
 
     @Column(nullable = false)
     private boolean active = true;

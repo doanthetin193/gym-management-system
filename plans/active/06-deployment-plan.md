@@ -1,247 +1,61 @@
-# 06 - KẾ HOẠCH DEPLOYMENT
+# 06 - Định Hướng Deployment Tương Lai
 
-## 1. Định hướng deploy
+Cập nhật lần cuối: 16/10/2026.
 
-Kế hoạch production nên dùng VPS giá hợp lý.
+## 1. Trạng thái hiện tại
 
-Lý do:
+Project hiện chạy local development và chưa có deployment production. Tài liệu này chỉ là định hướng cho giai đoạn sau, không phải hạng mục đã triển khai hay điều kiện nghiệm thu MVP.
 
-- Backend Spring Boot cần môi trường ổn định.
-- Có PostgreSQL.
-- Có scheduled jobs.
-- Cần backup database.
-- Cần Nginx reverse proxy.
-- Dễ kiểm soát vận hành hơn free hosting.
+Mọi URL, thông số máy chủ, Docker, domain, SSL và backup production chưa được provision trong repository.
 
-Free hosting có thể dùng để demo nhanh, nhưng production nên theo VPS.
+## 2. Môi trường local đang dùng
 
-## 2. Cấu hình VPS đề xuất
+- Frontend Vite: localhost:5173.
+- Backend Spring Boot: localhost:8080/api.
+- PostgreSQL local: gym_duong_double.
+- CORS local cho các frontend port 5173, 5174 và 3000.
+- Cấu hình nhạy cảm đọc từ biến môi trường trong file .env local, không commit secret.
 
-Giai đoạn MVP:
+Biến cần có khi chạy:
 
-```text
-2 vCPU
-2-4 GB RAM
-40 GB SSD/NVMe
-Ubuntu 22.04/24.04
-```
+- DB_URL, DB_USERNAME, DB_PASSWORD.
+- JWT_SECRET, JWT_ACCESS_TOKEN_MINUTES.
+- OWNER_EMAIL, OWNER_PASSWORD, OWNER_FULL_NAME, OWNER_PHONE.
+- DEMO_SEED_ENABLED và DEMO_MEMBER_PASSWORD nếu cần seed.
+- GROQ_API_KEYS, GROQ_MODEL, GROQ_ENDPOINT, GROQ_TIMEOUT_SECONDS nếu bật AI Advisor.
 
-Nếu chỉ demo:
+## 3. Điều kiện trước khi deploy
 
-```text
-1 vCPU
-1-2 GB RAM
-```
+Chưa được deploy chỉ với ddl-auto=update. Trước khi đưa lên môi trường dài hạn cần hoàn thành:
 
-nhưng không khuyến nghị cho production lâu dài.
+1. Chốt schema PostgreSQL và chuyển thay đổi schema sang Flyway versioned migrations.
+2. Bật Flyway, cấu hình JPA ở chế độ validate hoặc chế độ phù hợp.
+3. Dùng secret manager hoặc environment của host cho password, JWT secret và Groq keys.
+4. Cấu hình HTTPS, reverse proxy và CORS theo domain thật.
+5. Sao lưu PostgreSQL định kỳ và thử phục hồi dữ liệu.
+6. Hạn chế Actuator chỉ còn health cần thiết.
+7. Thay in-memory rate limit bằng Redis/gateway nếu chạy nhiều backend instance.
+8. Thiết lập logging, monitoring và quy trình xử lý sự cố phù hợp.
 
-## 3. Kiến trúc deploy
+## 4. Định hướng kiến trúc khi cần
 
-```text
+Mô hình tối thiểu phù hợp:
+
 Internet
-  |
-Cloudflare
-  |
-Nginx :80/:443
-  |
-  |-- React static files
-  |
-  |-- /api -> Spring Boot :8080
-                  |
-                  -> PostgreSQL :5432
-```
+  -> HTTPS reverse proxy
+  -> Frontend static build
+  -> Spring Boot API
+  -> PostgreSQL
 
-## 4. Docker Compose services
+Groq, TikTok iframe và Google Apps Script vẫn là dịch vụ ngoài. Cần đánh giá CORS, quota, secret và chính sách dữ liệu trước khi đưa vào môi trường thật.
 
-MVP:
+## 5. Quy trình release tương lai
 
-```text
-nginx
-backend
-postgres
-```
+1. Chạy backend tests, frontend lint và frontend build.
+2. Backup database.
+3. Chạy Flyway migration.
+4. Deploy backend/frontend.
+5. Smoke test login, tạo hội viên, kích hoạt gói, thu nợ, PT, Portal, Báo cáo và AI fallback.
+6. Kiểm tra health và log.
 
-Phase sau có thể thêm:
-
-- redis.
-- minio.
-- ml-batch.
-- monitoring.
-
-## 5. Cấu trúc server
-
-```text
-/opt/gym-duong-double
-  docker-compose.yml
-  .env
-  nginx/
-    nginx.conf
-  backend/
-    Dockerfile
-  frontend/
-    dist/
-  backups/
-  logs/
-```
-
-## 6. Environment variables
-
-Backend:
-
-```text
-SPRING_PROFILES_ACTIVE=prod
-DATABASE_URL=jdbc:postgresql://postgres:5432/gym
-DATABASE_USERNAME=...
-DATABASE_PASSWORD=...
-JWT_SECRET=...
-JWT_ACCESS_TOKEN_TTL=...
-JWT_REFRESH_TOKEN_TTL=...
-CORS_ALLOWED_ORIGINS=https://domain.com
-```
-
-Frontend:
-
-```text
-VITE_API_BASE_URL=https://domain.com/api/v1
-```
-
-Postgres:
-
-```text
-POSTGRES_DB=gym
-POSTGRES_USER=...
-POSTGRES_PASSWORD=...
-```
-
-## 7. Nginx config mục tiêu
-
-Nginx phụ trách:
-
-- Serve React app.
-- Reverse proxy `/api`.
-- HTTPS.
-- Gzip.
-- Cache static assets.
-- Security headers cơ bản.
-
-Routing:
-
-```text
-/             -> frontend index.html
-/assets/*     -> static cache
-/api/*        -> backend:8080
-```
-
-## 8. Cloudflare
-
-Dùng cho:
-
-- DNS.
-- HTTPS.
-- CDN static assets.
-- Basic bot protection.
-- Ẩn IP server ở mức proxy DNS.
-
-## 9. Database migration
-
-Dùng Flyway.
-
-Quy tắc:
-
-- Mọi thay đổi schema phải có migration.
-- Không sửa migration đã chạy production.
-- Trước migration lớn phải backup.
-- Seed roles và financial categories ban đầu bằng migration.
-
-## 10. Backup
-
-Backup PostgreSQL hằng ngày.
-
-Yêu cầu:
-
-- Lưu tối thiểu 7-14 bản backup.
-- Backup dạng `.sql.gz`.
-- Có script restore.
-- Kiểm tra restore định kỳ.
-
-Ví dụ:
-
-```text
-backups/
-  2026-09-11-gym.sql.gz
-  2026-09-12-gym.sql.gz
-```
-
-## 11. Logging và health check
-
-Tối thiểu:
-
-- Backend logs.
-- Nginx access/error logs.
-- Docker restart policy.
-- Spring Boot Actuator `/actuator/health`.
-
-Phase sau:
-
-- Uptime monitoring.
-- Error tracking.
-- Alert nếu backup fail.
-
-## 12. Bảo mật production
-
-- Không expose PostgreSQL ra Internet.
-- Bật HTTPS.
-- `.env` không commit.
-- JWT secret đủ mạnh.
-- CORS chỉ cho domain thật.
-- Password hash BCrypt.
-- Validate input backend.
-- Audit log thao tác tài chính.
-- Firewall chỉ mở port cần thiết.
-
-## 13. Quy trình deploy lần đầu
-
-1. Trỏ domain về Cloudflare.
-2. Tạo VPS Ubuntu.
-3. Cài Docker/Docker Compose.
-4. Tạo thư mục `/opt/gym-duong-double`.
-5. Cấu hình `.env`.
-6. Build frontend.
-7. Build backend.
-8. Chạy `docker compose up -d`.
-9. Kiểm tra migration Flyway.
-10. Kiểm tra health API.
-11. Kiểm tra login.
-12. Kiểm tra backup.
-
-## 14. Quy trình deploy cập nhật
-
-1. Backup database.
-2. Pull/build phiên bản mới.
-3. Chạy migration.
-4. Restart backend.
-5. Kiểm tra health.
-6. Smoke test login/dashboard.
-
-## 15. Smoke test sau deploy
-
-- Login OWNER.
-- Mở dashboard.
-- Tạo member test.
-- Tạo/gia hạn gói test.
-- Ghi payment test.
-- Kiểm tra công nợ giảm đúng sau khi ghi payment.
-- Tạo PT session test.
-- Kiểm tra backup.
-
-## 16. Khi nào cần nâng cấp server
-
-Cân nhắc nâng cấp khi:
-
-- RAM thường xuyên > 80%.
-- CPU thường xuyên cao.
-- Query dashboard chậm.
-- Backup quá lâu.
-- Số user/traffic tăng mạnh.
-
-Ưu tiên tối ưu query/index trước khi tăng kiến trúc phức tạp.
+Không có bước nào trong mục này đã được thực hiện cho MVP local hiện tại.

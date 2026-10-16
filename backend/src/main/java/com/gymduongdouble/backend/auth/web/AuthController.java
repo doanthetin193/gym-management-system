@@ -7,6 +7,7 @@ import com.gymduongdouble.backend.auth.web.dto.LoginRequest;
 import com.gymduongdouble.backend.auth.web.dto.LoginResponse;
 import com.gymduongdouble.backend.common.security.AuthenticatedUser;
 import com.gymduongdouble.backend.common.web.dto.ApiResponse;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -24,8 +25,8 @@ public class AuthController {
     private final AuthService authService;
 
     @PostMapping("/login")
-    public ApiResponse<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
-        return ApiResponse.ok(authService.login(request));
+    public ApiResponse<LoginResponse> login(@Valid @RequestBody LoginRequest request, HttpServletRequest servletRequest) {
+        return ApiResponse.ok(authService.login(request, servletRequest.getRemoteAddr()));
     }
 
     @GetMapping("/me")

@@ -243,10 +243,6 @@ public class DataInitializer implements ApplicationRunner {
     }
 
     private void seedSystemSettings() {
-        createSettingIfMissing("membership.expiring_soon_days", "7", "Số ngày cảnh báo gói sắp hết hạn");
-        createSettingIfMissing("notification.birthday_time", "06:00", "Giờ nhắc sinh nhật mặc định");
-        createSettingIfMissing("gym.name", "DUONG DOUBLE", "Tên phòng gym");
-        createSettingIfMissing("gym.zalo_phone", "0965.19.39.07", "Số Zalo chăm sóc khách hàng");
         createSettingIfMissing("payment.vietqr.enabled", "true", "Bật/tắt hiển thị VietQR khi thu tiền");
         createSettingIfMissing("payment.vietqr.bank_code", "BIDV", "Mã ngân hàng VietQR");
         createSettingIfMissing("payment.vietqr.bank_name", "BIDV - Đầu tư & Phát triển VN", "Tên ngân hàng nhận tiền");
@@ -768,8 +764,7 @@ public class DataInitializer implements ApplicationRunner {
             "Ngực",
             "Tạ đòn / Ghế Bench Press",
             "https://www.tiktok.com/@leehuy2199/video/7685343591798983956",
-            true,
-            0L
+            true
         );
     }
 
@@ -792,7 +787,7 @@ public class DataInitializer implements ApplicationRunner {
         });
     }
 
-    private void createExercise(ExerciseCategory category, String name, String slug, String description, String instruction, String mistakes, ExerciseDifficulty difficulty, String primaryMuscle, String equipment, String tiktokUrl, boolean featured, long viewCount) {
+    private void createExercise(ExerciseCategory category, String name, String slug, String description, String instruction, String mistakes, ExerciseDifficulty difficulty, String primaryMuscle, String equipment, String tiktokUrl, boolean featured) {
         exerciseRepository.findBySlug(slug).orElseGet(() -> {
             Exercise exercise = new Exercise();
             exercise.setCategory(category);
@@ -808,7 +803,6 @@ public class DataInitializer implements ApplicationRunner {
             exercise.setTiktokVideoId(tiktokUrl.substring(tiktokUrl.lastIndexOf('/') + 1));
             exercise.setThumbnailUrl("https://placehold.co/640x360/111827/facc15?text=DUONG+DOUBLE");
             exercise.setFeatured(featured);
-            exercise.setViewCount(viewCount);
             exercise.setActive(true);
             return exerciseRepository.save(exercise);
         });

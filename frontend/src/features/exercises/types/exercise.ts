@@ -26,11 +26,8 @@ export type Exercise = {
   tiktokUrl: string | null
   tiktokVideoId: string | null
   thumbnailUrl: string | null
-  authorName: string | null
-  authorTiktokUrl: string | null
   featured: boolean
   published: boolean
-  viewCount: number
 }
 
 export type PageResponse<T> = {
@@ -55,8 +52,6 @@ export type ExercisePayload = {
   equipment?: string
   tiktokUrl: string
   thumbnailUrl?: string
-  authorName?: string
-  authorTiktokUrl?: string
   featured?: boolean
   published?: boolean
 }

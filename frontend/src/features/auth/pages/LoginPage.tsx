@@ -11,7 +11,7 @@ import {
   Sparkles,
   Zap,
 } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { ApiClientError } from '../../../shared/api/apiClient'
@@ -19,6 +19,12 @@ import { BrandMark } from '../../../shared/components/BrandMark'
 import { ThemeToggle } from '../../../shared/components/ThemeToggle'
 import { readRememberedEmail, readRememberMePreference } from '../../../shared/lib/authStorage'
 import { useAuth } from '../context/authContext'
+
+function formatRetryAfter(seconds: number) {
+  const minutes = Math.floor(seconds / 60)
+  const remainingSeconds = seconds % 60
+  return `${minutes}:${String(remainingSeconds).padStart(2, '0')}`
+}
 
 export function LoginPage() {
   const { login } = useAuth()
@@ -28,9 +34,34 @@ export function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [lockUntil, setLockUntil] = useState<number | null>(null)
+  const [now, setNow] = useState(() => Date.now())
+  const retryAfterSeconds = lockUntil ? Math.max(0, Math.ceil((lockUntil - now) / 1000)) : 0
+  const lockMessage = `Đăng nhập tạm khóa sau nhiều lần không thành công. Vui lòng thử lại sau ${formatRetryAfter(retryAfterSeconds)}.`
+
+  useEffect(() => {
+    if (!lockUntil) {
+      return undefined
+    }
+
+    const timer = window.setInterval(() => setNow(Date.now()), 1_000)
+    const unlockTimer = window.setTimeout(() => {
+      setLockUntil(null)
+      setError(null)
+    }, Math.max(0, lockUntil - Date.now()))
+
+    return () => {
+      window.clearInterval(timer)
+      window.clearTimeout(unlockTimer)
+    }
+  }, [lockUntil])
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (retryAfterSeconds > 0) {
+      return
+    }
+
     setError(null)
     setSubmitting(true)
 
@@ -38,6 +69,10 @@ export function LoginPage() {
       await login(email, password, rememberMe)
     } catch (caughtError) {
       if (caughtError instanceof ApiClientError) {
+        if (caughtError.status === 429 && caughtError.retryAfterSeconds) {
+          setLockUntil(Date.now() + caughtError.retryAfterSeconds * 1_000)
+          setNow(Date.now())
+        }
         setError(caughtError.message)
       } else {
         setError('Không thể đăng nhập. Vui lòng kiểm tra lại tài khoản hoặc kết nối.')
@@ -161,9 +196,9 @@ export function LoginPage() {
 
               {/* Error Banner */}
               {error && (
-                <div className="mb-4 flex items-center gap-2.5 rounded-xl border border-[#df271b]/30 bg-red-50 p-3 text-xs md:text-sm font-semibold text-red-700 dark:border-[#df271b]/40 dark:bg-[#df271b]/15 dark:text-red-200">
+                <div className="mb-4 flex items-center gap-2.5 rounded-xl border border-[#df271b]/30 bg-red-50 p-3 text-xs md:text-sm font-semibold text-red-700 dark:border-[#df271b]/40 dark:bg-[#df271b]/15 dark:text-red-200" role="alert" aria-live="polite">
                   <AlertCircle size={18} className="shrink-0 text-[#df271b]" />
-                  <span>{error}</span>
+                  <span>{retryAfterSeconds > 0 ? lockMessage : error}</span>
                 </div>
               )}
 
@@ -240,7 +275,7 @@ export function LoginPage() {
                 {/* VIP Shimmer Submit Button */}
                 <button
                   type="submit"
-                  disabled={submitting}
+                  disabled={submitting || retryAfterSeconds > 0}
                   className="group relative mt-2 inline-flex h-12 w-full items-center justify-center overflow-hidden rounded-xl bg-gradient-to-r from-[#ffcc08] via-[#ffd700] to-[#e6b400] px-4 text-sm md:text-base font-black text-black shadow-[0_4px_25px_rgba(255,204,8,0.35)] transition-all duration-200 hover:scale-[1.01] hover:shadow-[0_6px_30px_rgba(255,204,8,0.5)] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-70"
                 >
                   {/* Animated Light Sweep Shimmer */}
@@ -252,6 +287,8 @@ export function LoginPage() {
                         <span className="size-4 animate-spin rounded-full border-2 border-black border-t-transparent" />
                         <span>Đang xác thực...</span>
                       </>
+                    ) : retryAfterSeconds > 0 ? (
+                      <span>Thử lại sau {formatRetryAfter(retryAfterSeconds)}</span>
                     ) : (
                       <>
                         <span>Đăng Nhập</span>

@@ -18,6 +18,7 @@ public class AuthenticatedUser implements UserDetails {
     private final String email;
     private final String password;
     private final UserStatus status;
+    private final long authVersion;
     private final List<GrantedAuthority> authorities;
 
     public AuthenticatedUser(User user) {
@@ -26,6 +27,7 @@ public class AuthenticatedUser implements UserDetails {
         this.email = user.getEmail();
         this.password = user.getPasswordHash();
         this.status = user.getStatus();
+        this.authVersion = user.getAuthVersion();
         this.authorities = user.getRoles().stream()
             .sorted(Comparator.comparingInt(role -> "OWNER".equals(role.getCode()) ? 0 : 1))
             .map(role -> new SimpleGrantedAuthority("ROLE_" + role.getCode()))
