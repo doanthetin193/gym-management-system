@@ -352,20 +352,24 @@ export function MemberDetailPage() {
         </button>
       </div>
 
-      <section className="rounded-[8px] border border-[var(--line)] bg-[var(--surface)] p-5">
+      <section className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-6 shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="flex min-w-0 items-start gap-4">
-            <span className="grid size-16 shrink-0 place-items-center rounded-[8px] bg-metric-blue text-2xl font-black text-[var(--brand-blue)]">
+            <span className="grid size-16 shrink-0 place-items-center rounded-2xl bg-metric-blue text-2xl font-black text-[var(--brand-blue)] border border-blue-500/20 shadow-sm">
               {(detail.profile?.fullName || 'H').charAt(0).toUpperCase()}
             </span>
             <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-3xl font-black text-[var(--text-strong)]">{detail.profile?.fullName || 'Hội viên'}</h1>
-                <span className="rounded-full bg-metric-green px-2.5 py-1 text-xs font-black">Đang theo dõi</span>
+              <div className="flex flex-wrap items-center gap-2.5">
+                <h1 className="text-2xl font-black text-[var(--text-strong)]">{detail.profile?.fullName || 'Hội viên'}</h1>
+                <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-0.5 text-xs font-bold text-emerald-400">
+                  Đang theo dõi
+                </span>
               </div>
-              <div className="mt-2 flex flex-wrap gap-3 text-sm font-semibold text-[var(--text-muted)]">
-                <span>{detail.profile.phone || '-'}</span>
-                <span>Zalo: {detail.profile.zaloPhone ?? detail.profile.phone ?? '-'}</span>
+              <div className="mt-2 flex flex-wrap gap-3 text-xs font-medium text-[var(--text-muted)]">
+                <span>SĐT: <strong className="text-[var(--text-strong)]">{detail.profile.phone || '-'}</strong></span>
+                <span>•</span>
+                <span>Zalo: <strong className="text-[var(--text-strong)]">{detail.profile.zaloPhone ?? detail.profile.phone ?? '-'}</strong></span>
+                <span>•</span>
                 <span>Sinh: {formatDate(detail.profile.dateOfBirth)}</span>
               </div>
             </div>
@@ -377,7 +381,7 @@ export function MemberDetailPage() {
                 href={zaloUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex h-10 items-center gap-2 rounded-[8px] bg-blue-600 px-3 text-sm font-black text-white transition hover:brightness-95"
+                className="inline-flex h-10 items-center gap-2 rounded-xl bg-blue-600 px-3.5 text-xs font-bold text-white transition hover:brightness-105 shadow-sm"
               >
                 <MessageCircle size={16} />
                 Nhắn tin Zalo
@@ -385,23 +389,23 @@ export function MemberDetailPage() {
             ) : null}
             <a
               href={`tel:${detail.profile.phone}`}
-              className="inline-flex h-10 items-center gap-2 rounded-[8px] border border-[var(--line)] px-3 text-sm font-bold text-[var(--text)]"
+              className="inline-flex h-10 items-center gap-2 rounded-xl border border-[var(--line)] px-3.5 text-xs font-bold text-[var(--text)] transition hover:bg-[var(--surface-muted)]"
             >
-              <Phone size={16} />
+              <Phone size={15} />
               Gọi điện
             </a>
             <button
               type="button"
               onClick={() => setEditOpen(true)}
-              className="inline-flex h-10 items-center gap-2 rounded-[8px] border border-[var(--line)] px-3 text-sm font-bold text-[var(--text)]"
+              className="inline-flex h-10 items-center gap-2 rounded-xl border border-[var(--line)] px-3.5 text-xs font-bold text-[var(--text)] transition hover:bg-[var(--surface-muted)]"
             >
-              <Pencil size={16} />
+              <Pencil size={15} />
               Sửa thông tin
             </button>
           </div>
         </div>
 
-        <div className="mt-5 grid gap-3 md:grid-cols-4">
+        <div className="mt-6 grid gap-3 md:grid-cols-4">
           <Metric label="Gói hiện tại" value={currentMembership?.planName ?? 'Chưa có gói'} />
           <Metric label="Ngày hết hạn" value={formatDate(currentMembership?.endDate)} />
           <Metric label="Thời hạn còn lại" value={daysLeftLabel(detail)} tone={currentMembership ? 'success' : 'muted'} />
@@ -411,24 +415,40 @@ export function MemberDetailPage() {
 
       <section className="grid gap-5 xl:grid-cols-[1.4fr_0.75fr]">
         <div className="space-y-5">
-          <HistoryCard title="Lịch sử đăng ký gói tập" count={`${allMemberships.length} gói`}>
+          <HistoryCard
+            title="Lịch sử đăng ký gói tập"
+            count={`${allMemberships.length} gói`}
+            icon={<Dumbbell size={18} className="text-amber-400" />}
+          >
             <MembershipRows memberships={allMemberships} />
           </HistoryCard>
 
-          <HistoryCard title="Lịch sử thu tiền & giao dịch" count={`${payments.length} giao dịch`}>
+          <HistoryCard
+            title="Lịch sử thu tiền & giao dịch"
+            count={`${payments.length} giao dịch`}
+            icon={<CreditCard size={18} className="text-emerald-400" />}
+          >
             {payments.length === 0 ? (
               <EmptyText>Chưa có giao dịch thanh toán.</EmptyText>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-2.5">
                 {payments.map((payment) => (
-                  <div key={payment.id} className="flex flex-col gap-1 rounded-[8px] bg-[var(--surface-muted)] px-3 py-2 text-sm sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <p className="font-black text-[var(--success)]">+{formatMoney(payment.amount)}</p>
-                      <p className="mt-1 text-xs font-semibold text-[var(--text-muted)]">
-                        {formatDate(payment.paymentDate)} · {payment.note ?? (revenueCategoryLabels[payment.revenueCategory] ?? payment.revenueCategory)}
-                      </p>
+                  <div
+                    key={payment.id}
+                    className="flex flex-col gap-2 rounded-xl border border-[var(--line)] bg-[var(--surface-muted)]/50 p-3 text-sm transition hover:border-emerald-500/30 hover:bg-[var(--surface-muted)] sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="grid size-8 shrink-0 place-items-center rounded-lg bg-emerald-500/10 text-emerald-400 font-bold text-xs border border-emerald-500/20">
+                        +₫
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-emerald-400">+{formatMoney(payment.amount)}</p>
+                        <p className="mt-0.5 text-xs text-[var(--text-muted)]">
+                          {formatDate(payment.paymentDate)} · {payment.note ?? (revenueCategoryLabels[payment.revenueCategory] ?? payment.revenueCategory)}
+                        </p>
+                      </div>
                     </div>
-                    <span className="w-fit rounded-full border border-blue-500/30 bg-blue-500/10 px-2.5 py-1 text-xs font-black text-blue-400">
+                    <span className="w-fit rounded-full border border-blue-500/30 bg-blue-500/10 px-2.5 py-0.5 text-xs font-semibold text-blue-400">
                       {paymentMethodLabels[payment.paymentMethod] ?? payment.paymentMethod}
                     </span>
                   </div>
@@ -437,22 +457,36 @@ export function MemberDetailPage() {
             )}
           </HistoryCard>
 
-          <HistoryCard title="Gói buổi PT" count={`${detail.ptSessionPackages.length} gói`}>
+          <HistoryCard
+            title="Gói buổi PT"
+            count={`${detail.ptSessionPackages.length} gói`}
+            icon={<UserRound size={18} className="text-blue-400" />}
+          >
             {detail.ptSessionPackages.length === 0 ? (
               <EmptyText>Chưa có gói buổi PT.</EmptyText>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-2.5">
                 {detail.ptSessionPackages.map((item) => (
-                  <div key={item.id} className="rounded-[8px] bg-[var(--surface-muted)] px-3 py-2 text-sm">
-                    <p className="font-bold text-[var(--text-strong)]">
-                      PT còn {item.remainingPtSessions}/{item.totalPtSessions} buổi, ôn tập còn {item.remainingPracticeSessions}/{item.totalPracticeSessions}
-                    </p>
-                    <div className="mt-1 flex flex-wrap items-center gap-2 text-xs font-semibold text-[var(--text-muted)]">
-                      <span>{formatDate(item.startDate)} - {formatDate(item.endDate)}</span>
-                      <span>·</span>
-                      <span className={item.status === 'ACTIVE' ? 'font-bold text-emerald-400' : 'font-bold text-[var(--text-muted)]'}>
+                  <div
+                    key={item.id}
+                    className="rounded-xl border border-[var(--line)] bg-[var(--surface-muted)]/50 p-3 text-sm transition hover:border-blue-500/30 hover:bg-[var(--surface-muted)]"
+                  >
+                    <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                      <p className="text-sm font-semibold text-[var(--text-strong)]">
+                        PT còn {item.remainingPtSessions}/{item.totalPtSessions} buổi · Tự luyện còn {item.remainingPracticeSessions}/{item.totalPracticeSessions} buổi
+                      </p>
+                      <span
+                        className={
+                          item.status === 'ACTIVE'
+                            ? 'inline-flex items-center rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-bold text-emerald-400'
+                            : 'inline-flex items-center rounded-full border border-[var(--line)] bg-[var(--surface)] px-2.5 py-0.5 text-[11px] font-medium text-[var(--text-muted)]'
+                        }
+                      >
                         {sessionPackageStatusLabels[item.status] ?? item.status}
                       </span>
+                    </div>
+                    <div className="mt-2 flex items-center gap-2 text-xs text-[var(--text-muted)]">
+                      <span>Thời hạn: {formatDate(item.startDate)} - {formatDate(item.endDate)}</span>
                     </div>
                   </div>
                 ))}
@@ -462,31 +496,31 @@ export function MemberDetailPage() {
         </div>
 
         <aside className="space-y-4">
-          <div className="rounded-[8px] border border-[var(--line)] bg-[var(--surface)] p-4">
-            <div className="flex flex-col gap-2">
+          <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-5 shadow-sm space-y-4">
+            <div className="flex flex-col gap-2.5">
               <button
                 type="button"
                 onClick={() => void openMembershipModal()}
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-[8px] bg-[var(--brand-yellow)] px-4 text-sm font-black text-black transition hover:brightness-95"
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 px-4 text-sm font-black text-black shadow-sm transition hover:scale-[1.01] hover:brightness-105 active:scale-[0.99]"
               >
-                <Dumbbell size={17} />
+                <Dumbbell size={18} />
                 Đăng ký / Gia hạn gói
               </button>
               <button
                 type="button"
                 onClick={() => setPaymentModalOpen(true)}
                 disabled={openDebts.length === 0}
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-[8px] bg-[var(--brand-red)] px-4 text-sm font-black text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 px-4 text-sm font-black text-white shadow-sm transition hover:scale-[1.01] hover:brightness-105 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-45"
               >
-                <CreditCard size={17} />
+                <CreditCard size={18} />
                 Thu nợ / Nộp tiền
               </button>
             </div>
 
-            <div className="mt-4 rounded-[8px] border border-[var(--line)] bg-[var(--surface-muted)] p-3">
-              <p className="text-xs font-bold uppercase text-[var(--text-muted)]">Tình trạng thanh toán</p>
-              <p className={['mt-1 text-lg font-black', detail.totalDebt > 0 ? 'text-[var(--brand-red)]' : 'text-[var(--success)]'].join(' ')}>
-                {detail.totalDebt > 0 ? `Còn nợ ${formatMoney(detail.totalDebt)}` : 'Không còn nợ'}
+            <div className="rounded-xl border border-[var(--line)] bg-[var(--surface-muted)]/60 p-3.5">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)]">Tình trạng thanh toán</p>
+              <p className={['mt-1 text-xl font-black', detail.totalDebt > 0 ? 'text-rose-400' : 'text-emerald-400'].join(' ')}>
+                {detail.totalDebt > 0 ? `Còn nợ ${formatMoney(detail.totalDebt)}` : 'Đã thanh toán đủ'}
               </p>
             </div>
 
@@ -498,7 +532,7 @@ export function MemberDetailPage() {
               onCollect={() => setPaymentModalOpen(true)}
             />
 
-            <div className="mt-4 grid gap-3">
+            <div className="grid gap-2.5 pt-1">
               <Info label="Nguồn khách" value={detail.profile.source ? (memberSourceLabels[detail.profile.source] ?? detail.profile.source) : '-'} />
               <Info label="Gói gần nhất" value={latestMembership?.planName ?? '-'} />
               <Info label="Đã thu gói gần nhất" value={formatMoney(latestMembership?.paidAmount)} />
@@ -506,11 +540,11 @@ export function MemberDetailPage() {
           </div>
 
           {/* QUẢN LÝ QUYỀN PORTAL HỌC VIÊN PT */}
-          <div className="rounded-[8px] border border-[var(--line)] bg-[var(--surface)] p-4 space-y-3">
+          <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-5 shadow-sm space-y-3.5">
             <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <div className="grid size-8 place-items-center rounded-[6px] bg-amber-500/15 text-amber-400 border border-amber-500/30">
-                  <KeyRound size={16} />
+              <div className="flex items-center gap-2.5">
+                <div className="grid size-9 place-items-center rounded-xl bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                  <KeyRound size={17} />
                 </div>
                 <div>
                   <h3 className="text-xs font-black uppercase tracking-wider text-[var(--text-strong)]">
@@ -535,7 +569,7 @@ export function MemberDetailPage() {
                   </span>
                 )
               ) : (
-                <span className="rounded-full border border-[var(--line)] bg-[var(--surface-muted)] px-2 py-0.5 text-[11px] font-bold text-[var(--text-muted)]">
+                <span className="rounded-full border border-[var(--line)] bg-[var(--surface-muted)] px-2.5 py-0.5 text-[11px] font-bold text-[var(--text-muted)]">
                   Chưa cấp
                 </span>
               )}
@@ -543,7 +577,7 @@ export function MemberDetailPage() {
 
             {portalActionMessage ? (
               <div
-                className={`rounded-[6px] p-2 text-xs font-bold ${
+                className={`rounded-xl p-2.5 text-xs font-bold ${
                   portalActionMessage.type === 'success'
                     ? 'border border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
                     : 'border border-red-500/30 bg-red-500/10 text-red-400'
@@ -554,11 +588,11 @@ export function MemberDetailPage() {
             ) : null}
 
             {!canManagePortal ? (
-              <div className="rounded-[6px] border border-[var(--line)] bg-[var(--surface-muted)] p-3 text-xs font-semibold leading-relaxed text-[var(--text-muted)]">
+              <div className="rounded-xl border border-[var(--line)] bg-[var(--surface-muted)] p-3 text-xs font-medium leading-relaxed text-[var(--text-muted)]">
                 Chỉ Chủ phòng được cấp, khóa hoặc đặt lại mật khẩu tài khoản Portal học viên.
               </div>
             ) : !detail.profile.userId ? (
-              <div className="space-y-2 pt-1">
+              <div className="space-y-2.5 pt-1">
                 <p className="text-xs font-medium text-[var(--text-muted)] leading-relaxed">
                   Hội viên chưa có tài khoản. Chỉ cấp khi khách mua gói tập PT để xem số đo và lịch hẹn.
                 </p>
@@ -568,15 +602,15 @@ export function MemberDetailPage() {
                     setPortalPassword(generateTemporaryPassword())
                     setPortalModalOpen('create')
                   }}
-                  className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-[8px] bg-[var(--brand-yellow)] px-3 text-xs font-black text-black hover:brightness-95 transition"
+                  className="inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 px-3 text-xs font-black text-black hover:brightness-105 shadow-sm transition"
                 >
-                  <KeyRound size={14} />
+                  <KeyRound size={15} />
                   + Cấp tài khoản Portal
                 </button>
               </div>
             ) : (
               <div className="space-y-2.5 pt-1">
-                <div className="rounded-[6px] bg-[var(--surface-muted)] p-2.5 text-xs space-y-1 border border-[var(--line)]">
+                <div className="rounded-xl bg-[var(--surface-muted)]/70 p-3 text-xs space-y-1.5 border border-[var(--line)]">
                   <div className="flex items-center justify-between">
                     <span className="text-[var(--text-muted)]">Tài khoản đăng nhập:</span>
                     <span className="font-bold text-[var(--text-strong)]">{detail.profile.phone}</span>
@@ -590,12 +624,12 @@ export function MemberDetailPage() {
                 </div>
 
                 {detail.profile.userStatus === 'ACTIVE' ? (
-                  <div className="flex flex-col gap-1.5">
+                  <div className="flex flex-col gap-2">
                     <button
                       type="button"
                       disabled={portalSubmitting}
                       onClick={() => void handleTogglePortalStatus('LOCKED')}
-                      className="inline-flex h-9 items-center justify-center gap-1.5 rounded-[8px] border border-amber-500/40 bg-amber-500/10 px-3 text-xs font-black text-amber-400 hover:bg-amber-500/20 transition disabled:opacity-50"
+                      className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 text-xs font-bold text-amber-400 hover:bg-amber-500/20 transition disabled:opacity-50"
                     >
                       <Lock size={13} />
                       Tắt / Hủy quyền đăng nhập
@@ -606,15 +640,15 @@ export function MemberDetailPage() {
                         setPortalPassword(generateTemporaryPassword())
                         setPortalModalOpen('reset-password')
                       }}
-                      className="inline-flex h-8.5 items-center justify-center gap-1.5 rounded-[8px] border border-[var(--line)] bg-[var(--surface-muted)] px-3 text-xs font-bold text-[var(--text)] hover:bg-[var(--surface)] transition"
+                      className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-[var(--line)] bg-[var(--surface-muted)] px-3 text-xs font-bold text-[var(--text)] hover:bg-[var(--surface)] transition"
                     >
                       <RefreshCcw size={12} />
                       Đổi / Đặt lại mật khẩu giúp khách
                     </button>
                   </div>
                 ) : (
-                  <div className="flex flex-col gap-1.5">
-                    <div className="text-[11px] text-amber-400/90 font-medium bg-amber-500/5 border border-amber-500/20 rounded-[6px] p-2 leading-relaxed">
+                  <div className="flex flex-col gap-2">
+                    <div className="text-[11px] text-amber-400/90 font-medium bg-amber-500/5 border border-amber-500/20 rounded-xl p-2.5 leading-relaxed">
                       Tài khoản đang tạm khóa. Dữ liệu tập, số đo và hóa đơn vẫn bảo lưu 100%. Bấm kích hoạt lại khi khách tiếp tục tập.
                     </div>
                     <div className="flex items-center gap-2">
@@ -622,7 +656,7 @@ export function MemberDetailPage() {
                         type="button"
                         disabled={portalSubmitting}
                         onClick={() => void handleTogglePortalStatus('ACTIVE')}
-                        className="inline-flex h-8.5 flex-1 items-center justify-center gap-1.5 rounded-[8px] bg-emerald-600 px-3 text-xs font-black text-white hover:bg-emerald-500 transition disabled:opacity-50"
+                        className="inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-3 text-xs font-black text-white hover:bg-emerald-500 transition disabled:opacity-50"
                       >
                         <Unlock size={13} />
                         Kích hoạt lại
@@ -633,7 +667,7 @@ export function MemberDetailPage() {
                           setPortalPassword(generateTemporaryPassword())
                           setPortalModalOpen('reset-password')
                         }}
-                        className="inline-flex h-8.5 items-center justify-center gap-1 rounded-[8px] border border-[var(--line)] bg-[var(--surface-muted)] px-2.5 text-xs font-bold text-[var(--text)] hover:bg-[var(--surface)] transition"
+                        className="inline-flex h-9 items-center justify-center gap-1 rounded-xl border border-[var(--line)] bg-[var(--surface-muted)] px-3 text-xs font-bold text-[var(--text)] hover:bg-[var(--surface)] transition"
                       >
                         Đổi MK
                       </button>
@@ -653,9 +687,9 @@ export function MemberDetailPage() {
           </div>
 
           {detail.profile.note ? (
-            <div className="rounded-[8px] border border-[var(--line)] bg-[var(--surface)] p-4">
-              <p className="text-xs font-bold uppercase text-[var(--text-muted)]">Ghi chú</p>
-              <p className="mt-2 text-sm font-semibold leading-6 text-[var(--text)]">{detail.profile.note}</p>
+            <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-5 shadow-sm">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)]">Ghi chú hội viên</p>
+              <p className="mt-2 text-xs font-medium leading-relaxed text-[var(--text)]">{detail.profile.note}</p>
             </div>
           ) : null}
 
@@ -805,27 +839,35 @@ export function MemberDetailPage() {
   )
 }
 
-function Metric({ label, value, tone = 'default' }: { label: string; value: string; tone?: 'default' | 'success' | 'danger' | 'muted' }) {
+function Metric({
+  label,
+  value,
+  tone = 'default',
+}: {
+  label: string
+  value: string
+  tone?: 'default' | 'success' | 'danger' | 'muted'
+}) {
   const toneClass = {
     default: 'text-[var(--text-strong)]',
-    success: 'text-[var(--success)]',
-    danger: 'text-[var(--brand-red)]',
+    success: 'text-emerald-400',
+    danger: 'text-rose-400',
     muted: 'text-[var(--text-muted)]',
   }[tone]
 
   return (
-    <div className="rounded-[8px] bg-[var(--surface-muted)] p-3">
-      <p className="text-xs font-bold uppercase text-[var(--text-muted)]">{label}</p>
-      <p className={`mt-1 text-sm font-black ${toneClass}`}>{value}</p>
+    <div className="rounded-xl border border-[var(--line)] bg-[var(--surface-muted)]/50 p-3.5 transition hover:bg-[var(--surface-muted)]">
+      <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)]">{label}</p>
+      <p className={`mt-1.5 text-sm font-bold truncate ${toneClass}`}>{value}</p>
     </div>
   )
 }
 
 function Info({ label, value }: { label: string; value: string }) {
   return (
-    <div>
-      <p className="text-xs font-bold uppercase text-[var(--text-muted)]">{label}</p>
-      <p className="mt-1 text-sm font-black text-[var(--text-strong)]">{value}</p>
+    <div className="flex items-center justify-between gap-2 rounded-xl bg-[var(--surface-muted)]/50 border border-[var(--line)] px-3 py-2 text-xs">
+      <span className="font-medium text-[var(--text-muted)]">{label}</span>
+      <span className="font-semibold text-[var(--text-strong)] truncate text-right max-w-[180px]">{value}</span>
     </div>
   )
 }
@@ -852,16 +894,16 @@ function MemberVietQrCard({
   const imageUrl = buildVietQrImageUrl({ setting, amount, addInfo: transferContent })
 
   return (
-    <div className="mt-4 rounded-[8px] border border-[var(--line)] bg-[var(--surface-muted)] p-3">
-      <div className="flex items-start justify-between gap-3">
+    <div className="mt-2 rounded-xl border border-amber-500/30 bg-amber-500/5 p-3.5">
+      <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-xs font-bold uppercase text-[var(--text-muted)]">VietQR công nợ</p>
-          <p className="mt-1 text-sm font-black text-[var(--text-strong)]">{formatMoney(amount)}</p>
+          <p className="text-[11px] font-bold uppercase tracking-wider text-amber-500">VietQR công nợ</p>
+          <p className="mt-0.5 text-base font-black text-rose-400">{formatMoney(amount)}</p>
         </div>
         <button
           type="button"
           onClick={onCollect}
-          className="h-9 rounded-[8px] bg-[var(--brand-yellow)] px-3 text-xs font-black text-black"
+          className="h-8.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 px-3 text-xs font-bold text-white shadow-sm hover:brightness-105 transition"
         >
           Thu khoản này
         </button>
@@ -871,7 +913,7 @@ function MemberVietQrCard({
         <button
           type="button"
           onClick={() => window.open(imageUrl, '_blank', 'noopener,noreferrer')}
-          className="mt-3 grid w-full place-items-center rounded-[8px] bg-white p-2 transition hover:brightness-95"
+          className="mt-3 grid w-full place-items-center rounded-xl bg-white p-2.5 shadow-sm transition hover:scale-[1.01]"
         >
           <img src={imageUrl} alt="Mã VietQR công nợ hội viên" className="h-36 w-36 object-contain" />
         </button>
@@ -882,22 +924,31 @@ function MemberVietQrCard({
   )
 }
 
-function HistoryCard({ title, count, children }: { title: string; count: string; children: ReactNode }) {
+function HistoryCard({
+  title,
+  count,
+  icon,
+  children,
+}: {
+  title: string
+  count: string
+  icon: ReactNode
+  children: ReactNode
+}) {
   return (
-    <div className="rounded-[8px] border border-[var(--line)] bg-[var(--surface)] p-4">
-      <div className="flex items-start justify-between gap-3 border-b border-[var(--line)] pb-3">
-        <div className="flex items-start gap-3">
-          <span className="grid size-10 place-items-center rounded-[8px] bg-metric-blue">
-            <UserRound size={18} />
+    <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-5 shadow-sm">
+      <div className="flex items-center justify-between gap-3 border-b border-[var(--line)] pb-4">
+        <div className="flex items-center gap-3">
+          <span className="grid size-9 shrink-0 place-items-center rounded-xl border border-[var(--line)] bg-[var(--surface-muted)]">
+            {icon}
           </span>
-          <div>
-            <h3 className="font-black text-[var(--text-strong)]">{title}</h3>
-            <p className="mt-1 text-xs font-semibold text-[var(--text-muted)]">Toàn bộ dữ liệu liên quan đến hội viên này.</p>
-          </div>
+          <h3 className="text-base font-bold tracking-tight text-[var(--text-strong)]">{title}</h3>
         </div>
-        <span className="rounded-full bg-[var(--surface-muted)] px-3 py-1 text-xs font-black text-[var(--text)]">{count}</span>
+        <span className="rounded-full border border-[var(--line)] bg-[var(--surface-muted)] px-3 py-1 text-xs font-semibold text-[var(--text-muted)]">
+          {count}
+        </span>
       </div>
-      <div className="mt-3">{children}</div>
+      <div className="mt-4">{children}</div>
     </div>
   )
 }
@@ -908,19 +959,35 @@ function MembershipRows({ memberships }: { memberships: MemberMembership[] }) {
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2.5">
       {memberships.map((membership) => (
-        <div key={membership.id} className="rounded-[8px] bg-[var(--surface-muted)] px-3 py-2 text-sm">
+        <div
+          key={membership.id}
+          className="rounded-xl border border-[var(--line)] bg-[var(--surface-muted)]/50 p-3.5 transition hover:border-[var(--brand-yellow)]/30 hover:bg-[var(--surface-muted)]"
+        >
           <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-            <p className="font-black text-[var(--text-strong)]">{membership.planName}</p>
-            <p className="font-black text-[var(--text-strong)]">{formatMoney(membership.actualPrice)}</p>
+            <div className="flex items-center gap-2">
+              <span className="size-2 rounded-full bg-amber-400 shrink-0" />
+              <span className="text-sm font-semibold text-[var(--text-strong)]">{membership.planName}</span>
+            </div>
+            <span className="text-sm font-bold text-amber-400 sm:text-right">{formatMoney(membership.actualPrice)}</span>
           </div>
-          <div className="mt-2 flex flex-wrap items-center gap-3 text-xs font-semibold text-[var(--text-muted)]">
-            <span>{formatDate(membership.startDate)} - {formatDate(membership.endDate)}</span>
-            <span>Đã thu {formatMoney(membership.paidAmount)}</span>
-            <span>
-              Nợ {formatMoney(membership.debtAmount)} ·{' '}
-              <span className={membership.status === 'ACTIVE' ? 'font-bold text-emerald-400' : 'font-bold text-[var(--text-muted)]'}>
+          <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-[var(--text-muted)]">
+            <span className="font-medium">{formatDate(membership.startDate)} - {formatDate(membership.endDate)}</span>
+            <span>•</span>
+            <span className="text-emerald-400 font-medium">Đã thu: {formatMoney(membership.paidAmount)}</span>
+            <span>•</span>
+            <span className={membership.debtAmount > 0 ? 'text-rose-400 font-semibold' : 'text-[var(--text-muted)]'}>
+              {membership.debtAmount > 0 ? `Nợ: ${formatMoney(membership.debtAmount)}` : 'Đã thanh toán đủ'}
+            </span>
+            <span className="ml-auto">
+              <span
+                className={
+                  membership.status === 'ACTIVE'
+                    ? 'inline-flex items-center rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-bold text-emerald-400'
+                    : 'inline-flex items-center rounded-full border border-[var(--line)] bg-[var(--surface)] px-2.5 py-0.5 text-[11px] font-medium text-[var(--text-muted)]'
+                }
+              >
                 {membershipStatusLabels[membership.status] ?? membership.status}
               </span>
             </span>
@@ -933,8 +1000,8 @@ function MembershipRows({ memberships }: { memberships: MemberMembership[] }) {
 
 function EmptyText({ children }: { children: ReactNode }) {
   return (
-    <p className="rounded-[8px] bg-[var(--surface-muted)] px-3 py-2 text-sm font-semibold text-[var(--text-muted)]">
+    <div className="rounded-xl border border-dashed border-[var(--line)] bg-[var(--surface-muted)]/40 p-4 text-center text-xs font-medium text-[var(--text-muted)]">
       {children}
-    </p>
+    </div>
   )
 }

@@ -91,7 +91,7 @@ export function DatePartsSelect({
         {label}
         {required ? <span className="text-red-500"> *</span> : null}
       </span>
-      <div className="mt-1.5 grid grid-cols-3 gap-2">
+      <div className="mt-1.5 grid grid-cols-[1fr_1.35fr_1.15fr] gap-2">
         <select
           value={value ? parts.day : ''}
           onChange={(event) => {

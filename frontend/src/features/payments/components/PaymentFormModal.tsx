@@ -1,4 +1,4 @@
-import { Copy, QrCode, X } from 'lucide-react'
+import { Copy, CreditCard, QrCode, X } from 'lucide-react'
 import type { FormEvent } from 'react'
 import { useMemo, useState } from 'react'
 import { DatePartsSelect } from '../../../shared/components/DatePartsSelect'
@@ -77,15 +77,20 @@ export function PaymentFormModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-2xl rounded-2xl border border-[var(--line)] bg-[var(--surface)] shadow-2xl">
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/65 p-4 backdrop-blur-sm overflow-y-auto">
+      <div className="my-auto w-full max-w-3xl rounded-2xl border border-[var(--line)] bg-[var(--surface)] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150">
         {/* Modal Header */}
-        <div className="flex items-center justify-between border-b border-[var(--line)] px-6 py-4">
-          <div>
-            <span className="text-[11px] font-black uppercase tracking-wider text-amber-500">
-              Biên Nhận Thu Tiền
+        <div className="flex items-center justify-between border-b border-[var(--line)] px-6 py-4.5 bg-[var(--surface-muted)]/40">
+          <div className="flex items-center gap-3">
+            <span className="grid size-10 place-items-center rounded-xl bg-red-500/15 text-red-400 border border-red-500/30">
+              <CreditCard size={20} />
             </span>
-            <h3 className="text-xl font-black text-[var(--text-strong)]">Lập phiếu thu công nợ</h3>
+            <div>
+              <span className="text-[11px] font-black uppercase tracking-wider text-rose-400">
+                Biên nhận thu tiền
+              </span>
+              <h3 className="text-lg font-black text-[var(--text-strong)]">Lập phiếu thu công nợ</h3>
+            </div>
           </div>
           <button
             type="button"
@@ -98,7 +103,7 @@ export function PaymentFormModal({
           </button>
         </div>
 
-        <form onSubmit={(event) => void handleSubmit(event)} className="space-y-4 p-6">
+        <form onSubmit={(event) => void handleSubmit(event)} className="space-y-5 p-6">
           {error ? (
             <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3.5 text-xs font-semibold text-red-400">
               {error}
@@ -106,12 +111,14 @@ export function PaymentFormModal({
           ) : null}
 
           {/* Debt Selector if multiple open debts */}
-          <label className="block text-xs font-bold text-[var(--text-strong)]">
-            Hồ sơ công nợ cần thu *
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] mb-1.5">
+              Hồ sơ công nợ cần thu <span className="text-red-500">*</span>
+            </label>
             <select
               value={debtRecordId}
               onChange={(event) => handleDebtChange(event.target.value)}
-              className="mt-1.5 h-10 w-full rounded-xl border border-[var(--line)] bg-[var(--surface-muted)] px-3 text-xs font-semibold text-[var(--text-strong)] outline-none transition focus:border-amber-500"
+              className="h-11 w-full rounded-xl border border-[var(--line)] bg-[var(--input-bg)] px-3 text-xs font-semibold text-[var(--text-strong)] outline-none transition focus:border-amber-500"
               required
             >
               {debts.map((debt) => (
@@ -120,21 +127,35 @@ export function PaymentFormModal({
                 </option>
               ))}
             </select>
-          </label>
+          </div>
 
           {/* Selected Debt Quick Summary */}
           {currentDebt ? (
-            <div className="grid grid-cols-3 gap-3 rounded-xl border border-[var(--line)] bg-[var(--surface-muted)] p-3 text-xs">
+            <div className="grid grid-cols-3 gap-3 rounded-xl border border-[var(--line)] bg-[var(--surface-muted)]/60 p-3 text-xs">
               <Info label="Hội viên" value={currentDebt.memberName} />
               <Info label="Đã thanh toán" value={formatMoney(currentDebt.paidAmount)} />
               <Info label="Còn phải thu" value={formatMoney(currentDebt.remainingAmount)} highlight />
             </div>
           ) : null}
 
-          <div className="grid gap-4 lg:grid-cols-[1fr_0.85fr]">
-            <div className="space-y-3.5">
-              <label className="block text-xs font-bold text-[var(--text-strong)]">
-                Số tiền thu đợt này (VNĐ) *
+          <div className="grid gap-6 md:grid-cols-[1.15fr_0.85fr]">
+            <div className="space-y-4">
+              {/* Payment Amount with Quick-fill helper */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                    Số tiền thu đợt này (VNĐ) <span className="text-red-500">*</span>
+                  </label>
+                  {currentDebt && Number(amount || 0) < currentDebt.remainingAmount ? (
+                    <button
+                      type="button"
+                      onClick={() => setAmount(currentDebt.remainingAmount.toString())}
+                      className="text-[11px] font-bold text-amber-400 hover:underline"
+                    >
+                      Thu tất cả ({formatMoney(currentDebt.remainingAmount)})
+                    </button>
+                  ) : null}
+                </div>
                 <input
                   value={amount}
                   onChange={(event) => setAmount(event.target.value)}
@@ -142,45 +163,53 @@ export function PaymentFormModal({
                   min={1000}
                   max={currentDebt?.remainingAmount}
                   step={10000}
-                  className="mt-1.5 h-10 w-full rounded-xl border border-[var(--line)] bg-[var(--input-bg)] px-3 text-xs font-semibold text-[var(--text-strong)] outline-none transition focus:border-amber-500 focus:ring-1 focus:ring-amber-500/40"
+                  className="h-10 w-full rounded-xl border border-[var(--line)] bg-[var(--input-bg)] px-3 text-sm font-bold text-emerald-400 outline-none transition focus:border-amber-500 focus:ring-1 focus:ring-amber-500/40"
                   required
                 />
+              </div>
+
+              {/* Payment Method */}
+              <label className="block">
+                <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                  Phương thức thanh toán <span className="text-red-500">*</span>
+                </span>
+                <select
+                  value={paymentMethod}
+                  onChange={(event) => setPaymentMethod(event.target.value as PaymentMethod)}
+                  className="mt-1.5 h-10 w-full rounded-xl border border-[var(--line)] bg-[var(--input-bg)] px-3 text-xs font-semibold text-[var(--text-strong)] outline-none transition focus:border-amber-500"
+                  required
+                >
+                  {methodOptions.map((method) => (
+                    <option key={method.value} value={method.value} className="bg-[var(--surface)] text-[var(--text-strong)]">
+                      {method.label}
+                    </option>
+                  ))}
+                </select>
               </label>
 
-              <div className="grid gap-3 sm:grid-cols-2">
+              {/* Payment Date - FULL WIDTH IN LEFT COLUMN to guarantee NO TRUNCATION */}
+              <div className="rounded-xl border border-[var(--line)] bg-[var(--surface-muted)]/40 p-3.5">
                 <DatePartsSelect
-                  label="Ngày lập phiếu"
+                  label="Ngày lập phiếu thu"
                   value={paymentDate}
                   onChange={setPaymentDate}
                   maxIso={today}
                   required
-                  helperText="Có thể chọn ngày thu cũ để doanh thu về đúng tháng."
+                  helperText="💡 Có thể chọn ngày thu cũ để doanh thu ghi nhận chính xác theo tháng."
                   labelClassName="text-xs font-bold text-[var(--text-strong)]"
-                  selectClassName="h-10 w-full rounded-xl border border-[var(--line)] bg-[var(--input-bg)] px-2 text-xs font-semibold text-[var(--text-strong)] outline-none transition focus:border-amber-500"
+                  selectClassName="h-10 w-full rounded-xl border border-[var(--line)] bg-[var(--input-bg)] px-2.5 text-xs font-semibold text-[var(--text-strong)] outline-none transition focus:border-amber-500 cursor-pointer"
                 />
-                <label className="block text-xs font-bold text-[var(--text-strong)]">
-                  Phương thức *
-                  <select
-                    value={paymentMethod}
-                    onChange={(event) => setPaymentMethod(event.target.value as PaymentMethod)}
-                    className="mt-1.5 h-10 w-full rounded-xl border border-[var(--line)] bg-[var(--surface-muted)] px-3 text-xs font-semibold text-[var(--text-strong)] outline-none transition focus:border-amber-500"
-                    required
-                  >
-                    {methodOptions.map((method) => (
-                      <option key={method.value} value={method.value} className="bg-[var(--surface)] text-[var(--text-strong)]">
-                        {method.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
               </div>
 
-              <label className="block text-xs font-bold text-[var(--text-strong)]">
-                Ghi chú phiếu thu
+              {/* Note */}
+              <label className="block">
+                <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                  Ghi chú phiếu thu
+                </span>
                 <input
                   value={note}
                   onChange={(event) => setNote(event.target.value)}
-                  className="mt-1.5 h-10 w-full rounded-xl border border-[var(--line)] bg-[var(--input-bg)] px-3 text-xs font-semibold text-[var(--text-strong)] outline-none transition focus:border-amber-500"
+                  className="mt-1.5 h-10 w-full rounded-xl border border-[var(--line)] bg-[var(--input-bg)] px-3 text-xs font-medium text-[var(--text-strong)] outline-none transition focus:border-amber-500"
                   placeholder="Ví dụ: Chuyển khoản cọc đợt 1, thanh toán qua Momo..."
                 />
               </label>
@@ -195,7 +224,8 @@ export function PaymentFormModal({
             />
           </div>
 
-          <div className="flex justify-end gap-2.5 border-t border-[var(--line)] pt-4">
+          {/* Modal Footer */}
+          <div className="flex items-center justify-end gap-2.5 border-t border-[var(--line)] pt-4">
             <button
               type="button"
               onClick={onClose}
@@ -205,7 +235,7 @@ export function PaymentFormModal({
             </button>
             <button
               type="submit"
-              disabled={submitting || !currentDebt}
+              disabled={submitting || !currentDebt || Number(amount || 0) <= 0}
               className="h-10 rounded-xl bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 px-5 text-xs font-black text-white shadow-md transition hover:scale-[1.02] hover:brightness-105 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {submitting ? 'Đang lưu...' : 'Xác nhận thu tiền'}
