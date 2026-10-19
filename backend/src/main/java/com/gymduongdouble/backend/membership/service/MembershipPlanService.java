@@ -7,6 +7,7 @@ import com.gymduongdouble.backend.membership.domain.MembershipPlan;
 import com.gymduongdouble.backend.membership.repository.MembershipPlanRepository;
 import com.gymduongdouble.backend.membership.web.dto.MembershipPlanRequest;
 import com.gymduongdouble.backend.membership.web.dto.MembershipPlanResponse;
+import com.gymduongdouble.backend.membership.web.dto.PublicMembershipPlanResponse;
 import java.math.BigDecimal;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -36,7 +37,6 @@ public class MembershipPlanService {
         plan.setPtSessionCount(request.ptSessionCount());
         plan.setPracticeSessionCount(request.practiceSessionCount());
         plan.setGuidanceSessionCount(request.guidanceSessionCount());
-        plan.setPriceRatio(request.priceRatio());
         plan.setDescription(request.description());
         plan.setActive(request.active() == null || request.active());
 
@@ -54,6 +54,13 @@ public class MembershipPlanService {
     public List<MembershipPlanResponse> listActive() {
         return membershipPlanRepository.findByActiveTrueOrderByNameAsc().stream()
             .map(MembershipPlanResponse::from)
+            .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<PublicMembershipPlanResponse> listPublic() {
+        return membershipPlanRepository.findByActiveTrueOrderByNameAsc().stream()
+            .map(PublicMembershipPlanResponse::from)
             .toList();
     }
 

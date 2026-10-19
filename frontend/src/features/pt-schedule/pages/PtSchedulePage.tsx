@@ -176,7 +176,7 @@ export function PtSchedulePage() {
       note: '',
     }
   })
-  const [sessionForm, setSessionForm] = useState({ sessionPackageId: '', sessionDate: todayIso(), weight: '', content: '', note: '' })
+  const [sessionForm, setSessionForm] = useState({ sessionPackageId: '', scheduleId: '', sessionDate: todayIso(), weight: '', content: '', note: '' })
   const [activityForm, setActivityForm] = useState<{ sessionPackageId: string; activityType: ActivityType; activityDate: string; weight: string; note: string }>({
     sessionPackageId: '',
     activityType: 'PRACTICE',
@@ -372,6 +372,7 @@ export function PtSchedulePage() {
 
   function selectMember(memberId: number | null) {
     setSelectedMemberId(memberId)
+    setSessionForm((current) => ({ ...current, scheduleId: '' }))
     setScheduleForm((current) => {
       const nextMemberId = memberId?.toString() ?? ''
       return current.memberId === nextMemberId ? current : { ...current, memberId: nextMemberId }
@@ -510,14 +511,16 @@ export function PtSchedulePage() {
     try {
       await createPtSessionLog(selectedMemberId, {
         sessionPackageId: selectedPackageId,
+        scheduleId: sessionForm.scheduleId && sessionForm.scheduleId !== 'none' ? Number(sessionForm.scheduleId) : null,
         sessionDate: sessionForm.sessionDate,
         weight: toNumberOrNull(sessionForm.weight),
         status: 'COMPLETED',
         content: sessionForm.content.trim() || null,
         note: sessionForm.note.trim() || null,
       })
-      setSessionForm((current) => ({ ...current, content: '', note: '' }))
+      setSessionForm((current) => ({ ...current, scheduleId: '', content: '', note: '' }))
       await loadDetail(selectedMemberId)
+      await loadData()
     } catch (caughtError) {
       setFormError(errorMessage(caughtError))
     } finally {
@@ -2109,8 +2112,8 @@ function CheckinPanel({
   onActivitySubmit,
 }: {
   detail: PtMemberDetail | null
-  sessionForm: { sessionPackageId: string; sessionDate: string; weight: string; content: string; note: string }
-  setSessionForm: Dispatch<SetStateAction<{ sessionPackageId: string; sessionDate: string; weight: string; content: string; note: string }>>
+  sessionForm: { sessionPackageId: string; scheduleId: string; sessionDate: string; weight: string; content: string; note: string }
+  setSessionForm: Dispatch<SetStateAction<{ sessionPackageId: string; scheduleId: string; sessionDate: string; weight: string; content: string; note: string }>>
   activityForm: { sessionPackageId: string; activityType: ActivityType; activityDate: string; weight: string; note: string }
   setActivityForm: Dispatch<SetStateAction<{ sessionPackageId: string; activityType: ActivityType; activityDate: string; weight: string; note: string }>>
   submitting: boolean
@@ -2122,6 +2125,11 @@ function CheckinPanel({
   if (!detail) return <EmptySelect message="Vui lòng chọn học viên để ghi nhận buổi tập." />
 
   const activePackage = detail.sessionPackages.find((p) => p.status === 'ACTIVE') ?? detail.sessionPackages[0]
+  const selectedPackage = detail.sessionPackages.find((p) => p.id.toString() === sessionForm.sessionPackageId)
+  const matchingSchedules = detail.schedules.filter((schedule) =>
+    schedule.status === 'SCHEDULED' && schedule.scheduleDate === sessionForm.sessionDate
+    && (!selectedPackage?.ptUserId || schedule.ptUserId === selectedPackage.ptUserId),
+  )
 
   return (
     <div className="space-y-4">
@@ -2176,7 +2184,7 @@ function CheckinPanel({
               <label className="text-[11px] font-bold text-[var(--text-muted)] block mb-1">Gói buổi học</label>
               <select
                 value={sessionForm.sessionPackageId}
-                onChange={(e) => setSessionForm((c) => ({ ...c, sessionPackageId: e.target.value }))}
+                onChange={(e) => setSessionForm((c) => ({ ...c, sessionPackageId: e.target.value, scheduleId: '' }))}
                 className="h-10 w-full rounded-xl border border-[var(--line)] bg-[var(--input-bg)] px-3 text-xs font-semibold outline-none focus:border-[var(--brand-yellow)]"
                 required
               >
@@ -2189,11 +2197,29 @@ function CheckinPanel({
             <DatePartsSelect
               label="Ngày tập"
               value={sessionForm.sessionDate}
-              onChange={(value) => setSessionForm((current) => ({ ...current, sessionDate: value }))}
+              onChange={(value) => setSessionForm((current) => ({ ...current, sessionDate: value, scheduleId: '' }))}
               required
               labelClassName="text-[11px] font-bold text-[var(--text-muted)] block"
               selectClassName="h-10 w-full rounded-xl border border-[var(--line)] bg-[var(--input-bg)] px-2 text-xs font-semibold outline-none focus:border-[var(--brand-yellow)]"
             />
+          </div>
+
+          <div>
+            <label className="text-[11px] font-bold text-[var(--text-muted)] block mb-1">Lịch hẹn tương ứng</label>
+            <select
+              value={sessionForm.scheduleId}
+              onChange={(event) => setSessionForm((current) => ({ ...current, scheduleId: event.target.value }))}
+              className="h-10 w-full rounded-xl border border-[var(--line)] bg-[var(--input-bg)] px-3 text-xs font-semibold outline-none focus:border-[var(--brand-yellow)]"
+              required={matchingSchedules.length > 0}
+            >
+              <option value="">{matchingSchedules.length ? 'Chọn lịch hẹn hoặc ghi buổi độc lập' : 'Không có lịch hẹn phù hợp'}</option>
+              {matchingSchedules.length > 0 && <option value="none">Ghi buổi độc lập, không liên kết lịch</option>}
+              {matchingSchedules.map((schedule) => (
+                <option key={schedule.id} value={schedule.id}>
+                  {formatTimeShort(schedule.startTime)}{schedule.endTime ? ` - ${formatTimeShort(schedule.endTime)}` : ''} · {schedule.ptFullName}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div>

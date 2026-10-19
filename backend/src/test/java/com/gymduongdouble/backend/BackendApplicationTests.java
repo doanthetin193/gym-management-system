@@ -11,8 +11,13 @@ import com.gymduongdouble.backend.common.enums.PaymentMethod;
 import com.gymduongdouble.backend.common.enums.MembershipStatus;
 import com.gymduongdouble.backend.common.enums.PtAssignmentStatus;
 import com.gymduongdouble.backend.finance.web.dto.CreatePaymentRequest;
+import com.gymduongdouble.backend.member.domain.Member;
 import com.gymduongdouble.backend.membership.domain.MemberMembership;
+import com.gymduongdouble.backend.membership.domain.MembershipPlan;
 import com.gymduongdouble.backend.membership.service.MembershipLifecyclePolicy;
+import com.gymduongdouble.backend.membership.service.MembershipPeriodStatistics;
+import com.gymduongdouble.backend.membership.web.dto.MembershipPlanResponse;
+import com.gymduongdouble.backend.membership.web.dto.PublicMembershipPlanResponse;
 import com.gymduongdouble.backend.common.validation.VietnamPhoneNormalizer;
 import com.gymduongdouble.backend.common.exception.BadRequestException;
 import com.gymduongdouble.backend.common.exception.RateLimitExceededException;
@@ -22,8 +27,10 @@ import com.gymduongdouble.backend.common.security.JwtProperties;
 import com.gymduongdouble.backend.common.security.JwtService;
 import com.gymduongdouble.backend.common.security.PasswordPolicy;
 import com.gymduongdouble.backend.pt.domain.PtAssignment;
+import com.gymduongdouble.backend.pt.domain.PtProfile;
 import com.gymduongdouble.backend.pt.service.PtAssignmentPolicy;
 import com.gymduongdouble.backend.pt.web.dto.BodyMeasurementRequest;
+import com.gymduongdouble.backend.pt.web.dto.PtProfileResponse;
 import com.gymduongdouble.backend.user.domain.User;
 import jakarta.validation.Validation;
 import java.time.LocalDate;
@@ -208,11 +215,79 @@ class BackendApplicationTests {
 		assertFalse(rateLimiter.tryConsumeSensitiveRequest("ai-advisor", "user:owner"));
 	}
 
+	@Test
+	void membershipPeriodStatisticsCountsFirstRegistrationAndRenewalByDistinctMember() {
+		MembershipPeriodStatistics statistics = new MembershipPeriodStatistics();
+		LocalDate start = LocalDate.of(2026, 10, 1);
+		LocalDate end = LocalDate.of(2026, 10, 31);
+
+		MemberMembership firstThenRenewed = membership(1L, 1L, LocalDate.of(2026, 10, 2));
+		MemberMembership sameMemberRenewal = membership(1L, 2L, LocalDate.of(2026, 10, 20));
+		MemberMembership priorThenRenewed = membership(2L, 3L, LocalDate.of(2026, 9, 1));
+		MemberMembership laterRenewal = membership(2L, 4L, LocalDate.of(2026, 10, 8));
+		MemberMembership anotherLaterRenewal = membership(2L, 5L, LocalDate.of(2026, 10, 22));
+		MemberMembership cancelledRegistration = membership(3L, 6L, LocalDate.of(2026, 10, 5));
+		cancelledRegistration.setStatus(MembershipStatus.CANCELLED);
+
+		var counts = statistics.count(
+			List.of(firstThenRenewed, sameMemberRenewal, priorThenRenewed, laterRenewal, anotherLaterRenewal, cancelledRegistration),
+			start,
+			end
+		);
+
+		assertEquals(1, counts.newMembers());
+		assertEquals(2, counts.renewedMembers());
+	}
+
+	@Test
+	void publicMembershipPlanResponseContainsOnlyPublicPlanValues() {
+		MembershipPlan plan = new MembershipPlan();
+		plan.setId(9L);
+		plan.setName("Gói PT test");
+		plan.setDurationDays(30);
+		plan.setDefaultPrice(BigDecimal.valueOf(1_000_000));
+		var response = PublicMembershipPlanResponse.from(plan);
+
+		assertEquals(9L, response.id());
+		assertEquals("Gói PT test", response.name());
+		assertEquals(BigDecimal.valueOf(1_000_000), response.price());
+	}
+
+	@Test
+	void currentPtAndPlanContractsDoNotExposePayrollOrPriceRatioFields() {
+		var profileEntityFields = java.util.Arrays.stream(PtProfile.class.getDeclaredFields())
+			.map(java.lang.reflect.Field::getName)
+			.toList();
+		var profileResponseFields = java.util.Arrays.stream(PtProfileResponse.class.getRecordComponents())
+			.map(java.lang.reflect.RecordComponent::getName)
+			.toList();
+		var planResponseFields = java.util.Arrays.stream(MembershipPlanResponse.class.getRecordComponents())
+			.map(java.lang.reflect.RecordComponent::getName)
+			.toList();
+
+		assertFalse(profileEntityFields.contains("baseSalary"));
+		assertFalse(profileEntityFields.contains("teachingRate"));
+		assertFalse(profileEntityFields.contains("salesCommissionRate"));
+		assertFalse(profileResponseFields.contains("baseSalary"));
+		assertFalse(profileResponseFields.contains("teachingRate"));
+		assertFalse(profileResponseFields.contains("salesCommissionRate"));
+		assertFalse(planResponseFields.contains("priceRatio"));
+	}
+
 	private MemberMembership membership(LocalDate startDate, LocalDate endDate) {
 		MemberMembership membership = new MemberMembership();
 		membership.setStatus(MembershipStatus.ACTIVE);
 		membership.setStartDate(startDate);
 		membership.setEndDate(endDate);
+		return membership;
+	}
+
+	private MemberMembership membership(Long memberId, Long membershipId, LocalDate startDate) {
+		Member member = new Member();
+		member.setId(memberId);
+		MemberMembership membership = membership(startDate, startDate.plusMonths(1));
+		membership.setId(membershipId);
+		membership.setMember(member);
 		return membership;
 	}
 }

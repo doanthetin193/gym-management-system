@@ -20,6 +20,7 @@ import com.gymduongdouble.backend.member.repository.MemberRepository;
 import com.gymduongdouble.backend.membership.domain.MemberMembership;
 import com.gymduongdouble.backend.membership.repository.MemberMembershipRepository;
 import com.gymduongdouble.backend.membership.service.MembershipLifecyclePolicy;
+import com.gymduongdouble.backend.membership.service.MembershipPeriodStatistics;
 import com.gymduongdouble.backend.pt.domain.PtSessionPackage;
 import com.gymduongdouble.backend.pt.repository.PtSessionPackageRepository;
 import java.math.BigDecimal;
@@ -48,6 +49,7 @@ public class DashboardService {
     private final DebtRecordRepository debtRecordRepository;
     private final PtSessionPackageRepository ptSessionPackageRepository;
     private final MembershipLifecyclePolicy membershipLifecyclePolicy;
+    private final MembershipPeriodStatistics membershipPeriodStatistics;
 
     @Transactional(readOnly = true)
     public OwnerDashboardResponse ownerDashboard(Integer year, Integer month) {
@@ -115,8 +117,8 @@ public class DashboardService {
             .filter(membership -> membership.getStatus() != MembershipStatus.CANCELLED)
             .toList();
 
-        Set<Long> newMembers = new HashSet<>();
-        Set<Long> renewedMembers = new HashSet<>();
+        MembershipPeriodStatistics.Counts periodCounts = membershipPeriodStatistics.count(
+            memberMembershipRepository.findAll(), start, end);
         Set<Long> selfTraining = new HashSet<>();
         Set<Long> guided = new HashSet<>();
         Set<Long> newPt = new HashSet<>();
@@ -124,12 +126,6 @@ public class DashboardService {
 
         for (MemberMembership membership : monthMemberships) {
             Long memberId = membership.getMember().getId();
-            if (hasMembershipBefore(memberId, start)) {
-                renewedMembers.add(memberId);
-            } else {
-                newMembers.add(memberId);
-            }
-
             PlanType planType = membership.getPlan().getPlanType();
             if (planType == PlanType.SELF_TRAINING) {
                 selfTraining.add(memberId);
@@ -154,8 +150,8 @@ public class DashboardService {
         return new MemberReportResponse(
             period.getYear(),
             period.getMonthValue(),
-            newMembers.size(),
-            renewedMembers.size(),
+            periodCounts.newMembers(),
+            periodCounts.renewedMembers(),
             selfTraining.size(),
             guided.size(),
             newPt.size(),
@@ -234,12 +230,6 @@ public class DashboardService {
 
     private BigDecimal revenueBetween(LocalDate start, LocalDate end) {
         return paymentRepository.sumAmountByPaymentDateBetween(start, end);
-    }
-
-    private boolean hasMembershipBefore(Long memberId, LocalDate date) {
-        return memberMembershipRepository.findByMemberIdOrderByStartDateDesc(memberId).stream()
-            .filter(membership -> membership.getStatus() != MembershipStatus.CANCELLED)
-            .anyMatch(membership -> membership.getStartDate().isBefore(date));
     }
 
     private List<MemberMembership> currentMembershipsByMember() {

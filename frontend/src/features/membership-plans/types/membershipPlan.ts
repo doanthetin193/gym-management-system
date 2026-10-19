@@ -12,7 +12,6 @@ export type MembershipPlan = {
   ptSessionCount: number | null
   practiceSessionCount: number | null
   guidanceSessionCount: number | null
-  priceRatio: number | null
   description: string | null
   active: boolean
 }
@@ -26,7 +25,6 @@ export type MembershipPlanPayload = {
   ptSessionCount?: number | null
   practiceSessionCount?: number | null
   guidanceSessionCount?: number | null
-  priceRatio?: number | null
   description?: string | null
   active?: boolean | null
 }

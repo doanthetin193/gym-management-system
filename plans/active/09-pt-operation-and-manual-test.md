@@ -55,7 +55,7 @@ Dùng sau khi buổi tập thật sự kết thúc:
 - Chọn Buổi kèm 1-1 để trừ một buổi PT.
 - Chọn Tự ôn tập để trừ một lượt tự ôn.
 - Nhập ngày tập, cân nặng trước buổi nếu có, nội dung buổi tập và nhận xét/dặn dò.
-- Nếu buổi được đặt lịch trước đó, chọn lịch đúng để hệ thống đổi trạng thái lịch sang hoàn thành.
+- Nếu có lịch SCHEDULED đúng ngày và PT của gói, form bắt buộc chọn lịch đúng hoặc xác nhận Ghi buổi độc lập. Chọn lịch thì hệ thống đổi trạng thái lịch sang hoàn thành; ghi độc lập không thay đổi lịch nào.
 
 Không ghi buổi cho một cuộc hẹn chưa diễn ra chỉ để giữ chỗ; việc đó làm sai tiến độ của khách.
 
@@ -118,7 +118,7 @@ Chỉ sau khi Khánh đã tập xong:
 2. Chọn Buổi kèm 1-1 và đúng gói buổi của Khánh.
 3. Chọn ngày tập, nhập nội dung buổi: đánh giá thể lực, hướng dẫn squat, lat pulldown, chest press, cardio nhẹ.
 4. Nhập nhận xét về form và dặn dò dinh dưỡng.
-5. Lưu.
+5. Chọn lịch 17/10 đã đặt ở bước trước, rồi lưu.
 
 Kết quả mong đợi:
 

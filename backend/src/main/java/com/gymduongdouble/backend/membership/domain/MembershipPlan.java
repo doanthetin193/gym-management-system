@@ -46,9 +46,6 @@ public class MembershipPlan extends AuditableEntity {
     @Column(name = "guidance_session_count")
     private Integer guidanceSessionCount;
 
-    @Column(name = "price_ratio", precision = 5, scale = 2)
-    private BigDecimal priceRatio;
-
     @Column(columnDefinition = "text")
     private String description;
 

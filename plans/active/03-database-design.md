@@ -1,6 +1,6 @@
 # 03 - Thiết Kế Database
 
-Cập nhật lần cuối: 16/10/2026.
+Cập nhật lần cuối: 19/10/2026.
 
 ## 1. Nguyên tắc
 
@@ -9,6 +9,10 @@ Cập nhật lần cuối: 16/10/2026.
 - Các entity kế thừa BaseEntity có id và deleted. Các entity kế thừa AuditableEntity có thêm createdAt và updatedAt.
 - deleted hiện là nền tảng dự phòng cho soft delete trong tương lai. MVP chưa tự nhận là đã có soft delete hoàn chỉnh, vì chưa có filter truy vấn và luồng xóa đồng bộ trên toàn hệ thống.
 - Schema local dev hiện do JPA Hibernate cập nhật. Flyway dependency được giữ, nhưng config đang tắt.
+
+Lưu ý đối chiếu schema ngày 18/10/2026: năm cột nháp `pt_profiles.base_salary`, `pt_profiles.teaching_rate`, `pt_profiles.sales_commission_rate`, `membership_plans.price_ratio` và `membership_plans.content_access_level` đã được loại trực tiếp khỏi PostgreSQL local sau khi đã loại mapping khỏi mã nguồn. Hibernate `ddl-auto=update` không tự xóa cột cũ; đây là lần dọn schema local có kiểm tra metadata, không phải Flyway migration versioned.
+
+Ngày 19/10/2026, schema PostgreSQL local đang dùng được đối chiếu trực tiếp với mapping JPA: có đúng 19 bảng gồm 18 bảng từ entity và bảng liên kết `user_roles`; không thiếu/thừa bảng hoặc cột so với mapping đã kiểm tra. Sau khi xác nhận không có dữ liệu trùng, ba ràng buộc UNIQUE còn thiếu từ lịch sử schema đã được bổ sung: `members.phone`, `members.user_id` và `pt_profiles.user_id`. Lượt đối chiếu đầy đủ cũng xác nhận khóa ngoại `body_measurements.member_id -> members.id` đã tồn tại theo mapping; không giữ bản sao constraint trùng. Việc này chỉ đồng bộ database local hiện tại với entity, không thêm thực thể hay chức năng nghiệp vụ mới và chưa phải migration Flyway versioned.
 
 ## 2. Nhóm tài khoản và quyền
 
@@ -50,7 +54,7 @@ Bảng giá được quản lý bởi OWNER.
 - name, plan_type, pt_level.
 - duration_days, default_price.
 - pt_session_count, practice_session_count, guidance_session_count.
-- price_ratio, description, active.
+- description, active.
 - created_at, updated_at, deleted.
 
 plan_type gồm SELF_TRAINING, PT, GUIDANCE, OTHER. Gói inactive được giữ lịch sử nhưng không bán mới.
@@ -101,10 +105,9 @@ Không có bảng expense, profit hay cashbook chi phí trong MVP.
 Hồ sơ PT liên kết 1-1 với users.
 
 - user_id, pt_level, specialty, bio, active.
-- base_salary, teaching_rate, sales_commission_rate.
 - created_at, updated_at, deleted.
 
-Trường tài chính chỉ OWNER được xem/sửa qua service. PT chỉ được cập nhật thông tin công khai của mình.
+Hồ sơ PT chỉ lưu dữ liệu phục vụ phân công và vận hành. MVP không lưu lương cứng, tỷ lệ dạy hoặc hoa hồng; việc trả lương nằm ngoài scope.
 
 ### pt_assignments
 
@@ -220,9 +223,9 @@ Không có bảng riêng cho notification, audit log, business goal, expense, pa
 
 ## 9. Quan hệ chính
 
-- User 1-1 PtProfile khi tài khoản là PT.
-- User 1-1 Member khi tài khoản là Portal MEMBER.
-- Member 1-n MemberMembership, Payment, DebtRecord, PtAssignment, PtSchedule, PtSessionPackage, PtSessionLog, MemberActivityLog, BodyMeasurement và PtGoal.
+- User 1-1 PtProfile khi tài khoản là PT; `pt_profiles.user_id` là UNIQUE.
+- User 1-1 Member khi tài khoản là Portal MEMBER; `members.user_id` là UNIQUE khi có giá trị.
+- Member 1-n MemberMembership, Payment, DebtRecord, PtAssignment, PtSchedule, PtSessionPackage, PtSessionLog, MemberActivityLog, BodyMeasurement và PtGoal; `body_measurements.member_id` là khóa ngoại bắt buộc trỏ đến `members.id`.
 - MembershipPlan 1-n MemberMembership.
 - MemberMembership 1-n Payment, có thể 1-n DebtRecord và 1-n PtSessionPackage theo luồng nghiệp vụ.
 - PtSessionPackage 1-n PtSessionLog và MemberActivityLog PRACTICE.
@@ -231,7 +234,8 @@ Không có bảng riêng cho notification, audit log, business goal, expense, pa
 
 ## 10. Ràng buộc nghiệp vụ được service bảo vệ
 
-- Số điện thoại hội viên và tài khoản không trùng sau chuẩn hóa.
+- Số điện thoại hội viên được chuẩn hóa trước khi lưu và được bảo vệ thêm bằng UNIQUE `members.phone`; email và số điện thoại tài khoản cũng được mapping UNIQUE trong `users`.
+- Một tài khoản Portal chỉ liên kết tối đa một Member và một tài khoản PT chỉ có tối đa một PtProfile nhờ UNIQUE trên hai cột `user_id` tương ứng.
 - Ngày kết thúc không trước ngày bắt đầu.
 - Ngày thu tiền và ngày ghi nhận không ở tương lai.
 - Giá, giảm giá, tiền thu và số đo phải không âm; các chỉ số đo/mục tiêu phải dương khi có nhập.

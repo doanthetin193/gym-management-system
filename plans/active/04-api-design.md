@@ -46,6 +46,7 @@ PT không được dùng API để xem tùy ý khách tự tập hay khách củ
 | --- | --- | --- | --- |
 | GET | /v1/membership-plans | OWNER, PT | Lấy gói đang active để bán. |
 | GET | /v1/membership-plans/all | OWNER | Lấy cả gói active/inactive để quản lý. |
+| GET | /v1/public/membership-plans | Public | Lấy gói active cho bảng giá công khai; response chỉ có thông tin gói cần công khai. |
 | POST | /v1/membership-plans | OWNER | Tạo bảng giá. |
 | PUT | /v1/membership-plans/{id}/active | OWNER | Bật/tắt gói. |
 | POST | /v1/members/{memberId}/memberships | OWNER, PT | Kích hoạt gói/gia hạn, có thể kèm thu ngay. |
@@ -62,7 +63,7 @@ Request tạo membership có planId, startDate, giá, giảm giá, initialPaidAm
 | GET | /v1/debts | OWNER, PT | Lấy công nợ theo phạm vi dữ liệu. |
 | GET | /v1/settings/vietqr | OWNER | Lấy cấu hình VietQR đầy đủ. |
 | PUT | /v1/settings/vietqr | OWNER | Cập nhật cấu hình VietQR. |
-| GET | /v1/public/vietqr-setting | Public | Lấy thông tin VietQR cần hiển thị trong luồng thu tiền. |
+| GET | /v1/public/vietqr-setting | Public | Lấy thông tin VietQR để hiển thị; frontend chỉ dựng QR khi cấu hình bật và đủ dữ liệu nhận tiền. |
 
 CreatePaymentRequest yêu cầu amount dương và paymentMethod. paymentDate nếu bỏ trống sẽ theo quy tắc service, nhưng không bao giờ được là ngày tương lai.
 
@@ -74,10 +75,10 @@ CreatePaymentRequest yêu cầu amount dương và paymentMethod. paymentDate n�
 | POST | /v1/pt/profiles | OWNER, PT | Tạo/cập nhật profile PT theo phạm vi quyền. |
 | GET | /v1/pt/my-members | OWNER, PT | Danh sách học viên PT. PT chỉ lấy dữ liệu của mình. |
 | POST | /v1/pt/assignments | OWNER, PT | Phân công PT; PT chỉ được tự nhận chính mình. |
-| PUT | /v1/pt/assignments/{id}/reassign | OWNER | Điều chuyển học viên sang PT khác. |
+| PUT | /v1/pt/assignments/{assignmentId}/reassign | OWNER | Điều chuyển học viên sang PT khác. |
 | GET | /v1/pt/schedules | OWNER, PT | Lấy lịch PT theo PT/khoảng ngày. |
 | POST | /v1/pt/schedules | OWNER, PT | Đặt lịch dạy. |
-| DELETE | /v1/pt/schedules/{id} | OWNER, PT | Xóa lịch phù hợp phạm vi quyền. |
+| DELETE | /v1/pt/schedules/{scheduleId} | OWNER, PT | Xóa lịch phù hợp phạm vi quyền. |
 | GET | /v1/pt/session-packages | OWNER, PT | Lấy gói buổi PT. |
 | GET | /v1/pt/members/{memberId} | OWNER, PT | Lấy hồ sơ vận hành PT của học viên. |
 | POST | /v1/pt/members/{memberId}/session-logs | OWNER, PT | Ghi buổi PT 1-1. |
@@ -95,9 +96,25 @@ Backend xác thực phân công, gói PT, ngày, khách, PT, lịch và session 
 | GET | /v1/reports/finance | OWNER | Báo cáo doanh thu theo payment_date. |
 | GET | /v1/reports/members | OWNER | Báo cáo tình trạng hội viên. |
 | GET | /v1/notifications | OWNER | Nhắc việc động về hạn gói, công nợ và sinh nhật. |
-| POST | /v1/ai/retention-revenue-advisor | OWNER | Phân tích giữ chân và doanh thu theo tháng. |
+| POST | /v1/ai/retention-revenue-advisor | OWNER | Phân tích giữ chân và doanh thu theo tháng; có thể mô phỏng kịch bản theo ba tỷ lệ OWNER chọn. |
 
 XLSX được tạo ở frontend từ dữ liệu API hiện có. Đồng bộ Google Sheet là request trực tiếp từ frontend đến Apps Script URL do OWNER cấu hình; không có API backend riêng cho export hay sync.
+
+`POST /v1/ai/retention-revenue-advisor` nhận `year`, `month` tùy chọn; nếu bỏ trống dùng tháng hiện tại theo `AppClock`. Request có thể gửi thêm `scenario`. Khi xuất hiện, cả ba trường `debtCollectionPercent`, `ptRecoveryPercent` và `renewalConversionPercent` đều bắt buộc là số nguyên từ `0` đến `100`; một request thiếu trường hoặc vượt phạm vi bị validation từ chối `400`.
+
+```json
+{
+  "year": 2026,
+  "month": 10,
+  "scenario": {
+    "debtCollectionPercent": 50,
+    "ptRecoveryPercent": 40,
+    "renewalConversionPercent": 30
+  }
+}
+```
+
+Khi không gửi `scenario`, field `scenario` trong response là `null` và luồng phân tích tổng quan cũ không đổi. Khi có kịch bản, response trả ba nền tính, ba giá trị ước tính, `estimatedTotalImpact` và `insight.scenario` do Groq hoặc fallback diễn giải. Kết quả chỉ đọc dữ liệu: không ghi phiếu thu, không tạo công nợ, không đổi gói/trạng thái và không tự liên hệ hội viên.
 
 ## 8. Tài khoản nhân sự
 

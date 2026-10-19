@@ -2,7 +2,6 @@ package com.gymduongdouble.backend.pt.web.dto;
 
 import com.gymduongdouble.backend.common.enums.PtLevel;
 import jakarta.validation.constraints.NotNull;
-import java.math.BigDecimal;
 
 public record PtProfileRequest(
     @NotNull(message = "User PT là bắt buộc.")
@@ -13,9 +12,6 @@ public record PtProfileRequest(
 
     String specialty,
     String bio,
-    BigDecimal baseSalary,
-    BigDecimal teachingRate,
-    BigDecimal salesCommissionRate,
     Boolean active
 ) {
 }

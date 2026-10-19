@@ -21,7 +21,6 @@ if (-not $env:DB_PASSWORD) { throw 'Set DB_PASSWORD before running backend/run-b
 if (-not $env:JWT_SECRET) { throw 'Set JWT_SECRET before running backend/run-backend.ps1' }
 
 if (-not $env:JWT_ACCESS_TOKEN_MINUTES) { $env:JWT_ACCESS_TOKEN_MINUTES = '120' }
-if (-not $env:OWNER_USERNAME) { $env:OWNER_USERNAME = 'owner' }
 if (-not $env:OWNER_EMAIL) { $env:OWNER_EMAIL = 'owner@gymduongdouble.local' }
 if (-not $env:OWNER_PASSWORD) { throw 'Set OWNER_PASSWORD before running backend/run-backend.ps1' }
 if (-not $env:OWNER_FULL_NAME) { $env:OWNER_FULL_NAME = 'Owner Gym Duong Double' }

@@ -404,7 +404,7 @@ export function DashboardPage() {
                 </div>
                 <p className="mt-2 text-xl font-black text-[var(--text-strong)]">
                   {dashboard?.renewedMembersThisMonth ?? 0}{' '}
-                  <span className="text-xs font-normal text-[var(--text-muted)]">lượt</span>
+                  <span className="text-xs font-normal text-[var(--text-muted)]">người</span>
                 </p>
               </div>
             </div>

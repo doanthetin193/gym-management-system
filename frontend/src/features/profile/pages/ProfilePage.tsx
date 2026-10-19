@@ -25,7 +25,7 @@ const roleLabels: Record<string, string> = {
 }
 
 const roleDescriptions: Record<string, string> = {
-  OWNER: 'Tài khoản có toàn quyền quản trị vận hành, thiết lập các chỉ tiêu và phân quyền nhân sự phòng gym.',
+  OWNER: 'Tài khoản quản lý vận hành và phân quyền nhân sự phòng gym.',
   PT: 'Tài khoản Huấn luyện viên cá nhân, phụ trách theo dõi thể trạng và lịch tập của học viên.',
   MEMBER: 'Tài khoản Hội viên, theo dõi tiến độ tập luyện, lịch hẹn và các gói dịch vụ cá nhân.',
 }

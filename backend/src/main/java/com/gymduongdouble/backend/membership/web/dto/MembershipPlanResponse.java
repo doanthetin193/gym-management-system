@@ -15,7 +15,6 @@ public record MembershipPlanResponse(
     Integer ptSessionCount,
     Integer practiceSessionCount,
     Integer guidanceSessionCount,
-    BigDecimal priceRatio,
     String description,
     boolean active
 ) {
@@ -31,7 +30,6 @@ public record MembershipPlanResponse(
             plan.getPtSessionCount(),
             plan.getPracticeSessionCount(),
             plan.getGuidanceSessionCount(),
-            plan.getPriceRatio(),
             plan.getDescription(),
             plan.isActive()
         );

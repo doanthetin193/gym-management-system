@@ -90,12 +90,11 @@ public class PtService {
 
     @Transactional(readOnly = true)
     public List<PtProfileResponse> listProfiles() {
-        boolean includeFinancialDetails = isOwner();
         return ptProfileRepository.findAll().stream()
             .filter(profile -> profile.getUser().getRoles().stream()
                 .anyMatch(role -> role.getCode().equals("PT")))
             .sorted(Comparator.comparing(profile -> profile.getUser().getFullName()))
-            .map(profile -> PtProfileResponse.from(profile, includeFinancialDetails))
+            .map(PtProfileResponse::from)
             .toList();
     }
 
@@ -111,26 +110,17 @@ public class PtService {
             }
             return new PtProfile();
         });
-        ensurePtCanOnlyUpdateOwnPublicProfile(request, owner);
+        ensurePtCanOnlyUpdateOwnProfile(request, owner);
         profile.setUser(user);
         if (owner) {
             profile.setPtLevel(request.ptLevel());
         }
         profile.setSpecialty(request.specialty());
         profile.setBio(request.bio());
-        if (owner && request.baseSalary() != null) {
-            profile.setBaseSalary(request.baseSalary());
-        }
-        if (owner && request.teachingRate() != null) {
-            profile.setTeachingRate(request.teachingRate());
-        }
-        if (owner && request.salesCommissionRate() != null) {
-            profile.setSalesCommissionRate(request.salesCommissionRate());
-        }
         if (owner) {
             profile.setActive(request.active() == null || request.active());
         }
-        return PtProfileResponse.from(ptProfileRepository.save(profile), owner);
+        return PtProfileResponse.from(ptProfileRepository.save(profile));
     }
 
     @Transactional
@@ -760,15 +750,12 @@ public class PtService {
         }
     }
 
-    private void ensurePtCanOnlyUpdateOwnPublicProfile(PtProfileRequest request, boolean owner) {
+    private void ensurePtCanOnlyUpdateOwnProfile(PtProfileRequest request, boolean owner) {
         if (owner) {
             return;
         }
-        if (request.baseSalary() != null
-            || request.teachingRate() != null
-            || request.salesCommissionRate() != null
-            || request.active() != null) {
-            throw new AccessDeniedException("PT cannot change salary, rates, commission, or account status.");
+        if (request.active() != null) {
+            throw new AccessDeniedException("PT cannot change account status.");
         }
     }
 

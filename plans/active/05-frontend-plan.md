@@ -57,8 +57,11 @@ RoleGuard chặn route ở frontend; backend vẫn là lớp quyết định quy
 ### Bảng giá, thanh toán và báo cáo
 
 - Bảng giá phân biệt gói đang bán và gói đã ngừng bán.
+- Bảng giá public tải từ `/v1/public/membership-plans`; chỉ hiển thị gói đang active, nên không duy trì danh sách giá tĩnh trong frontend.
+- Khối VietQR public chỉ xuất hiện khi API trả cấu hình đang bật và đủ thông tin nhận tiền; không dùng số tài khoản dự phòng phía client.
 - Payments hiển thị công nợ, phiếu thu, VietQR và thao tác thu nợ.
 - Reports hiển thị chỉ số tài chính, biểu đồ doanh thu, XLSX, Google Sheet và AI Cố vấn Giữ chân và Doanh thu.
+- Sau kết quả tổng quan, Reports cho OWNER nhập ba tỷ lệ 0-100% và bấm `Phân tích kịch bản`. Giao diện gửi lại cùng endpoint với `scenario`, hiển thị nền tính, giá trị mô phỏng, thứ tự ưu tiên/lưu ý và nêu rõ đây không phải thao tác thu tiền hay thay đổi dữ liệu.
 - Xuất XLSX được tạo ở trình duyệt từ dữ liệu report; không có endpoint export riêng.
 - Apps Script URL và token Google Sheet được lưu trong localStorage của trình duyệt hiện tại, không lưu ở backend.
 
@@ -82,7 +85,7 @@ Trang pt-schedule có năm khu vực rõ ràng:
 
 1. Khách PT: tổng quan gói, buổi còn lại, lịch hẹn, ghi chú và tiến độ.
 2. Lịch dạy: đặt/xóa/đổi lịch và kiểm tra trùng giờ.
-3. Ghi buổi tập: ghi buổi PT đã diễn ra hoặc tự ôn tập; chỉ bước này mới trừ buổi.
+3. Ghi buổi tập: ghi buổi PT đã diễn ra hoặc tự ôn tập; chỉ bước này mới trừ buổi. Nếu có lịch SCHEDULED phù hợp, người vận hành chọn lịch để liên kết hoặc xác nhận ghi độc lập; hệ thống không tự ghép theo ngày.
 4. Chỉ số: ghi đo lường định kỳ.
 5. Mục tiêu: tạo mục tiêu theo loại, mô tả, hạn, cân nặng mục tiêu và vòng eo mục tiêu.
 
@@ -96,7 +99,7 @@ Portal my-progress có chế độ chỉ đọc:
 - Gói hiện tại, hạn gói, công nợ và buổi còn lại.
 - Biểu đồ/lịch sử số đo cơ thể được PT nhập.
 - Mục tiêu hiện tại và tiến độ cân nặng/vòng eo khi có đủ dữ liệu.
-- Lịch PT sắp tới và lịch sử gói/thanh toán.
+- Toàn bộ lịch PT SCHEDULED còn ở tương lai theo giờ Việt Nam và lịch sử gói/thanh toán; biểu đồ số đo giữ tối đa tám lần gần nhất để dễ đọc.
 - Liên hệ Zalo phòng gym.
 
 Portal không hiển thị hay thu thập giáo án tự động, không cho mua gói, thu nợ hay sửa dữ liệu PT.

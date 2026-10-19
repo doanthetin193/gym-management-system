@@ -32,7 +32,27 @@ export type AiAdvisorInsight = {
   actionPlan7Days: string[]
   trackingMetrics: string[]
   revenueRiskNote: string
+  scenario: AiAdvisorScenarioInsight | null
   providerMessage: string | null
+}
+
+export type AiAdvisorScenarioInsight = {
+  overview: string
+  priorityActions: string[]
+  cautions: string[]
+}
+
+export type AiAdvisorScenario = {
+  debtCollectionPercent: number
+  ptRecoveryPercent: number
+  renewalConversionPercent: number
+  debtCollectionPotential: number
+  ptRecoveryPotential: number
+  renewalOpportunityPotential: number
+  estimatedDebtCollection: number
+  estimatedPtRecoveryValue: number
+  estimatedRenewalValue: number
+  estimatedTotalImpact: number
 }
 
 export type AiAdvisorResult = {
@@ -44,12 +64,20 @@ export type AiAdvisorResult = {
   summary: AiAdvisorSummary
   riskSegments: AiAdvisorSegment[]
   opportunitySegments: AiAdvisorSegment[]
+  scenario: AiAdvisorScenario | null
   insight: AiAdvisorInsight
 }
 
 export type AiAdvisorPayload = {
   year: number
   month: number
+  scenario?: AiAdvisorScenarioInput
+}
+
+export type AiAdvisorScenarioInput = {
+  debtCollectionPercent: number
+  ptRecoveryPercent: number
+  renewalConversionPercent: number
 }
 
 export function analyzeRetentionRevenue(payload: AiAdvisorPayload) {

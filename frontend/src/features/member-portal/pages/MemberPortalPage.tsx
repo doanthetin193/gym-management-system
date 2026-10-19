@@ -16,13 +16,13 @@ import type { FormEvent, ReactNode } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { ApiClientError } from '../../../shared/api/apiClient'
-import { localIsoDate } from '../../../shared/lib/date'
 import { changePassword } from '../../auth/api/authApi'
 import { memberStatusLabels, membershipStatusLabels } from '../../members/types/member'
 import { paymentMethodLabels } from '../../payments/types/payment'
 import type { BodyMeasurement } from '../../pt-schedule/types/pt'
 import { getMyMemberPortal } from '../api/memberPortalApi'
 import type { MemberPortal } from '../types/memberPortal'
+import { currentPtPackage, upcomingPtSchedules, vietnamDate } from '../lib/portalSelectors'
 
 type MeasurementMetric = 'weight' | 'waist'
 
@@ -62,20 +62,23 @@ function formatDate(value: string | null | undefined) {
   return new Intl.DateTimeFormat('vi-VN').format(new Date(`${value}T00:00:00`))
 }
 
-function daysUntil(value: string | null | undefined) {
+function daysUntil(value: string | null | undefined, today: string) {
   if (!value) {
     return null
   }
-  const today = new Date()
-  const target = new Date(`${value}T00:00:00`)
-  today.setHours(0, 0, 0, 0)
-  return Math.ceil((target.getTime() - today.getTime()) / 86_400_000)
+  return Math.round((Date.parse(`${value}T00:00:00Z`) - Date.parse(`${today}T00:00:00Z`)) / 86_400_000)
 }
 
 export function MemberPortalPage() {
   const [portal, setPortal] = useState<MemberPortal | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [now, setNow] = useState(() => new Date())
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(new Date()), 60_000)
+    return () => window.clearInterval(timer)
+  }, [])
 
   // Self change password states
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false)
@@ -146,8 +149,13 @@ export function MemberPortalPage() {
     }
   }, [])
 
-  const activePtPackage = portal?.ptSessionPackages.find((item) => item.status === 'ACTIVE') ?? portal?.ptSessionPackages[0] ?? null
-  const daysLeft = daysUntil(activePtPackage?.endDate)
+  const today = vietnamDate(now)
+  const activePtPackage = portal
+    ? currentPtPackage(portal.ptSessionPackages, new Set([...portal.activeMemberships, ...portal.membershipHistory]
+      .filter((item) => item.status === 'ACTIVE' && item.startDate <= today && item.endDate >= today)
+      .map((item) => item.id)), today)
+    : null
+  const daysLeft = daysUntil(activePtPackage?.endDate, today)
   const activePtMembership = activePtPackage && portal
     ? [...portal.activeMemberships, ...portal.membershipHistory].find((membership) => membership.id === activePtPackage.membershipId) ?? null
     : null
@@ -155,9 +163,7 @@ export function MemberPortalPage() {
   const previousMeasurement = portal?.bodyMeasurements[1] ?? null
   const activeGoal = portal?.goals.find((goal) => goal.status === 'ACTIVE') ?? portal?.goals[0] ?? null
   const measurementTrend = useMemo(() => [...(portal?.bodyMeasurements ?? [])].reverse().slice(-8), [portal])
-  const nextSchedule = useMemo(() => (portal?.schedules ?? [])
-    .filter((schedule) => schedule.status === 'SCHEDULED' && schedule.scheduleDate >= localIsoDate())
-    .sort((left, right) => `${left.scheduleDate}T${left.startTime}`.localeCompare(`${right.scheduleDate}T${right.startTime}`))[0] ?? null, [portal])
+  const upcomingSchedules = useMemo(() => upcomingPtSchedules(portal?.schedules ?? [], now), [portal, now])
   const latestSession = portal?.sessionLogs.find((session) => session.status === 'COMPLETED') ?? portal?.sessionLogs[0] ?? null
   const hasTrendData = measurementTrend.length >= 2 && (
     measurementTrend.filter((measurement) => measurement.weight !== null).length >= 2
@@ -247,9 +253,10 @@ export function MemberPortalPage() {
           )}
         </Panel>
 
-        <Panel title="Lịch PT tiếp theo" icon={CalendarClock}>
-          {nextSchedule ? (
-            <div className="space-y-4">
+        <Panel title="Lịch PT sắp tới" icon={CalendarClock}>
+          {upcomingSchedules.length ? (
+            <div className="space-y-4">{upcomingSchedules.map((nextSchedule) => (
+            <div key={nextSchedule.id} className="space-y-3 border-b border-[var(--line)] pb-4 last:border-0 last:pb-0">
               <div className="rounded-[8px] bg-[var(--surface-muted)] p-4">
                 <p className="text-2xl font-black text-[var(--text-strong)]">{formatDate(nextSchedule.scheduleDate)}</p>
                 <p className="mt-1 text-lg font-black text-[var(--brand-blue)]">
@@ -265,7 +272,7 @@ export function MemberPortalPage() {
               <span className="inline-flex rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-[var(--brand-blue)] dark:bg-blue-950/30">
                 {scheduleStatusLabels[nextSchedule.status] ?? nextSchedule.status}
               </span>
-            </div>
+            </div>))}</div>
           ) : (
             <EmptyState text="Chưa có lịch PT sắp tới. Liên hệ HLV để đặt lịch." />
           )}
@@ -289,7 +296,7 @@ export function MemberPortalPage() {
               </div>
               {latestMeasurement ? (
                 <GoalProgressBoard
-                  baselineMeasurement={measurementTrend[0] ?? latestMeasurement}
+                  baselineMeasurement={portal.bodyMeasurements[portal.bodyMeasurements.length - 1] ?? latestMeasurement}
                   latestMeasurement={latestMeasurement}
                   targetWeight={activeGoal.targetWeight}
                   targetWaist={activeGoal.targetWaist}
@@ -342,7 +349,7 @@ export function MemberPortalPage() {
           )}
         </Panel>
 
-        <Panel title="Biểu đồ tiến trình" icon={LineChart} action={latestMeasurement ? `Cập nhật ${formatDate(latestMeasurement.recordedAt)}` : undefined}>
+        <Panel title="Biểu đồ tiến trình" icon={LineChart} action={latestMeasurement ? `Tối đa 8 lần đo gần nhất · ${formatDate(latestMeasurement.recordedAt)}` : undefined}>
           {hasTrendData ? (
             <div className="grid gap-4">
               <MetricLineChart title="Cân nặng" unit="kg" metric="weight" data={measurementTrend} color="#087ec1" />
@@ -377,7 +384,7 @@ export function MemberPortalPage() {
               </div>
             ) : null}
             <HistoryList
-              rows={portal.payments.slice(0, 6).map((payment) => ({
+              rows={portal.payments.map((payment) => ({
                 id: payment.id,
                 title: formatMoney(payment.amount),
                 meta: `${formatDate(payment.paymentDate)} · ${paymentMethodLabels[payment.paymentMethod] ?? payment.paymentMethod}`,

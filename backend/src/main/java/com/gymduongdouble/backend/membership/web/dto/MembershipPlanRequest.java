@@ -32,9 +32,6 @@ public record MembershipPlanRequest(
     @Min(value = 0, message = "Số buổi giáo án không được âm.")
     Integer guidanceSessionCount,
 
-    @DecimalMin(value = "0.0", message = "Tỉ lệ giá không được âm.")
-    BigDecimal priceRatio,
-
     String description,
     Boolean active
 ) {

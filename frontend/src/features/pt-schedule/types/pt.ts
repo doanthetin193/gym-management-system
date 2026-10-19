@@ -14,9 +14,6 @@ export type PtProfile = {
   ptLevel: PtLevel
   specialty: string | null
   bio: string | null
-  baseSalary?: number
-  teachingRate?: number
-  salesCommissionRate?: number
   active: boolean
 }
 

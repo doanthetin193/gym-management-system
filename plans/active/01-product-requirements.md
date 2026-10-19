@@ -35,7 +35,7 @@ Hệ thống chỉ quản lý nghiệp vụ gym và dòng tiền thu từ gói t
 - Bán gói và ghi nhận thu tiền cho khách trong phạm vi dữ liệu PT được phép thao tác.
 - Tự nhận một khách có gói PT hợp lệ chưa được phân công; không tự gán khách cho PT khác.
 - Xem học viên đang được phân công, đặt lịch, ghi buổi PT, ghi tự ôn tập, cập nhật số đo và mục tiêu.
-- Không được xem hoặc sửa lương, tỷ lệ dạy, hoa hồng, cấu hình hệ thống, báo cáo OWNER hay thư viện quản trị.
+- Không được thay đổi trạng thái hoạt động của hồ sơ PT, cấu hình hệ thống, báo cáo OWNER hay thư viện quản trị.
 
 ### MEMBER - Hội viên
 
@@ -103,6 +103,9 @@ Hệ thống chỉ quản lý nghiệp vụ gym và dòng tiền thu từ gói t
 - Rule nội bộ nhận diện nhóm sắp hết hạn, đã hết hạn, công nợ, khách PT còn nhiều buổi gần hết hạn và khách PT gián đoạn.
 - Groq chỉ nhận số liệu tổng hợp và segment ẩn danh; không gửi tên, số điện thoại, Zalo, email, địa chỉ hay giao dịch cá nhân.
 - Kết quả gồm tổng quan sức khỏe phòng gym, rủi ro, cơ hội doanh thu, kế hoạch 7 ngày và chỉ số cần theo dõi.
+- Sau khi có phân tích tổng quan, OWNER có thể nhập ba tỷ lệ giả định cho thu công nợ, khôi phục nhóm PT rủi ro và gia hạn/quay lại để xem kịch bản tuần tới.
+- Backend tự tính giá trị mô phỏng từ các nền dữ liệu tách biệt; nhóm PT rủi ro không được tính lại vào nền gia hạn/quay lại. Tổng hiển thị là **giá trị có thể tác động theo giả định**, không phải doanh thu được bảo đảm.
+- Groq chỉ sắp thứ tự ưu tiên, diễn giải và nêu lưu ý cho số liệu hệ thống đã tính. Kịch bản không tạo phiếu thu, không đổi gói/trạng thái và không tự liên hệ hội viên.
 - Nếu AI provider lỗi, hệ thống trả về kết quả rule-based để luồng Báo cáo vẫn hoạt động.
 
 ### 3.8 Thư viện video TikTok

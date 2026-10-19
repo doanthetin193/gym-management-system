@@ -94,6 +94,8 @@ OWNER seed có cả role OWNER và PT. Vì vậy chủ phòng vẫn giữ quyề
 
 MemberService và MemberAccessService quyết định PT nào được xem/thao tác hồ sơ. MembershipLifecyclePolicy tính trạng thái hiệu lực theo ngày, ưu tiên gói đang hiệu lực trước gói đã mua sẵn cho tương lai.
 
+`PublicMembershipPlanController` là ranh giới riêng cho bảng giá public: chỉ đọc gói `active` và trả DTO rút gọn, thay vì mở response danh mục nội bộ. Khi không lấy được cấu hình VietQR công khai hoặc cấu hình không đủ/không bật, frontend không dựng QR và không dùng dữ liệu tài khoản dự phòng.
+
 ### Tài chính
 
 Payment là nguồn doanh thu thực thu. DebtRecord là khoản còn phải thu. Báo cáo không suy diễn doanh thu từ giá gói hay ngày bắt đầu gói.
@@ -104,7 +106,9 @@ PtAssignmentPolicy xác định một phân công có hiệu lực dựa trên t
 
 ### Báo cáo và AI
 
-DashboardService tính chỉ số từ dữ liệu nguồn. AI service tạo payload aggregate ẩn danh, chạy rule segment trước, sau đó mới gọi Groq để diễn giải chiến lược. Nếu provider lỗi, kết quả fallback vẫn được trả về.
+DashboardService và AI service dùng chung `MembershipPeriodStatistics` để đếm khách mới/gia hạn theo hội viên phân biệt. AI tiếp tục tạo payload aggregate ẩn danh, chạy rule segment trước, sau đó mới gọi Groq để diễn giải chiến lược. Nếu provider lỗi, kết quả fallback vẫn được trả về.
+
+Khi OWNER chọn kịch bản, `RetentionRevenueScenarioCalculator` nhận ba tỷ lệ phần trăm đã được validation và tính giá trị có thể thu công nợ, khôi phục nhóm PT rủi ro và gia hạn/quay lại. Đây là phép tính thuần trong request, không ghi database. Nền gia hạn/quay lại loại trừ hội viên đã có trong nền PT rủi ro để hai nhóm giữ chân không cộng trùng; công nợ được thể hiện là một hành động dòng tiền riêng. Giá trị mô phỏng được đưa kèm payload aggregate chỉ để Groq diễn giải thứ tự ưu tiên và lưu ý; Groq không là nguồn tính tiền của kịch bản.
 
 ## 6. Luồng nghiệp vụ chính
 
@@ -127,7 +131,7 @@ DashboardService tính chỉ số từ dữ liệu nguồn. AI service tạo pay
 
 1. OWNER phân công PT, hoặc PT tự nhận khách PT chưa có phân công.
 2. Đặt lịch là cuộc hẹn, chưa trừ buổi.
-3. Khi buổi thực tế xong, ghi session log để trừ một buổi PT.
+3. Khi buổi thực tế xong, ghi session log để trừ một buổi PT. Nếu có lịch SCHEDULED phù hợp, người vận hành chọn lịch để gửi scheduleId; nếu không, xác nhận ghi độc lập.
 4. Tự ôn tập ghi activity log và trừ lượt tự ôn.
 5. PT cập nhật số đo/mục tiêu theo định kỳ; Portal chỉ đọc kết quả.
 

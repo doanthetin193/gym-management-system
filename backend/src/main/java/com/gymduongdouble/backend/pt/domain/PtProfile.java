@@ -11,7 +11,6 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
-import java.math.BigDecimal;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -35,15 +34,6 @@ public class PtProfile extends AuditableEntity {
 
     @Column(columnDefinition = "text")
     private String bio;
-
-    @Column(name = "base_salary", precision = 15, scale = 2)
-    private BigDecimal baseSalary = BigDecimal.ZERO;
-
-    @Column(name = "teaching_rate", precision = 5, scale = 2)
-    private BigDecimal teachingRate = new BigDecimal("0.30");
-
-    @Column(name = "sales_commission_rate", precision = 5, scale = 2)
-    private BigDecimal salesCommissionRate = new BigDecimal("0.10");
 
     @Column(nullable = false)
     private boolean active = true;

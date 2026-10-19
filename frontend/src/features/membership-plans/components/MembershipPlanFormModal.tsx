@@ -19,7 +19,6 @@ type PlanFormState = {
   ptSessionCount: string
   practiceSessionCount: string
   guidanceSessionCount: string
-  priceRatio: string
   description: string
   active: boolean
 }
@@ -45,7 +44,6 @@ export function MembershipPlanFormModal({ submitting, error, onClose, onSubmit }
     ptSessionCount: '',
     practiceSessionCount: '',
     guidanceSessionCount: '',
-    priceRatio: '',
     description: '',
     active: true,
   })
@@ -61,7 +59,6 @@ export function MembershipPlanFormModal({ submitting, error, onClose, onSubmit }
       ptSessionCount: form.planType === 'PT' ? toNumber(form.ptSessionCount) : null,
       practiceSessionCount: form.planType === 'PT' ? toNumber(form.practiceSessionCount) : null,
       guidanceSessionCount: form.planType === 'GUIDANCE' ? toNumber(form.guidanceSessionCount) : null,
-      priceRatio: toNumber(form.priceRatio),
       description: form.description.trim() || null,
       active: form.active,
     })

@@ -16,7 +16,6 @@ import com.gymduongdouble.backend.user.repository.RoleRepository;
 import com.gymduongdouble.backend.user.repository.UserRepository;
 import com.gymduongdouble.backend.user.web.dto.CreateTeamUserRequest;
 import com.gymduongdouble.backend.user.web.dto.TeamUserResponse;
-import java.math.BigDecimal;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
@@ -173,9 +172,6 @@ public class TeamUserService {
             profile.setUser(user);
             profile.setPtLevel(PtLevel.NEW);
             profile.setSpecialty("Huấn luyện viên thể hình");
-            profile.setBaseSalary(BigDecimal.ZERO);
-            profile.setTeachingRate(new BigDecimal("0.30"));
-            profile.setSalesCommissionRate(new BigDecimal("0.10"));
             profile.setActive(true);
             return ptProfileRepository.save(profile);
         });

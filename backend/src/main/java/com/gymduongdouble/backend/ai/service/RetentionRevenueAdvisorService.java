@@ -3,10 +3,13 @@ package com.gymduongdouble.backend.ai.service;
 import com.gymduongdouble.backend.ai.client.GroqAiClient;
 import com.gymduongdouble.backend.ai.config.GroqAiProperties;
 import com.gymduongdouble.backend.ai.web.dto.RetentionRevenueAdvisorRequest;
+import com.gymduongdouble.backend.ai.web.dto.RetentionRevenueAdvisorRequest.AdvisorScenarioRequest;
 import com.gymduongdouble.backend.ai.web.dto.RetentionRevenueAdvisorResponse;
 import com.gymduongdouble.backend.ai.web.dto.RetentionRevenueAdvisorResponse.AdvisorInsight;
 import com.gymduongdouble.backend.ai.web.dto.RetentionRevenueAdvisorResponse.AdvisorSegment;
 import com.gymduongdouble.backend.ai.web.dto.RetentionRevenueAdvisorResponse.AdvisorSummary;
+import com.gymduongdouble.backend.ai.web.dto.RetentionRevenueAdvisorResponse.ScenarioInsight;
+import com.gymduongdouble.backend.ai.web.dto.RetentionRevenueAdvisorResponse.ScenarioProjection;
 import com.gymduongdouble.backend.common.enums.ActivityType;
 import com.gymduongdouble.backend.common.enums.DebtStatus;
 import com.gymduongdouble.backend.common.enums.MemberStatus;
@@ -23,6 +26,7 @@ import com.gymduongdouble.backend.member.repository.MemberRepository;
 import com.gymduongdouble.backend.membership.domain.MemberMembership;
 import com.gymduongdouble.backend.membership.repository.MemberMembershipRepository;
 import com.gymduongdouble.backend.membership.service.MembershipLifecyclePolicy;
+import com.gymduongdouble.backend.membership.service.MembershipPeriodStatistics;
 import com.gymduongdouble.backend.pt.domain.MemberActivityLog;
 import com.gymduongdouble.backend.pt.domain.PtSessionLog;
 import com.gymduongdouble.backend.pt.domain.PtSessionPackage;
@@ -52,6 +56,17 @@ import org.springframework.transaction.annotation.Transactional;
 public class RetentionRevenueAdvisorService {
     private static final int NEAR_EXPIRY_DAYS = 7;
 
+    private static final String SCENARIO_PROMPT = """
+
+        Payload có thể có trường scenario do hệ thống tự tính từ các tỷ lệ giả định của chủ phòng.
+        Khi scenario có giá trị, thêm trường "scenario" vào JSON trả về:
+        {
+          "overview": "1-2 câu nhận xét kịch bản",
+          "priorityActions": ["tối đa 3 hành động theo thứ tự ưu tiên"],
+          "cautions": ["tối đa 2 lưu ý về giả định/rủi ro"]
+        }
+        Khi scenario là null, trả "scenario": null. Không tự tính lại hay khẳng định chắc chắn các giá trị do hệ thống đã tính.
+        """;
 
     private static final String SYSTEM_PROMPT = """
         Bạn là AI cố vấn vận hành cho phòng gym nhỏ DUONG DOUBLE, quy mô 50-70 hội viên.
@@ -79,15 +94,17 @@ public class RetentionRevenueAdvisorService {
     private final GroqAiClient groqAiClient;
     private final GroqAiProperties groqAiProperties;
     private final MembershipLifecyclePolicy membershipLifecyclePolicy;
+    private final MembershipPeriodStatistics membershipPeriodStatistics;
 
     @Transactional(readOnly = true)
     public RetentionRevenueAdvisorResponse analyze(RetentionRevenueAdvisorRequest request) {
         YearMonth period = resolvePeriod(request);
-        AdvisorPayload payload = buildPayload(period);
+        AdvisorPayload payload = buildPayload(period, request == null ? null : request.scenario());
 
         try {
-            AiInsightResponse aiInsight = groqAiClient.requestJson(SYSTEM_PROMPT, payload, AiInsightResponse.class);
-            return buildResponse(period, true, normalize(aiInsight, null), payload);
+            String prompt = payload.scenario() == null ? SYSTEM_PROMPT : SYSTEM_PROMPT + SCENARIO_PROMPT;
+            AiInsightResponse aiInsight = groqAiClient.requestJson(prompt, payload, AiInsightResponse.class);
+            return buildResponse(period, true, normalize(aiInsight, payload.scenario()), payload);
         } catch (RuntimeException exception) {
             String message = exception.getMessage() == null ? "AI provider chưa phản hồi ổn định." : exception.getMessage();
             return buildResponse(period, false, fallbackInsight(payload, message), payload);
@@ -101,7 +118,7 @@ public class RetentionRevenueAdvisorService {
         return YearMonth.of(year, month);
     }
 
-    private AdvisorPayload buildPayload(YearMonth period) {
+    private AdvisorPayload buildPayload(YearMonth period, AdvisorScenarioRequest scenarioRequest) {
         LocalDate today = AppClock.today();
         LocalDate monthStart = period.atDay(1);
         LocalDate monthEnd = period.atEndOfMonth();
@@ -136,6 +153,7 @@ public class RetentionRevenueAdvisorService {
         Set<Long> highRiskMemberIds = new LinkedHashSet<>();
         Set<Long> mediumRiskMemberIds = new LinkedHashSet<>();
         Map<Long, Long> renewalOpportunityByMember = new LinkedHashMap<>();
+        Map<Long, Long> ptRecoveryOpportunityByMember = new LinkedHashMap<>();
 
         for (Member member : members) {
             List<MemberMembership> memberMemberships = membershipsByMember.getOrDefault(member.getId(), List.of());
@@ -186,6 +204,9 @@ public class RetentionRevenueAdvisorService {
                         mediumRiskMemberIds.add(member.getId());
                         riskSegments.add("LONG_INACTIVE_PT_MEMBER", "Khách PT gián đoạn lịch tập lâu ngày", value);
                     }
+                    if (ptRisk.unusedNearExpiry() || ptRisk.longInactive()) {
+                        markRenewalOpportunity(ptRecoveryOpportunityByMember, member, value);
+                    }
                 }
             } else if (preferredMembership.isPresent() && preferredMembership.get().getEndDate().isBefore(today)) {
                 expiredMembers += 1;
@@ -209,8 +230,17 @@ public class RetentionRevenueAdvisorService {
         long previousRevenue = previousPayments.stream().map(Payment::getAmount).mapToLong(this::money).sum();
         long openDebtAmount = activeDebts.stream().map(DebtRecord::getRemainingAmount).mapToLong(this::money).sum();
         long renewalOpportunityValue = renewalOpportunityByMember.values().stream().mapToLong(Long::longValue).sum();
-        long newMembersThisMonth = countNewMembers(membershipsByMember, monthStart, monthEnd);
-        long renewalsThisMonth = countRenewals(membershipsByMember, monthStart, monthEnd);
+        Map<Long, Long> renewalScenarioOpportunityByMember = new LinkedHashMap<>(renewalOpportunityByMember);
+        ptRecoveryOpportunityByMember.keySet().forEach(renewalScenarioOpportunityByMember::remove);
+        long ptRecoveryPotential = ptRecoveryOpportunityByMember.values().stream().mapToLong(Long::longValue).sum();
+        long renewalOpportunityPotential = renewalScenarioOpportunityByMember.values().stream().mapToLong(Long::longValue).sum();
+        MembershipPeriodStatistics.Counts periodCounts = membershipPeriodStatistics.count(memberships, monthStart, monthEnd);
+        ScenarioProjection scenario = scenarioRequest == null ? null : RetentionRevenueScenarioCalculator.calculate(
+            scenarioRequest,
+            openDebtAmount,
+            ptRecoveryPotential,
+            renewalOpportunityPotential
+        );
 
         AdvisorSummary summary = new AdvisorSummary(
             members.size(),
@@ -220,8 +250,8 @@ public class RetentionRevenueAdvisorService {
             highRiskMemberIds.size(),
             mediumRiskMemberIds.size(),
             activeDebts.size(),
-            newMembersThisMonth,
-            renewalsThisMonth,
+            periodCounts.newMembers(),
+            periodCounts.renewedMembers(),
             currentRevenue,
             previousRevenue,
             renewalOpportunityValue,
@@ -245,7 +275,8 @@ public class RetentionRevenueAdvisorService {
             riskSegments.toResponses(),
             opportunitySegments.toResponses(),
             sourceMix,
-            revenueByPlanType
+            revenueByPlanType,
+            scenario
         );
     }
 
@@ -279,24 +310,6 @@ public class RetentionRevenueAdvisorService {
             .orElse(new PtRisk(false, false));
     }
 
-    private long countNewMembers(Map<Long, List<MemberMembership>> membershipsByMember, LocalDate start, LocalDate end) {
-        return membershipsByMember.values().stream()
-            .filter(memberships -> memberships.stream()
-                .map(MemberMembership::getStartDate)
-                .min(LocalDate::compareTo)
-                .filter(date -> !date.isBefore(start) && !date.isAfter(end))
-                .isPresent())
-            .count();
-    }
-
-    private long countRenewals(Map<Long, List<MemberMembership>> membershipsByMember, LocalDate start, LocalDate end) {
-        return membershipsByMember.values().stream()
-            .filter(memberships -> memberships.size() > 1)
-            .flatMap(List::stream)
-            .filter(membership -> !membership.getStartDate().isBefore(start) && !membership.getStartDate().isAfter(end))
-            .count();
-    }
-
     private RetentionRevenueAdvisorResponse buildResponse(YearMonth period, boolean aiGenerated, AdvisorInsight insight, AdvisorPayload payload) {
         return new RetentionRevenueAdvisorResponse(
             period.getYear(),
@@ -307,20 +320,22 @@ public class RetentionRevenueAdvisorService {
             payload.summary(),
             payload.riskSegments(),
             payload.opportunitySegments(),
+            payload.scenario(),
             insight
         );
     }
 
-    private AdvisorInsight normalize(AiInsightResponse response, String providerMessage) {
+    private AdvisorInsight normalize(AiInsightResponse response, ScenarioProjection scenario) {
         return new AdvisorInsight(
-            safeText(response.healthStatus(), "WATCH"),
+            normalizeHealthStatus(response.healthStatus()),
             safeText(response.overview(), "AI đã phân tích dữ liệu tổng hợp và đưa ra khuyến nghị vận hành."),
             safeList(response.topRisks()),
             safeList(response.revenueOpportunities()),
             safeList(response.actionPlan7Days()),
             safeList(response.trackingMetrics()),
             safeText(response.revenueRiskNote(), "Theo dõi nhóm hết hạn, công nợ và PT còn buổi để giảm giá trị rủi ro."),
-            providerMessage
+            normalizeScenarioInsight(response.scenario(), scenario),
+            null
         );
     }
 
@@ -350,7 +365,64 @@ public class RetentionRevenueAdvisorService {
             List.of("Số khách hết hạn", "Số khách sắp hết hạn", "Công nợ còn mở", "Giá trị liên quan rủi ro"),
             "Cơ hội gia hạn/quay lại khoảng " + summary.renewalOpportunityValue()
                 + " VND; công nợ cần thu riêng là " + summary.openDebtAmount() + " VND.",
+            fallbackScenarioInsight(payload.scenario()),
             providerMessage
+        );
+    }
+
+    private ScenarioInsight normalizeScenarioInsight(AiScenarioResponse response, ScenarioProjection scenario) {
+        if (scenario == null) {
+            return null;
+        }
+        ScenarioInsight fallback = fallbackScenarioInsight(scenario);
+        if (response == null) {
+            return fallback;
+        }
+        List<String> priorityActions = safeList(response.priorityActions()).stream().limit(3).toList();
+        List<String> cautions = safeList(response.cautions()).stream().limit(2).toList();
+        return new ScenarioInsight(
+            safeText(response.overview(), fallback.overview()),
+            priorityActions.isEmpty() ? fallback.priorityActions() : priorityActions,
+            cautions.isEmpty() ? fallback.cautions() : cautions
+        );
+    }
+
+    private ScenarioInsight fallbackScenarioInsight(ScenarioProjection scenario) {
+        if (scenario == null) {
+            return null;
+        }
+
+        List<ScenarioAction> actions = new ArrayList<>(List.of(
+            new ScenarioAction(
+                "Thu công nợ theo mức " + scenario.debtCollectionPercent() + "%: khoảng "
+                    + scenario.estimatedDebtCollection() + " VND.",
+                scenario.estimatedDebtCollection()
+            ),
+            new ScenarioAction(
+                "Khôi phục/giữ chân nhóm PT rủi ro theo mức " + scenario.ptRecoveryPercent() + "%: khoảng "
+                    + scenario.estimatedPtRecoveryValue() + " VND.",
+                scenario.estimatedPtRecoveryValue()
+            ),
+            new ScenarioAction(
+                "Gia hạn/quay lại nhóm còn lại theo mức " + scenario.renewalConversionPercent() + "%: khoảng "
+                    + scenario.estimatedRenewalValue() + " VND.",
+                scenario.estimatedRenewalValue()
+            )
+        ));
+        List<String> priorityActions = actions.stream()
+            .sorted(Comparator.comparingLong(ScenarioAction::value).reversed())
+            .map(ScenarioAction::label)
+            .limit(3)
+            .toList();
+
+        return new ScenarioInsight(
+            "Theo các tỷ lệ đã chọn, kịch bản có giá trị tối đa có thể tác động khoảng "
+                + scenario.estimatedTotalImpact() + " VND.",
+            priorityActions,
+            List.of(
+                "Đây là mô phỏng theo giả định, không phải doanh thu đã thu hoặc được bảo đảm.",
+                "Phân tích không tạo phiếu thu, đổi trạng thái gói hay tự động liên hệ hội viên."
+            )
         );
     }
 
@@ -385,6 +457,14 @@ public class RetentionRevenueAdvisorService {
         return value == null || value.isBlank() ? fallback : value.trim();
     }
 
+    private String normalizeHealthStatus(String value) {
+        String normalized = safeText(value, "WATCH").toUpperCase();
+        return switch (normalized) {
+            case "GOOD", "WATCH", "RISK" -> normalized;
+            default -> "WATCH";
+        };
+    }
+
     private List<String> safeList(List<String> values) {
         if (values == null) {
             return List.of();
@@ -402,7 +482,8 @@ public class RetentionRevenueAdvisorService {
         List<AdvisorSegment> riskSegments,
         List<AdvisorSegment> opportunitySegments,
         Map<String, Long> sourceMix,
-        Map<String, Long> revenueByPlanType
+        Map<String, Long> revenueByPlanType,
+        ScenarioProjection scenario
     ) {
     }
 
@@ -413,11 +494,22 @@ public class RetentionRevenueAdvisorService {
         List<String> revenueOpportunities,
         List<String> actionPlan7Days,
         List<String> trackingMetrics,
-        String revenueRiskNote
+        String revenueRiskNote,
+        AiScenarioResponse scenario
+    ) {
+    }
+
+    private record AiScenarioResponse(
+        String overview,
+        List<String> priorityActions,
+        List<String> cautions
     ) {
     }
 
     private record PtRisk(boolean unusedNearExpiry, boolean longInactive) {
+    }
+
+    private record ScenarioAction(String label, long value) {
     }
 
     private static final class MutableSegments {

@@ -57,6 +57,7 @@ Mục tiêu: phù hợp quy trình PT của phòng gym nhỏ và không làm sai
 - Chỉ khách có gói PT đang hiệu lực được vào luồng PT.
 - Đặt lịch, kiểm tra trùng lịch PT/học viên.
 - Ghi buổi PT, tự ôn tập, hướng dẫn; trừ đúng loại buổi sau khi đã diễn ra.
+- Form ghi buổi cho chọn rõ lịch SCHEDULED phù hợp để liên kết, hoặc ghi độc lập; không tự ghép lịch theo ngày.
 - Chặn sai member-package, trùng log, gói chưa thanh toán, hết hạn, hủy, hết lượt và ngày tương lai.
 - Ghi số đo cơ thể và mục tiêu PT.
 
@@ -69,7 +70,7 @@ Mục tiêu: tạo trải nghiệm xem tiến độ cho học viên PT và kênh
 Đã hoàn thành:
 
 - OWNER cấp/khóa/reset/xóa tài khoản Portal MEMBER.
-- Portal chỉ đọc dữ liệu cá nhân: gói, công nợ, phiếu thu, lịch, buổi, số đo và mục tiêu.
+- Portal chỉ đọc dữ liệu cá nhân: gói, công nợ, toàn bộ phiếu thu, lịch SCHEDULED còn ở tương lai theo giờ Việt Nam, buổi, số đo và mục tiêu. Gói PT được chọn theo trạng thái và thời hạn thực tế.
 - Thư viện TikTok public, trang chi tiết và trang OWNER quản lý danh mục/video.
 - TikTok chỉ nhúng video để xem; không quản lý lượt xem hay tác giả TikTok.
 
@@ -119,6 +120,20 @@ Mục tiêu: thêm một ứng dụng AI có giá trị vận hành và hoàn th
 - Password policy, lastLoginAt, API security headers, no-cache và CORS local dev.
 
 Tiêu chí kết quả: AI không phải chatbot phụ; nó hỗ trợ quyết định giữ chân/doanh thu. Hệ thống vẫn hoạt động khi Groq không phản hồi.
+
+## Bổ sung sau Sprint 8 - Kịch bản doanh thu và giữ chân
+
+Mục tiêu: cho chủ phòng thử một giả định vận hành ngắn hạn mà không mở thêm module tài chính, không ghi dữ liệu mô phỏng và không để AI tự quyết định số tiền.
+
+Đã hoàn thành:
+
+- Giữ nguyên endpoint AI Advisor; request `scenario` là tùy chọn và gồm ba tỷ lệ 0-100%: thu công nợ, khôi phục nhóm PT rủi ro, gia hạn/quay lại.
+- Backend tính ba giá trị nền và kết quả ước tính bằng `RetentionRevenueScenarioCalculator`; nhóm PT rủi ro được loại khỏi nền gia hạn/quay lại để không cộng trùng trong hai nhóm giữ chân.
+- Groq chỉ diễn giải kịch bản, sắp thứ tự hành động và nêu lưu ý. Nếu Groq lỗi, fallback rule-based vẫn tạo nhận xét kịch bản hợp lệ.
+- Frontend Reports cho phép nhập tỷ lệ, gọi phân tích theo yêu cầu và hiển thị rõ tổng giá trị có thể tác động là mô phỏng, không phải doanh thu bảo đảm.
+- Không thêm bảng, không lưu lịch sử kịch bản, không tạo phiếu thu, thay đổi gói/trạng thái hoặc tự động liên hệ hội viên.
+
+Tiêu chí kết quả: chủ phòng có thể so sánh một giả định đơn giản dựa trên số liệu hệ thống; các con số được tính bởi backend, còn AI chỉ hỗ trợ diễn giải có kiểm soát.
 
 ## Phạm vi không nằm trong roadmap đã chốt
 

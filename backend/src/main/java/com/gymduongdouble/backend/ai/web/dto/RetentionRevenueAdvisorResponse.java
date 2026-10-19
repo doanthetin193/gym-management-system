@@ -12,6 +12,7 @@ public record RetentionRevenueAdvisorResponse(
     AdvisorSummary summary,
     List<AdvisorSegment> riskSegments,
     List<AdvisorSegment> opportunitySegments,
+    ScenarioProjection scenario,
     AdvisorInsight insight
 ) {
 
@@ -41,6 +42,27 @@ public record RetentionRevenueAdvisorResponse(
     ) {
     }
 
+    public record ScenarioProjection(
+        int debtCollectionPercent,
+        int ptRecoveryPercent,
+        int renewalConversionPercent,
+        long debtCollectionPotential,
+        long ptRecoveryPotential,
+        long renewalOpportunityPotential,
+        long estimatedDebtCollection,
+        long estimatedPtRecoveryValue,
+        long estimatedRenewalValue,
+        long estimatedTotalImpact
+    ) {
+    }
+
+    public record ScenarioInsight(
+        String overview,
+        List<String> priorityActions,
+        List<String> cautions
+    ) {
+    }
+
     public record AdvisorInsight(
         String healthStatus,
         String overview,
@@ -49,6 +71,7 @@ public record RetentionRevenueAdvisorResponse(
         List<String> actionPlan7Days,
         List<String> trackingMetrics,
         String revenueRiskNote,
+        ScenarioInsight scenario,
         String providerMessage
     ) {
     }

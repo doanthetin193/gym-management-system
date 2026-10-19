@@ -1,6 +1,6 @@
 # 08 - Đối Chiếu Implementation Hiện Tại
 
-Cập nhật lần cuối: 16/10/2026.
+Cập nhật lần cuối: 19/10/2026.
 
 Đây là nguồn đối chiếu nghiệp vụ và implementation cho phiên bản MVP hiện tại. Nếu một tài liệu cũ mâu thuẫn với file này và code, ưu tiên code, sau đó cập nhật lại tài liệu.
 
@@ -15,7 +15,7 @@ Dương Double Gym Management đã hoàn thành ở mức local MVP:
 - Lịch PT, buổi PT, tự ôn tập, số đo cơ thể và mục tiêu.
 - Nhắc việc Zalo thủ công.
 - Dashboard, báo cáo, XLSX và Google Sheet.
-- AI Cố vấn Giữ chân và Doanh thu.
+- AI Cố vấn Giữ chân, Doanh thu và mô phỏng kịch bản theo giả định.
 - Hardening JWT, password, rate limit và HTTP security headers.
 
 Hệ thống chưa deploy production.
@@ -42,7 +42,7 @@ PT vận hành khách PT trong phạm vi phân quyền:
 - Tự nhận một học viên có gói PT hợp lệ chưa có phân công, khi PT cần xử lý khách đăng ký tại phòng.
 - Đặt lịch, ghi buổi PT/tập tự ôn, đo chỉ số và đặt mục tiêu.
 - Không tự gán khách cho PT khác, không điều chuyển phân công và không truy cập màn hình OWNER.
-- Không đọc/sửa lương, teaching rate, sales commission rate hay active status của profile PT.
+- Không thay đổi trạng thái hoạt động của profile PT, cấu hình hệ thống, báo cáo OWNER hay thư viện quản trị.
 
 ### MEMBER
 
@@ -81,7 +81,7 @@ Khách vãng lai chỉ xem trang chủ, bảng giá, thư viện TikTok, bài t�
 ## 4. Hội viên và số điện thoại
 
 - Member có tên, phone, ngày sinh, giới tính, địa chỉ, Zalo, source, status và note.
-- Phone được chuẩn hóa trước khi lưu: bỏ khoảng trắng/ký tự ngăn cách và xử lý đầu số Việt Nam để tránh trùng hồ sơ dạng 0901 000 004 và 0901000004.
+- Phone được chuẩn hóa trước khi lưu: bỏ khoảng trắng/ký tự ngăn cách và xử lý đầu số Việt Nam để tránh trùng hồ sơ dạng 0901 000 004 và 0901000004. PostgreSQL local cũng có UNIQUE `members.phone`; do đó lớp service và database cùng bảo vệ một hồ sơ cho một số điện thoại chuẩn hóa.
 - Member status ACTIVE/INACTIVE/ARCHIVED. Hội viên không ACTIVE không được điều phối PT.
 - PT được truy cập theo assignment policy và gói PT hợp lệ; OWNER xem toàn bộ.
 
@@ -115,6 +115,7 @@ Khách vãng lai chỉ xem trang chủ, bảng giá, thư viện TikTok, bài t�
 - Công nợ là tổng remaining_amount của debt OPEN/PARTIALLY_PAID.
 - Hệ thống không quản lý expense, profit, cashflow ngoài gói tập hay mục tiêu vận hành.
 - VietQR chỉ là thông tin chuyển khoản thủ công, không tự động xác nhận tiền về.
+- Bảng giá public đọc danh mục gói active qua API public. VietQR public không có dữ liệu nhận tiền dự phòng ở frontend và chỉ hiển thị khi cấu hình backend đầy đủ, đang bật.
 
 ## 7. PT và tính đúng đắn số buổi
 
@@ -130,6 +131,7 @@ Khách vãng lai chỉ xem trang chủ, bảng giá, thư viện TikTok, bài t�
 - Lịch hẹn có date, time, PT, học viên, note và trạng thái.
 - Backend chặn trùng giờ giữa các lịch SCHEDULED của cùng PT và của cùng học viên.
 - Lịch không tự trừ buổi. Xóa/đổi lịch không làm thay đổi session count.
+- Khi ghi buổi có lịch SCHEDULED phù hợp, giao diện yêu cầu chọn lịch để gửi scheduleId hoặc chọn ghi độc lập; service chỉ cập nhật trạng thái lịch khi ID đó hợp lệ.
 
 ### Ghi buổi và tự ôn
 
@@ -173,8 +175,11 @@ Notifications được tính động từ dữ liệu membership, debt và ngày
 - Input gửi sang Groq là tổng hợp tháng và segment ẩn danh: số lượng hội viên, doanh thu, công nợ, source mix, doanh thu theo loại gói và nhóm rủi ro/cơ hội.
 - Không gửi PII hay chi tiết giao dịch của cá nhân.
 - Rule engine chấm segment trước. Groq chỉ diễn giải thành chiến lược, top rủi ro, cơ hội, kế hoạch 7 ngày và metrics.
+- Sau kết quả tổng quan, OWNER có thể gửi `scenario` với ba tỷ lệ 0-100%: thu công nợ, khôi phục PT rủi ro và gia hạn/quay lại. `RetentionRevenueScenarioCalculator` tính giá trị tại backend; đây là request đọc dữ liệu, không có bảng/lịch sử mô phỏng.
+- Nền PT rủi ro được gom theo hội viên; nền gia hạn/quay lại lấy phần còn lại sau khi loại các hội viên đã nằm trong nền PT rủi ro. Vì vậy hai nhánh giữ chân của cùng một kịch bản không cộng trùng. Công nợ là nền dòng tiền riêng.
+- Response không có kịch bản trả `scenario: null`. Response có kịch bản trả nền tính, giá trị ước tính, tổng giá trị có thể tác động và `insight.scenario`; đây không phải doanh thu chắc chắn hay lệnh thay đổi dữ liệu.
 - Groq keys lấy từ environment, có cơ chế thử key kế tiếp khi key hiện tại không dùng được.
-- Nếu provider timeout, lỗi HTTP hoặc trả format không hợp lệ, backend trả fallback rule-based.
+- Nếu provider timeout, lỗi HTTP hoặc trả format không hợp lệ, backend trả fallback rule-based, gồm cả nhận xét kịch bản khi request có `scenario`.
 
 ## 10. Thư viện TikTok
 

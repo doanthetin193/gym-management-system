@@ -2,6 +2,7 @@ import {
   AlertTriangle,
   Banknote,
   CalendarDays,
+  Calculator,
   CheckCircle2,
   CloudUpload,
   CreditCard,
@@ -27,7 +28,7 @@ import { listDebts, listPayments } from '../../payments/api/paymentApi'
 import { paymentMethodLabels } from '../../payments/types/payment'
 import type { DebtRecord, PaymentTransaction } from '../../payments/types/payment'
 import { analyzeRetentionRevenue } from '../api/aiAdvisorApi'
-import type { AiAdvisorResult } from '../api/aiAdvisorApi'
+import type { AiAdvisorResult, AiAdvisorScenarioInput } from '../api/aiAdvisorApi'
 import { downloadXlsx } from '../lib/xlsxExport'
 
 type SheetConfig = {
@@ -258,11 +259,11 @@ export function ReportsPage() {
     downloadXlsx(`gym-duong-double-${kind}.xlsx`, [{ name: sheetNames[kind], rows: reportRows(kind) }])
   }
 
-  async function handleAnalyzeAiAdvisor() {
+  async function handleAnalyzeAiAdvisor(scenario?: AiAdvisorScenarioInput) {
     setAiLoading(true)
     setAiError(null)
     try {
-      const result = await analyzeRetentionRevenue(period)
+      const result = await analyzeRetentionRevenue({ ...period, scenario })
       setAiAdvisor(result)
     } catch (analyzeError) {
       setAiError(analyzeError instanceof Error ? analyzeError.message : 'Không thể tạo phân tích AI.')
@@ -415,9 +416,9 @@ export function ReportsPage() {
           />
           <CompactMetricCard
             icon={CalendarDays}
-            label="Đăng ký & Gia hạn"
-            value={`${formatNumber((memberReport?.newMembers ?? 0) + (memberReport?.renewedMembers ?? 0))} gói`}
-            helper={`Kỳ Tháng ${period.month}/${period.year}`}
+            label="Khách mới / gia hạn"
+            value={`${formatNumber(memberReport?.newMembers ?? 0)} / ${formatNumber(memberReport?.renewedMembers ?? 0)}`}
+            helper={`Hội viên trong tháng ${period.month}/${period.year}`}
             iconColor="text-amber-400"
             iconBg="bg-amber-500/15 border-amber-500/30"
             glowColor="rgba(251, 191, 36, 0.5)"
@@ -428,7 +429,7 @@ export function ReportsPage() {
           result={aiAdvisor}
           loading={aiLoading}
           error={aiError}
-          onAnalyze={() => void handleAnalyzeAiAdvisor()}
+          onAnalyze={(scenario) => void handleAnalyzeAiAdvisor(scenario)}
         />
 
         {/* 2 Flagship Charts Grid */}
@@ -698,9 +699,14 @@ function AiRetentionAdvisorCard({
   result: AiAdvisorResult | null
   loading: boolean
   error: string | null
-  onAnalyze: () => void
+  onAnalyze: (scenario?: AiAdvisorScenarioInput) => void
 }) {
   const insight = result?.insight
+  const [scenarioInput, setScenarioInput] = useState<AiAdvisorScenarioInput>({
+    debtCollectionPercent: 50,
+    ptRecoveryPercent: 40,
+    renewalConversionPercent: 30,
+  })
   const statusStyle = {
     GOOD: 'border-emerald-500/35 bg-emerald-500/10 text-emerald-400',
     WATCH: 'border-amber-500/35 bg-amber-500/10 text-amber-400',
@@ -731,12 +737,12 @@ function AiRetentionAdvisorCard({
 
         <button
           type="button"
-          onClick={onAnalyze}
+          onClick={() => onAnalyze()}
           disabled={loading}
           className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 via-fuchsia-600 to-amber-500 px-4 text-xs font-black text-white shadow-[0_4px_18px_rgba(139,92,246,0.25)] transition-all hover:brightness-110 active:scale-[0.98] disabled:opacity-60"
         >
           <Sparkles size={15} className={loading ? 'animate-spin' : ''} />
-          {loading ? 'AI đang phân tích...' : result ? 'Phân tích lại' : 'Phân tích AI'}
+          {loading ? 'AI đang phân tích...' : result ? 'Phân tích tổng quan lại' : 'Phân tích AI'}
         </button>
       </div>
 
@@ -777,6 +783,14 @@ function AiRetentionAdvisorCard({
             <AiInsightList title="Kế hoạch 7 ngày" items={insight?.actionPlan7Days ?? []} tone="amber" />
           </div>
 
+          <AiScenarioPlanner
+            result={result}
+            input={scenarioInput}
+            loading={loading}
+            onChange={setScenarioInput}
+            onAnalyze={() => onAnalyze(scenarioInput)}
+          />
+
           <div className="grid gap-4 lg:grid-cols-2">
             <AiSegmentList title="Nhóm rủi ro hệ thống đã chấm" segments={result.riskSegments} />
             <AiSegmentList title="Nhóm cơ hội nên ưu tiên" segments={result.opportunitySegments} />
@@ -812,11 +826,12 @@ function AiSummaryTile({ label, value, tone }: { label: string; value: string; t
   )
 }
 
-function AiInsightList({ title, items, tone }: { title: string; items: string[]; tone: 'rose' | 'emerald' | 'amber' }) {
+function AiInsightList({ title, items, tone }: { title: string; items: string[]; tone: 'rose' | 'emerald' | 'amber' | 'cyan' }) {
   const dotColor = {
     rose: 'bg-rose-400',
     emerald: 'bg-emerald-400',
     amber: 'bg-amber-400',
+    cyan: 'bg-cyan-400',
   }[tone]
 
   return (
@@ -834,6 +849,130 @@ function AiInsightList({ title, items, tone }: { title: string; items: string[];
           ))
         )}
       </div>
+    </div>
+  )
+}
+
+function AiScenarioPlanner({
+  result,
+  input,
+  loading,
+  onChange,
+  onAnalyze,
+}: {
+  result: AiAdvisorResult
+  input: AiAdvisorScenarioInput
+  loading: boolean
+  onChange: (input: AiAdvisorScenarioInput) => void
+  onAnalyze: () => void
+}) {
+  const scenario = result.scenario
+  const scenarioInsight = result.insight.scenario
+
+  function updatePercent(field: keyof AiAdvisorScenarioInput, rawValue: string) {
+    const value = Number(rawValue)
+    onChange({
+      ...input,
+      [field]: Number.isFinite(value) ? Math.min(100, Math.max(0, Math.trunc(value))) : 0,
+    })
+  }
+
+  return (
+    <section className="border-y border-[var(--line)] py-4">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div className="flex items-start gap-2">
+          <div className="grid size-8 shrink-0 place-items-center rounded-lg border border-cyan-500/30 bg-cyan-500/10 text-cyan-400">
+            <Calculator size={16} />
+          </div>
+          <div>
+            <h3 className="text-sm font-black text-[var(--text-strong)]">Kịch bản doanh thu & giữ chân</h3>
+            <p className="mt-0.5 text-[11px] font-semibold text-[var(--text-muted)]">Mô phỏng tuần tới từ các tỷ lệ do chủ phòng chọn.</p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={onAnalyze}
+          disabled={loading}
+          className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-lg border border-cyan-500/35 bg-cyan-500/10 px-3 text-xs font-black text-cyan-400 transition-colors hover:bg-cyan-500/18 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          <Calculator size={15} />
+          {loading ? 'Đang mô phỏng...' : 'Phân tích kịch bản'}
+        </button>
+      </div>
+
+      <div className="mt-4 grid gap-3 md:grid-cols-3">
+        <ScenarioPercentField
+          label="Thu công nợ"
+          value={input.debtCollectionPercent}
+          onChange={(value) => updatePercent('debtCollectionPercent', value)}
+        />
+        <ScenarioPercentField
+          label="Khôi phục nhóm PT rủi ro"
+          value={input.ptRecoveryPercent}
+          onChange={(value) => updatePercent('ptRecoveryPercent', value)}
+        />
+        <ScenarioPercentField
+          label="Gia hạn / quay lại"
+          value={input.renewalConversionPercent}
+          onChange={(value) => updatePercent('renewalConversionPercent', value)}
+        />
+      </div>
+
+      {scenario ? (
+        <div className="mt-4 space-y-3">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <ScenarioValue label="Thu công nợ dự kiến" value={scenario.estimatedDebtCollection} potential={scenario.debtCollectionPotential} />
+            <ScenarioValue label="PT có thể khôi phục" value={scenario.estimatedPtRecoveryValue} potential={scenario.ptRecoveryPotential} />
+            <ScenarioValue label="Gia hạn / quay lại" value={scenario.estimatedRenewalValue} potential={scenario.renewalOpportunityPotential} />
+            <ScenarioValue label="Tổng giá trị có thể tác động" value={scenario.estimatedTotalImpact} emphasis />
+          </div>
+
+          {scenarioInsight ? (
+            <div className="grid gap-3 lg:grid-cols-3">
+              <div className="lg:col-span-1">
+                <p className="text-xs font-bold leading-relaxed text-[var(--text-strong)]">{scenarioInsight.overview}</p>
+              </div>
+              <AiInsightList title="Thứ tự ưu tiên" items={scenarioInsight.priorityActions} tone="cyan" />
+              <AiInsightList title="Lưu ý kịch bản" items={scenarioInsight.cautions} tone="amber" />
+            </div>
+          ) : null}
+
+          <p className="text-[11px] font-semibold text-[var(--text-muted)]">
+            Giá trị là mô phỏng theo giả định, không tạo phiếu thu, thay đổi gói hoặc tự động liên hệ hội viên.
+          </p>
+        </div>
+      ) : null}
+    </section>
+  )
+}
+
+function ScenarioPercentField({ label, value, onChange }: { label: string; value: number; onChange: (value: string) => void }) {
+  return (
+    <label className="block">
+      <span className="mb-1.5 block text-[11px] font-black text-[var(--text-muted)]">{label}</span>
+      <div className="flex h-10 items-center rounded-lg border border-[var(--line)] bg-[var(--surface-muted)]/40 px-3 focus-within:border-cyan-500/50">
+        <input
+          type="number"
+          min="0"
+          max="100"
+          step="5"
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          className="min-w-0 flex-1 bg-transparent text-sm font-black text-[var(--text-strong)] outline-none"
+          aria-label={label}
+        />
+        <span className="text-sm font-black text-cyan-400">%</span>
+      </div>
+    </label>
+  )
+}
+
+function ScenarioValue({ label, value, potential, emphasis = false }: { label: string; value: number; potential?: number; emphasis?: boolean }) {
+  return (
+    <div className={`border p-3 ${emphasis ? 'border-cyan-500/35 bg-cyan-500/10' : 'border-[var(--line)] bg-[var(--surface-muted)]/30'}`}>
+      <p className="text-[10px] font-black uppercase tracking-wider text-[var(--text-muted)]">{label}</p>
+      <p className={`mt-1 text-base font-black ${emphasis ? 'text-cyan-400' : 'text-[var(--text-strong)]'}`}>{formatMoney(value)}</p>
+      {potential !== undefined ? <p className="mt-1 text-[10px] font-semibold text-[var(--text-muted)]">Trên nền {formatMoney(potential)}</p> : null}
     </div>
   )
 }
