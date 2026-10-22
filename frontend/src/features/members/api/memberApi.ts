@@ -1,7 +1,9 @@
 import { apiDelete, apiGet, apiPost, apiPut } from '../../../shared/api/apiClient'
+import type { PageResponse } from '../../../shared/types/pagination'
 import type {
   MemberDetail,
   MemberListFilter,
+  MemberListStatistics,
   MemberMembership,
   MemberMembershipPayload,
   MemberPayload,
@@ -13,6 +15,11 @@ type ListMembersParams = {
   filter?: MemberListFilter
 }
 
+type ListMembersPageParams = ListMembersParams & {
+  page?: number
+  size?: number
+}
+
 export function listMembers({ keyword, filter = 'ALL' }: ListMembersParams = {}) {
   return apiGet<MemberSummary[]>('/v1/members', {
     params: {
@@ -20,6 +27,21 @@ export function listMembers({ keyword, filter = 'ALL' }: ListMembersParams = {})
       filter,
     },
   })
+}
+
+export function listMembersPage({ keyword, filter = 'ALL', page = 0, size = 10 }: ListMembersPageParams = {}) {
+  return apiGet<PageResponse<MemberSummary>>('/v1/members/page', {
+    params: {
+      keyword: keyword || undefined,
+      filter,
+      page,
+      size,
+    },
+  })
+}
+
+export function getMemberListStatistics() {
+  return apiGet<MemberListStatistics>('/v1/members/statistics')
 }
 
 export function getMemberDetail(id: number) {

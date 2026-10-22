@@ -1,72 +1,174 @@
-# Ngày thu, đối soát và kiểm thử luồng tài chính
+# Trục thời gian tài chính, đối soát doanh thu và ma trận kiểm thử
 
-## 1. Ba loại ngày khác nhau
+## 1. Ba Trục Thời Gian Độc Lập Trong Quản Lý Tài Chính
 
-- `startDate`/`endDate` của membership mô tả thời hạn tập.
-- `paymentDate` của Payment mô tả ngày nghiệp vụ đã thu tiền; báo cáo thực thu cần xét ngày này.
-- `createdAt` là thời điểm record được tạo trong hệ thống, có thể khác ngày thu khi nhập dữ liệu lịch sử.
+Một trong những sai lầm phổ biến nhất của lập trình viên mới là đồng nhất ngày ghi nhận dòng tiền với thời hạn thẻ tập hoặc ngày tạo bản ghi. Trong phòng gym Dương Double, hệ thống phân định rõ ràng **3 trục thời gian hoàn toàn độc lập**:
 
-Ví dụ ngày 16/10 nhập lại một khoản thực sự đã thu 15/07: paymentDate nên là 15/07, còn createdAt là thời điểm nhập vào hệ thống. Không được lấy thời điểm nhập thay cho ngày thu để tự cho rằng khoản đó thuộc doanh thu tháng 10. Trường hợp nhập sai, cần xem hệ thống có workflow sửa/xóa thực tế hay không; không tự giả định có chức năng chỉnh mọi giao dịch.
-
-## 2. Kiểm tra từng nhánh ngày
-
-Đọc `resolveInitialPaymentDate` trong [`MemberMembershipService`](../../../backend/src/main/java/com/gymduongdouble/backend/membership/service/MemberMembershipService.java) và `resolvePaymentDate` trong [`PaymentService`](../../../backend/src/main/java/com/gymduongdouble/backend/finance/service/PaymentService.java): cả hai dùng hôm nay theo `AppClock` khi input null và từ chối ngày tương lai. Ngày thu đầu tiên chỉ được resolve khi amount > 0, vì amount ≤ 0 thì không tạo phiếu thu.
-
-Frontend dùng [`MembershipAssignmentModal`](../../../frontend/src/features/members/components/MembershipAssignmentModal.tsx), [`PaymentFormModal`](../../../frontend/src/features/payments/components/PaymentFormModal.tsx) và [`DatePartsSelect`](../../../frontend/src/shared/components/DatePartsSelect.tsx). Kiểm tra giới hạn ngày ở UI để thuận tiện, nhưng kiểm tra backend mới là ranh giới nghiệp vụ khi gọi API trực tiếp.
-
-## 3. Từ phiếu thu đến thống kê
-
-[`DashboardService`](../../../backend/src/main/java/com/gymduongdouble/backend/dashboard/service/DashboardService.java) và các repository tài chính là nơi cần đọc để biết từng báo cáo cộng, lọc và nhóm dữ liệu như thế nào. Đừng mặc định mọi thẻ UI đều có cùng điều kiện lọc. Khi đối soát một thẻ cụ thể: tìm API của trang, method service, khoảng ngày, trạng thái, nguồn dữ liệu và các phép cộng trước khi so với tổng hiển thị.
-
-`Payment.revenueCategory` được suy ra từ loại plan trong service thu tiền; `Payment.paymentMethod` do người ghi nhận chọn. VietQR ở UI giúp tạo thông tin chuyển khoản, không phải bằng chứng ngân hàng tự xác nhận đã nhận tiền. Phiếu thu là kết quả của thao tác lưu khi người vận hành xác nhận, không phải chỉ vì một mã QR đã xuất hiện.
-
-## 4. Kịch bản test local có thể lặp lại
-
-Sử dụng hồ sơ và gói test, ghi lại ID và số dư trước khi thao tác. Không sử dụng thông tin khách thật hoặc thực hiện chuyển khoản thật chỉ để thử.
-
-1. Tạo lượt đăng ký cần thu 11.200.000, thu ban đầu 0: kiểm tra membership có debt 11.200.000, không có phiếu thu ban đầu.
-2. Với lượt khác hoặc dữ liệu test được chuẩn bị riêng, thu 5.000.000 chuyển khoản khi đăng ký: kiểm tra một Payment, nợ còn 6.200.000.
-3. Thu 6.200.000 tiền mặt từ màn hình công nợ: kiểm tra hai Payment khác phương thức, nợ bằng 0 và trạng thái PAID.
-4. Thử thu nhiều hơn nợ hoặc thu lại sau khi PAID: ghi status và message, xác nhận backend từ chối.
-5. Nhập khoản thu lịch sử ở tháng trước: so `paymentDate`, `createdAt` và báo cáo đúng kỳ. Tránh nhập gói lịch sử chồng hạn vì service sẽ kiểm tra.
-6. Gửi ngày thu tương lai trực tiếp API thử nghiệm: mong đợi lỗi 400; không chỉ kiểm tra việc date picker giới hạn lựa chọn.
-7. Với tài khoản PT thử nghiệm, kiểm tra quyền theo hội viên trước khi kết luận PT có thể xem hoặc thu nợ cho mọi người.
-
-## 5. Các câu hỏi khi trình bày với mentor
-
-1. Vì sao đăng ký gói không đồng nghĩa đã thu đủ tiền?
-2. `originalAmount`, `paidAmount`, `remainingAmount` khác gì nhau? Giảm giá được áp dụng ở bước nào?
-3. Tại sao một giao dịch thực thu không nên ghi ngày tương lai?
-4. Vì sao nói “doanh thu thực thu” chính xác hơn “lợi nhuận” trong phạm vi này?
-5. UI hiển thị QR có đồng nghĩa hệ thống đã nhận xác nhận chuyển khoản từ ngân hàng không?
-
-## 6. Ngày thu và ngày bắt đầu: hai trục thời gian
-
-Method thật trong `PaymentService`:
-
-```java
-private LocalDate resolvePaymentDate(LocalDate requestedDate) {
-    LocalDate paymentDate = requestedDate == null ? AppClock.today() : requestedDate;
-    if (paymentDate.isAfter(AppClock.today())) {
-        throw new BadRequestException("Ngày lập phiếu thu không được ở tương lai.");
-    }
-    return paymentDate;
-}
+```mermaid
+timeline
+    title 3 Trục thời gian trong một giao dịch gói tập
+    2026-06-15 : Hội viên nộp tiền đợt 1 (paymentDate = 2026-06-15)
+    2026-07-01 : Gói tập bắt đầu có hiệu lực (startDate = 2026-07-01)
+    2026-07-31 : Gói tập hết hạn (endDate = 2026-07-31)
+    2026-10-16 : Nhân viên nhập bù phiếu thu vào phần mềm (createdAt = 2026-10-16T14:30:00Z)
 ```
 
-`requestedDate == null` chọn ngày hiện tại theo `AppClock`; quá khứ được phép để nhập lịch sử; tương lai bị từ chối. Lưu ý cả luồng thu ngay lúc tạo gói và thu nợ sau đó đều phải kiểm tra tại service tương ứng: chỉ nhìn một method không chứng minh mọi đường ghi payment đều dùng chung method này.
+| Trục Thời Gian | Thuộc Tính / Thực Thể | Ý Nghĩa Nghiệp Vụ & Kế Toán |
+| :--- | :--- | :--- |
+| **1. Thời hạn gói tập** | `MemberMembership.startDate`<br/>`MemberMembership.endDate` | Xác định **Quyền lợi tập luyện** của hội viên. Được lễ tân và cổng soát vé kiểm tra để cho phép hội viên vào phòng gym hoặc đặt lịch tập với PT. |
+| **2. Ngày thu tiền thực tế** | `Payment.paymentDate` | Xác định **Dòng tiền thực thu (Cash Flow)**. Dùng để tính toán doanh thu kế toán theo tháng/năm. Tiền thu vào tháng nào thì ghi nhận doanh thu cho tháng đó. |
+| **3. Dấu vết hệ thống (Audit)** | `Payment.createdAt`<br/>(Audited Timestamp) | Thời điểm kỹ thuật câu lệnh SQL `INSERT` được thực thi vào database. Dùng để kiểm toán vết vận hành, không dùng để tính doanh thu. |
 
-Ví dụ kiểm thử: gói bắt đầu 10/06, thanh toán 5 triệu ngày 10/06 và 2 triệu ngày 05/07. Khi nhập lại đúng hai ngày thu, báo cáo tháng 6 nhận 5 triệu và tháng 7 nhận 2 triệu, không lấy ngày người dùng đang nhập dữ liệu làm ngày thu. So sánh tổng hai tháng với danh sách phiếu, không suy luận từ giá plan. Nếu trước đây chưa có dữ liệu phiếu thu chính xác thì nhập lại chỉ phản ánh thông tin mà người vận hành cung cấp, không tự kiểm chứng được giao dịch ngân hàng.
+### Tình huống thực tế khi nhập bù dữ liệu lịch sử:
+> Ngày **16/10/2026**, nhân viên số hóa sổ sách cũ của phòng gym, nhập lại khoản tiền **5.000.000 VNĐ** mà hội viên đã thanh toán vào ngày **15/07/2026**:
+> - Trường `paymentDate` bắt buộc phải là **15/07/2026**.
+> - Trường `createdAt` sẽ lưu thời điểm máy chủ hiện tại: `2026-10-16T...`.
+> - **Nguyên tắc kế toán**: Báo cáo doanh thu tháng 7/2026 sẽ được cộng thêm 5 triệu. Doanh thu tháng 10/2026 hoàn toàn không bị ảnh hưởng. Nếu lập trình viên tính doanh thu theo `createdAt`, báo cáo tài chính tháng 10 sẽ bị thổi phồng sai lệch nghiêm trọng.
 
-## 7. Bộ kiểm thử bằng tay gợi ý
+---
 
-| Trường hợp | Dữ liệu test | Mong đợi |
-|---|---|---|
-| Không thu khi tạo gói | Thu ngay 0 | Có đăng ký/nợ theo số phải thu, không có payment 0 đồng |
-| Thu một phần | Giá phải thu 1 triệu, thu 400 nghìn | Payment 400 nghìn, còn nợ 600 nghìn |
-| Thu nợ sai số | Còn 600 nghìn, nhập 700 nghìn | Bị từ chối, không phát sinh phiếu mới |
-| Ngày thu tương lai | Chọn ngày sau hôm nay | Bị từ chối; kiểm tra dữ liệu không đổi |
-| Hai hình thức | Chuyển khoản rồi tiền mặt | Hai payment, tổng và phương thức theo từng phiếu |
-| Hai người cùng thu | Cùng khoản nợ, thao tác gần đồng thời | Kiểm tra transaction/version và response thực tế; tải lại dữ liệu |
+## 2. Tiện Ích VietQR và Bản Chất Kỹ Thuật
 
-Đây là mục tiêu kiểm thử, không phải tuyên bố tất cả đã chạy trong lượt viết tài liệu này. Dùng database test và lưu lại điều kiện trước, response, dữ liệu sau để kiểm tra.
+Màn hình lập phiếu thu hỗ trợ tạo mã QR chuyển khoản ngân hàng thông qua VietQR:
+
+```mermaid
+flowchart LR
+    subgraph Frontend["Frontend React (Client-side)"]
+        Form["PaymentFormModal"]
+        VietQRHelper["vietQr.ts: buildVietQrImageUrl()"]
+        DisplayQR["Hiển thị ảnh QR động trên Modal"]
+    end
+
+    subgraph External["Dịch vụ VietQR Công Cộng"]
+        VietQRServer["https://img.vietqr.io/image/..."]
+    end
+
+    subgraph Manual["Quy Trình Nghiệp Vụ Thực Tế"]
+        Customer["Khách hàng quét QR trên App Ngân hàng"]
+        BankNotification["Tiền vào tài khoản chủ phòng (SMS / App Ngân hàng)"]
+        StaffConfirm["Lễ tân / PT đối soát biến động số dư"]
+        ClickSubmit["Bấm nút 'Lập phiếu thu' (Gửi API POST)"]
+    end
+
+    Form --> VietQRHelper
+    VietQRHelper --> External
+    External --> DisplayQR
+    DisplayQR -.-> Customer
+    Customer --> BankNotification
+    BankNotification --> StaffConfirm
+    StaffConfirm --> ClickSubmit
+```
+
+### Cơ chế kỹ thuật trong `frontend/src/features/settings/lib/vietQr.ts`:
+1. **Chuẩn hóa nội dung chuyển khoản (`normalizeTransferContent`)**:
+   - Loại bỏ toàn bộ dấu tiếng Việt (NFD Unicode), chuyển `đ/Đ` thành `d/D`.
+   - Loại bỏ các ký tự đặc biệt, chuyển thành chữ in hoa, giới hạn tối đa 90 ký tự.
+   - Định dạng cú pháp: `GYMDD [TÊN_HỘI_VIÊN] NO [MÃ_CÔNG_NỢ]` (Ví dụ: `GYMDD NGUYEN VAN KHANH NO 101`).
+2. **Tạo URL ảnh VietQR động (`buildVietQrImageUrl`)**:
+   ```typescript
+   export function buildVietQrImageUrl({ setting, amount, addInfo }: BuildVietQrUrlParams) {
+     if (!setting.enabled || !setting.bankCode || !setting.accountNumber || !setting.accountName) return ''
+     const params = new URLSearchParams()
+     if (amount > 0) params.set('amount', Math.round(amount).toString())
+     if (addInfo) params.set('addInfo', addInfo)
+     params.set('accountName', setting.accountName)
+     return `https://img.vietqr.io/image/${setting.bankCode}-${setting.accountNumber}-${setting.template || 'compact2'}.png?${params.toString()}`
+   }
+   ```
+
+### ⚠️ Bản chất kiến trúc cần làm rõ khi phỏng vấn:
+- **Đây KHÔNG PHẢI là cổng thanh toán tự động qua Webhook/IPN** (như MoMo, VNPay hay Stripe).
+- Việc mã QR hiển thị trên màn hình **không chứng minh** tiền đã vào tài khoản.
+- Hệ thống hoạt động theo mô hình **Xác nhận thủ công (Manual Confirmation)**: Người vận hành (Chủ phòng/Lễ tân) kiểm tra biến động số dư trên app ngân hàng của mình; khi thấy tiền nổi lên, người vận hành mới bấm nút lưu phiếu thu để backend ghi nhận giao dịch vào DB.
+
+---
+
+## 3. Từ Phiếu Thu Đến Dashboard & Báo Cáo Tài Chính
+
+Mã nguồn tại [`DashboardService.java`](../../../backend/src/main/java/com/gymduongdouble/backend/dashboard/service/DashboardService.java) điều phối việc tính toán các chỉ số tài chính phục vụ quản trị phòng gym:
+
+### A. Tính toán doanh thu thực thu (`revenueBetween`):
+```java
+// backend/src/main/java/com/gymduongdouble/backend/finance/repository/PaymentRepository.java
+@Query("select coalesce(sum(payment.amount), 0) from Payment payment where payment.paymentDate between :startDate and :endDate")
+BigDecimal sumAmountByPaymentDateBetween(
+    @Param("startDate") LocalDate startDate,
+    @Param("endDate") LocalDate endDate
+);
+```
+- **Hàm `coalesce(..., 0)`**: Đảm bảo nếu trong kỳ không phát sinh phiếu thu nào, câu truy vấn SQL trả về `0` thay vì `NULL`, bảo vệ backend khỏi lỗi `NullPointerException` khi tính toán số học.
+- **Tính theo `paymentDate`**: Doanh thu chỉ được cộng khi tiền đã thực thu theo ngày ghi nhận của phiếu thu.
+
+### B. "Doanh thu thực thu" vs "Lợi nhuận":
+- Hệ thống phòng gym Dương Double hiện tại chỉ quản lý **Dòng tiền vào (Cash Inflow)** từ các gói tập và dịch vụ.
+- Hệ thống **chưa quản lý Dòng tiền ra (Chi phí vận hành / Cash Outflow)** như tiền thuê mặt bằng, điện nước, lương cứng và hoa hồng PT, bảo trì máy tập.
+- Do đó, số liệu trên Dashboard được định nghĩa chuẩn xác là **Doanh Thu Thuần Thực Thu (Gross Cash Revenue)**, tuyệt đối không được gọi là "Lợi Nhuận (Net Profit)".
+
+### C. Cơ chế cảnh báo công nợ (`openDebts`):
+```java
+private List<DebtRecord> openDebts() {
+    return debtRecordRepository.findByStatusInOrderByDueDateAsc(
+        List.of(DebtStatus.OPEN, DebtStatus.PARTIALLY_PAID)
+    ).stream()
+    .filter(debt -> debt.getRemainingAmount().compareTo(BigDecimal.ZERO) > 0)
+    .toList();
+}
+```
+Dashboard tự động quét các khoản nợ chưa tất toán và đẩy vào danh sách thông báo (`NotificationResponse` loại `OPEN_DEBT`), sắp xếp theo hạn chót thanh toán (`dueDate`) tăng dần để lễ tân kịp thời đôn đốc khách trả nợ.
+
+---
+
+## 4. Ma Trận Kịch Bản Kiểm Thử Tài Chính Toàn Diện
+
+Dưới đây là bảng kịch bản kiểm thử (Test Matrix) chi tiết dùng để kiểm tra tính toàn vẹn của module tài chính trước khi bàn giao:
+
+| STT | Tên Kịch Bản Kiểm Thử | Dữ Liệu Đầu Vào (Payload) | Điều Kiện Tiên Quyết | Kết Quả Mong Đợi (Backend & DB) | Mã HTTP |
+| :---: | :--- | :--- | :--- | :--- | :---: |
+| **TC-01** | Bán gói không thu trước | `payableAmount = 10.000.000`<br/>`initialPaidAmount = 0` | Gói active, hội viên active | Tạo `MemberMembership` nợ 10M.<br/>Tạo `DebtRecord` status `OPEN`.<br/>**Không tạo bản ghi nào trong `payment_transactions`**. Body có `message = CREATED`. | `200` |
+| **TC-02** | Bán gói thu trước 1 phần | `payableAmount = 10.000.000`<br/>`initialPaidAmount = 4.000.000`<br/>`initialPaymentMethod = BANK_TRANSFER` | Gói active, hội viên active | Tạo `MemberMembership` đã trả 4M, nợ 6M.<br/>Tạo `DebtRecord` status `PARTIALLY_PAID`, còn nợ 6M.<br/>Tạo 1 `Payment` giá trị 4M. Body có `message = CREATED`. | `200` |
+| **TC-03** | Lập phiếu thu nợ lần 2 hoàn tất | `debtRecordId = 101`<br/>`amount = 6.000.000`<br/>`paymentMethod = CASH` | Khoản nợ đang còn nợ 6M | Tạo thêm 1 `Payment` giá trị 6M.<br/>`DebtRecord.remainingAmount = 0`, status chuyển `PAID`.<br/>`MemberMembership.debtAmount = 0`. Body có `message = CREATED`. | `200` |
+| **TC-04** | Thu tiền vượt quá số nợ còn lại | `debtRecordId = 101` (còn nợ 6M)<br/>`amount = 7.000.000` | Nợ còn 6M | Backend ném `BadRequestException`: *"Số tiền thu không được lớn hơn số tiền còn nợ."*<br/>Không sinh phiếu thu, dữ liệu nợ giữ nguyên. | `400` |
+| **TC-05** | Thu tiền cho khoản nợ đã thanh toán đủ | `debtRecordId = 101`<br/>`amount = 1.000.000` | Khoản nợ đã có status `PAID` | Backend ném `BadRequestException`: *"Khoản công nợ đã được thanh toán đủ."* | `400` |
+| **TC-06** | Nhánh phòng vệ: request thu khoản nợ đã hủy | `debtRecordId = 102`<br/>`amount = 500.000` | Một bản ghi test đã có status `CANCELLED` | Backend ném `BadRequestException`: *"Khoản công nợ đã bị hủy."* | `400` |
+| **TC-07** | Lập phiếu thu ghi ngày ở tương lai | `paymentDate = [Ngày mai]`<br/>`amount = 1.000.000` | Nợ hợp lệ | Backend ném `BadRequestException`: *"Ngày lập phiếu thu không được ở tương lai."* | `400` |
+| **TC-08** | Lập phiếu thu nợ của khách hàng khác (IDOR) | `memberId = 2` (Hội viên B)<br/>`debtRecordId = 101` (Nợ của Hội viên A) | Cả 2 hội viên đều active | Backend ném `BadRequestException`: *"Khoản công nợ không thuộc khách hàng này."* | `400` |
+| **TC-09** | Xung đột đồng thời (Optimistic Lock) | 2 Request cùng gửi thu nợ cho `debtRecordId = 101` tại cùng một thời điểm | `version = 0` | Request 1 thành công (version lên 1).<br/>Request 2 ném `ObjectOptimisticLockingFailureException`.<br/>`error.code = CONCURRENT_UPDATE`; message: *"Dữ liệu vừa được cập nhật bởi thao tác khác. Vui lòng tải lại và thử lại."* | `409` |
+
+> **Lưu ý khi chạy ma trận:** TC-06 kiểm tra nhánh phòng vệ trong
+> `PaymentService.validateDebtRecord`, không phải luồng thao tác giao diện. Scope
+> hiện tại chưa có API/UI hủy công nợ, vì vậy không được tự sửa database production
+> chỉ để tạo dữ liệu test. Có thể kiểm tra nhánh này bằng unit/integration test cô lập
+> hoặc dữ liệu seed test có chủ đích.
+
+---
+
+## 5. Bộ Câu Hỏi Phản Biện & Phỏng Vấn Backend Intern
+
+### Câu hỏi 1: Tại sao ngày lập phiếu thu (`paymentDate`) không cho phép chọn ngày ở tương lai, trong khi ngày bắt đầu gói tập (`startDate`) lại được phép ở tương lai?
+> **Đáp án chuẩn:**
+> - `startDate` của gói tập là **quy ước về quyền lợi dịch vụ**: Khách hàng hoàn toàn có thể mua thẻ tập hôm nay để kích hoạt sử dụng vào đầu tháng sau (đăng ký trước hoặc gia hạn sớm).
+> - `paymentDate` là **chứng từ kế toán phản ánh dòng tiền thực nhập**: Phiếu thu là bằng chứng chứng minh tiền đã vào tài khoản hoặc két sắt phòng gym. Bạn không thể lập chứng từ xác nhận rằng "tôi đã nhận được tiền" cho một thời điểm trong tương lai chưa xảy ra. Quy tắc này đảm bảo tính trung thực và ngăn chặn gian lận sổ quỹ kế toán.
+
+### Câu hỏi 2: Trong phương thức `sumAmountByPaymentDateBetween`, tại sao lại dùng hàm `coalesce` trong câu lệnh JPQL?
+> **Đáp án chuẩn:**
+> Trong chuẩn SQL và JPQL, nếu bảng không có bản ghi nào thỏa mãn điều kiện `WHERE`, hàm tổng hợp `SUM(column)` sẽ trả về giá trị `NULL`.
+> - Nếu không dùng `coalesce`, Spring Data JPA sẽ ánh xạ kết quả thành `null`, dẫn đến lỗi `NullPointerException` khi gán vào `BigDecimal` hoặc khi thực hiện các phép cộng trừ trên Dashboard.
+> - Cú pháp `coalesce(sum(payment.amount), 0)` quy định: nếu tổng là `NULL`, câu truy vấn sẽ tự động thế giá trị `0` vào, giúp code backend luôn nhận về một giá trị `BigDecimal` hợp lệ, an toàn 100%.
+
+### Câu hỏi 3: Hệ thống làm thế nào để đảm bảo một nhân viên PT không thể tạo phiếu thu tiền cho hội viên của một PT khác?
+> **Đáp án chuẩn:**
+> Thông qua kiểm soát phân quyền ở tầng dữ liệu (Data-level Authorization) tại đầu phương thức `PaymentService.create()`:
+> ```java
+> memberAccessService.ensureCanAccessMember(request.memberId());
+> ```
+> Khi request gửi lên:
+> 1. Nếu người đăng nhập là `OWNER`: Phương thức trả về `true` (toàn quyền).
+> 2. Nếu người đăng nhập là `PT`: `MemberAccessService` phối hợp `PtAssignmentPolicy` kiểm tra hội viên `ACTIVE`, có gói PT hiệu lực phù hợp với PT, và có phân công hiệu lực cho PT đó; nhánh đặc biệt chỉ áp dụng khi khách PT **chưa từng có bản ghi phân công** và gói chưa gắn PT khác. Khách tự tập hoặc khách chỉ có lịch sử phân công hết hạn không được phép.
+> 3. Nếu hội viên đã được phân công cho một PT khác, phương thức ném ngay ngoại lệ `AccessDeniedException` (HTTP 403), ngăn chặn hành vi can thiệp trái phép.
+
+### Câu hỏi 4: Khách hàng quét mã VietQR và tiền đã trừ trong tài khoản ngân hàng của khách, nhưng nhân viên chưa bấm "Lập phiếu thu" trên phần mềm thì hệ thống ghi nhận trạng thái như thế nào?
+> **Đáp án chuẩn:**
+> Vì hệ thống phòng gym Dương Double chưa tích hợp webhook tự động với ngân hàng:
+> - Cho đến khi nhân viên bấm "Lập phiếu thu" trên phần mềm, hệ thống vẫn coi như khoản nợ đó **chưa được thanh toán** (trạng thái `DebtRecord` vẫn là `OPEN` hoặc `PARTIALLY_PAID`).
+> - Số tiền đó **chưa được ghi nhận vào báo cáo doanh thu** của phòng gym.
+> - Đây là đặc điểm của mô hình vận hành xác nhận thủ công: sự đồng bộ giữa số dư ngân hàng và dữ liệu phần mềm phụ thuộc vào thao tác đối soát của người vận hành.

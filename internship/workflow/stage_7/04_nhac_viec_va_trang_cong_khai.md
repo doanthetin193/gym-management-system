@@ -47,3 +47,25 @@ Nhắc hạn và công nợ cần đối chiếu tập dữ liệu frontend, b�
 ## 6. Public page khác dashboard OWNER
 
 Public route và endpoint public có thể xem khi không đăng nhập; dashboard nội bộ cần xác thực/phân quyền. Giá niêm yết hiện lấy từ API danh mục public; video lấy từ API public; còn một số nội dung giới thiệu/liên hệ có thể nằm ở frontend. Khối QR chỉ hiện khi cấu hình public đầy đủ và đang bật, không có tài khoản dự phòng. Khi thuyết trình hãy mở route, component, service và API tương ứng để ghi rõ nguồn, không nói toàn bộ nội dung được quản trị từ database chỉ vì một phần là dữ liệu động.
+
+## 7. Trang Nhắc việc thực sự làm gì?
+
+`RemindersPage` là một view frontend OWNER dùng để hỗ trợ chăm sóc thủ công. Khi tải trang, code lấy `listMembers()` và `listDebts()`, chỉ giữ member `ACTIVE`, sau đó tải chi tiết từng member để có phone/Zalo/date of birth và dựng bốn nhóm: sắp hết hạn, hết hạn, công nợ, sinh nhật. Nội dung tin nhắn được template bằng TypeScript; nút thao tác sao chép text và có thể mở đường dẫn Zalo.
+
+Không có endpoint tạo reminder, bảng reminder, cron job, gửi Zalo API, lịch sử gửi hay trạng thái “đã xử lý” trong luồng này. Các chữ như “tự động soạn” chỉ nghĩa là hệ thống tự tạo **nội dung nháp và danh sách** từ dữ liệu hiện có. Người vận hành vẫn quyết định có liên hệ không, chỉnh nội dung ra sao và gửi bằng Zalo như thế nào.
+
+Điểm đáng chú ý khi debug là Reminder page có logic tính ngày trên trình duyệt bằng `localIsoDate`, `daysBetween` và `nextBirthdayIso`, còn Dashboard notification tính với `AppClock.today()` ở backend. Hai màn hình cùng phục vụ nhắc việc nhưng không phải một API chung; nếu thấy chênh ở gần mốc nửa đêm/múi giờ, hãy so hai nguồn thay vì sửa text trước.
+
+## 8. Các API public và dữ liệu không được lộ
+
+Trang công khai gọi danh sách gói `/api/v1/public/membership-plans`, dữ liệu danh mục bài tập/video public, và cấu hình VietQR public. Mục đích là để khách chưa đăng nhập xem bảng giá, nội dung giới thiệu và thông tin chuyển khoản để liên hệ/đăng ký. Nó không trả danh sách member, khoản nợ, payment, lịch PT, tài khoản nhân sự hay dữ liệu AI.
+
+Trong component `PricingPackages`, danh sách gói là dữ liệu động từ API public; giao diện lọc theo `planType` để dựng các nhóm Tự tập, PT, Hướng dẫn và Gói khác. Phần QR gọi public VietQR setting rồi dùng helper tạo URL ảnh QR. Helper phải tôn trọng `enabled`; nếu config không đủ/đang tắt, UI không nên tạo QR. Việc khách quét/chuyển tiền không tạo membership hay payment tự động; staff xác nhận trong luồng nội bộ stage 3–4.
+
+## 9. Kịch bản review cho ranh giới public/nội bộ
+
+1. Mở trang public khi chưa đăng nhập. Ghi các endpoint Network được phép gọi và kiểm tra không có Authorization header từ auth client.
+2. Thử gọi `/v1/reports/finance`, `/v1/members`, `/v1/ai/retention-revenue-advisor` khi không có token; backend phải từ chối.
+3. Ẩn một membership plan/category exercise ở quản trị và xem public list thay đổi theo API nào.
+4. Bật/tắt VietQR, kiểm tra public UI; sau đó thử tạo payment để thấy hai thao tác độc lập.
+5. Tạo một reminder demo, sao chép nội dung và mở Zalo test. Không đánh dấu đây là bằng chứng hệ thống đã gửi tin hoặc lưu lịch sử gửi.

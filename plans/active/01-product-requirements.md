@@ -12,7 +12,7 @@ Hệ thống phục vụ phòng gym nhỏ, giúp chủ phòng và PT vận hành
 2. Bán hoặc gia hạn gói tập.
 3. Ghi nhận tiền đã thu, công nợ và báo cáo doanh thu theo ngày thu tiền thực tế.
 4. Điều phối khách có gói PT, lịch hẹn, buổi tập, số đo và mục tiêu.
-5. Cho hội viên gói PT xem tiến độ cá nhân qua Portal.
+5. Cho hội viên đang hoạt động và có gói tập hiệu lực xem dữ liệu cá nhân qua Portal; khách gói PT xem thêm tiến độ huấn luyện chi tiết.
 6. Hỗ trợ chủ phòng ra quyết định giữ chân khách và doanh thu bằng AI trên dữ liệu tổng hợp đã ẩn danh.
 
 Hệ thống chỉ quản lý nghiệp vụ gym và dòng tiền thu từ gói tập. Chi phí vận hành, lợi nhuận kế toán, lương PT và thu chi ngoài hệ thống không nằm trong scope MVP.
@@ -85,9 +85,9 @@ Hệ thống chỉ quản lý nghiệp vụ gym và dòng tiền thu từ gói t
 
 ### 3.5 Portal hội viên
 
-- OWNER cấp tài khoản Portal cho hội viên cần theo dõi tiến độ; kịch bản sử dụng chính là khách gói PT.
-- Portal hiển thị dữ liệu đồng bộ từ nghiệp vụ PT: gói, hạn, buổi còn lại, lịch hẹn, nhật ký PT, số đo, mục tiêu, phiếu thu và công nợ.
-- Endpoint cấp Portal hiện cần số điện thoại và chưa ràng buộc plan_type PT. Đây là chủ động để OWNER có thể cấp quyền xem cho hội viên cần thiết; quy trình vận hành ưu tiên cấp cho khách PT.
+- OWNER chỉ cấp tài khoản Portal cho hội viên `ACTIVE` đang có ít nhất một gói tập hiệu lực hôm nay; gói tự tập cũng đủ điều kiện, còn khách PT là kịch bản sử dụng chính.
+- Portal hiển thị gói, hạn, phiếu thu và công nợ của hội viên. Các dữ liệu đặc thù PT như buổi còn lại, lịch hẹn, nhật ký, số đo và mục tiêu chỉ có nội dung khi OWNER/PT đã ghi nhận.
+- Endpoint cấp Portal kiểm tra trạng thái hội viên và hiệu lực gói bằng `MembershipLifecyclePolicy`, nhưng không bắt buộc `plan_type = PT`. Không thể cấp mới cho hội viên chưa có gói, gói tương lai, chờ thanh toán, hết hạn hoặc hủy.
 - Portal là chế độ chỉ đọc. Mọi thay đổi về gói, tiền và lịch tập do OWNER/PT xử lý.
 
 ### 3.6 Nhắc việc, báo cáo và dữ liệu
@@ -118,7 +118,7 @@ Hệ thống chỉ quản lý nghiệp vụ gym và dòng tiền thu từ gói t
 
 - JWT stateless, token có thời hạn và token version.
 - Đổi/reset mật khẩu thu hồi hiệu lực JWT cũ ngay lập tức.
-- Đăng nhập giới hạn 5 lần sai trong 15 phút theo cả IP và tài khoản; frontend hiển thị thời gian chờ.
+- Đăng nhập đếm tối đa 5 lần sai trong cửa sổ theo dõi 15 phút theo cả IP và tài khoản; ngay lần sai thứ năm hệ thống khóa mới trọn 15 phút, trả `429` và frontend hiển thị thời gian chờ theo `Retry-After`.
 - Endpoint nhạy cảm có giới hạn theo người dùng: đổi mật khẩu, tạo/reset tài khoản, Portal và AI Advisor.
 - Mật khẩu tối thiểu 8 ký tự, có chữ và số, không trùng email, số điện thoại hay mật khẩu cũ.
 - API có security headers, CSP cơ bản, chặn iframe, no-cache cho dữ liệu JWT/API và CORS local dev rõ ràng.

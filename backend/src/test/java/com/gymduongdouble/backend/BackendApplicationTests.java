@@ -12,8 +12,12 @@ import com.gymduongdouble.backend.common.enums.MembershipStatus;
 import com.gymduongdouble.backend.common.enums.PtAssignmentStatus;
 import com.gymduongdouble.backend.finance.web.dto.CreatePaymentRequest;
 import com.gymduongdouble.backend.member.domain.Member;
+import com.gymduongdouble.backend.member.repository.MemberRepository;
+import com.gymduongdouble.backend.member.service.MemberAccessService;
+import com.gymduongdouble.backend.member.service.MemberService;
 import com.gymduongdouble.backend.membership.domain.MemberMembership;
 import com.gymduongdouble.backend.membership.domain.MembershipPlan;
+import com.gymduongdouble.backend.membership.repository.MemberMembershipRepository;
 import com.gymduongdouble.backend.membership.service.MembershipLifecyclePolicy;
 import com.gymduongdouble.backend.membership.service.MembershipPeriodStatistics;
 import com.gymduongdouble.backend.membership.web.dto.MembershipPlanResponse;
@@ -26,6 +30,7 @@ import com.gymduongdouble.backend.common.security.InMemoryRateLimiter;
 import com.gymduongdouble.backend.common.security.JwtProperties;
 import com.gymduongdouble.backend.common.security.JwtService;
 import com.gymduongdouble.backend.common.security.PasswordPolicy;
+import com.gymduongdouble.backend.common.web.dto.PageResponse;
 import com.gymduongdouble.backend.pt.domain.PtAssignment;
 import com.gymduongdouble.backend.pt.domain.PtProfile;
 import com.gymduongdouble.backend.pt.service.PtAssignmentPolicy;
@@ -35,8 +40,11 @@ import com.gymduongdouble.backend.user.domain.User;
 import jakarta.validation.Validation;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import java.math.BigDecimal;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import tools.jackson.databind.ObjectMapper;
 
 class BackendApplicationTests {
@@ -130,6 +138,35 @@ class BackendApplicationTests {
 	}
 
 	@Test
+	void portalAccountRequiresAnEffectiveMembership() {
+		Member member = new Member();
+		member.setId(1L);
+		member.setStatus(com.gymduongdouble.backend.common.enums.MemberStatus.ACTIVE);
+		member.setPhone("0901000004");
+
+		MemberRepository memberRepository = mock(MemberRepository.class);
+		MemberMembershipRepository membershipRepository = mock(MemberMembershipRepository.class);
+		when(memberRepository.findById(1L)).thenReturn(Optional.of(member));
+		when(membershipRepository.findByMemberIdOrderByStartDateDesc(1L)).thenReturn(List.of());
+
+		MemberService service = new MemberService(
+			memberRepository,
+			membershipRepository,
+			null,
+			null,
+			null,
+			null,
+			null,
+			null,
+			mock(MemberAccessService.class),
+			new MembershipLifecyclePolicy(),
+			new VietnamPhoneNormalizer()
+		);
+
+		assertThrows(BadRequestException.class, () -> service.createPortalAccount(1L, "Portal2026"));
+	}
+
+	@Test
 	void bodyMeasurementRequiresAtLeastOneMetric() {
 		try (var validatorFactory = Validation.buildDefaultValidatorFactory()) {
 			var validator = validatorFactory.getValidator();
@@ -190,19 +227,35 @@ class BackendApplicationTests {
 	}
 
 	@Test
-	void loginRateLimiterBlocksAfterFiveFailedAttemptsAndClearsAfterSuccess() {
+	void loginRateLimiterLocksForFullWindowOnFifthFailureAndClearsAfterSuccess() {
 		InMemoryRateLimiter rateLimiter = new InMemoryRateLimiter();
 		String account = "member@example.com";
 		String clientIp = "127.0.0.1";
 
-		for (int attempt = 0; attempt < 5; attempt++) {
+		for (int attempt = 0; attempt < 4; attempt++) {
 			rateLimiter.requireLoginAllowed(account, clientIp);
 			rateLimiter.recordLoginFailure(account, clientIp);
 		}
 
+		RateLimitExceededException fifthFailure = assertThrows(
+			RateLimitExceededException.class,
+			() -> rateLimiter.recordLoginFailure(account, clientIp)
+		);
+		assertTrue(fifthFailure.getRetryAfterSeconds() >= 899);
 		assertThrows(RateLimitExceededException.class, () -> rateLimiter.requireLoginAllowed(account, clientIp));
 		rateLimiter.clearLoginFailures(account, clientIp);
 		rateLimiter.requireLoginAllowed(account, clientIp);
+	}
+
+	@Test
+	void pageResponseSlicesTheAuthorizedResultSetAndKeepsTotalMetadata() {
+		PageResponse<Integer> page = PageResponse.fromItems(List.of(1, 2, 3, 4, 5), 1, 2, 10);
+
+		assertEquals(List.of(3, 4), page.items());
+		assertEquals(5, page.totalItems());
+		assertEquals(3, page.totalPages());
+		assertFalse(page.first());
+		assertFalse(page.last());
 	}
 
 	@Test

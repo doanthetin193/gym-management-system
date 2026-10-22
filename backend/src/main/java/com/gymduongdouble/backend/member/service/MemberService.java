@@ -11,6 +11,7 @@ import com.gymduongdouble.backend.common.security.PasswordPolicy;
 import com.gymduongdouble.backend.common.validation.VietnamPhoneNormalizer;
 import com.gymduongdouble.backend.common.security.SecurityUtils;
 import com.gymduongdouble.backend.common.time.AppClock;
+import com.gymduongdouble.backend.common.web.dto.PageResponse;
 import com.gymduongdouble.backend.finance.domain.DebtRecord;
 import com.gymduongdouble.backend.finance.repository.DebtRecordRepository;
 import com.gymduongdouble.backend.member.domain.Member;
@@ -18,6 +19,7 @@ import com.gymduongdouble.backend.member.repository.MemberRepository;
 import com.gymduongdouble.backend.member.web.dto.MemberCreateRequest;
 import com.gymduongdouble.backend.member.web.dto.MemberDetailResponse;
 import com.gymduongdouble.backend.member.web.dto.MemberListFilter;
+import com.gymduongdouble.backend.member.web.dto.MemberListStatisticsResponse;
 import com.gymduongdouble.backend.member.web.dto.MemberResponse;
 import com.gymduongdouble.backend.member.web.dto.MemberSummaryResponse;
 import com.gymduongdouble.backend.member.web.dto.MemberUpdateRequest;
@@ -157,6 +159,37 @@ public class MemberService {
 
     @Transactional(readOnly = true)
     public List<MemberSummaryResponse> list(String keyword, MemberListFilter filter) {
+        return resolveSummaries(keyword, filter);
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<MemberSummaryResponse> listPage(String keyword, MemberListFilter filter, int page, int size) {
+        return PageResponse.fromItems(resolveSummaries(keyword, filter), page, size, 10);
+    }
+
+    @Transactional(readOnly = true)
+    public MemberListStatisticsResponse listStatistics() {
+        List<MemberSummaryResponse> summaries = resolveSummaries(null, MemberListFilter.ALL);
+        long activeMembers = summaries.stream()
+            .filter(summary -> summary.daysUntilExpiration() != null && summary.daysUntilExpiration() > EXPIRING_SOON_DAYS)
+            .count();
+        long expiringSoonMembers = summaries.stream()
+            .filter(summary -> summary.daysUntilExpiration() != null)
+            .filter(summary -> summary.daysUntilExpiration() >= 0 && summary.daysUntilExpiration() <= EXPIRING_SOON_DAYS)
+            .count();
+        long expiredMembers = summaries.stream()
+            .filter(summary -> summary.daysUntilExpiration() != null && summary.daysUntilExpiration() < 0)
+            .count();
+
+        return new MemberListStatisticsResponse(
+            summaries.size(),
+            activeMembers,
+            expiringSoonMembers,
+            expiredMembers
+        );
+    }
+
+    private List<MemberSummaryResponse> resolveSummaries(String keyword, MemberListFilter filter) {
         List<Member> members = StringUtils.hasText(keyword)
             ? memberRepository.findByFullNameContainingIgnoreCaseOrPhoneContaining(keyword.trim(), keyword.trim())
             : memberRepository.findAll();
@@ -232,6 +265,7 @@ public class MemberService {
         if (member.getUser() != null) {
             throw new ConflictException("Hội viên này đã có tài khoản Portal.");
         }
+        requirePortalEligibility(member);
 
         String cleanPhone = requirePortalPhone(member);
         String defaultEmail = portalEmailFor(member, cleanPhone);
@@ -357,6 +391,18 @@ public class MemberService {
             throw new BadRequestException("Hội viên cần có số điện thoại trước khi cấp tài khoản Portal.");
         }
         return member.getPhone().trim();
+    }
+
+    private void requirePortalEligibility(Member member) {
+        if (member.getStatus() != MemberStatus.ACTIVE) {
+            throw new BadRequestException("Chỉ có thể cấp tài khoản Portal cho hội viên đang hoạt động.");
+        }
+
+        boolean hasEffectiveMembership = memberMembershipRepository.findByMemberIdOrderByStartDateDesc(member.getId()).stream()
+            .anyMatch(membership -> membershipLifecyclePolicy.isEffective(membership, AppClock.today()));
+        if (!hasEffectiveMembership) {
+            throw new BadRequestException("Chỉ có thể cấp tài khoản Portal khi hội viên có gói tập đang hiệu lực.");
+        }
     }
 
     private String portalEmailFor(Member member, String cleanPhone) {

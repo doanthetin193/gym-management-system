@@ -46,7 +46,7 @@ PT vận hành khách PT trong phạm vi phân quyền:
 
 ### MEMBER
 
-MEMBER chỉ truy cập Portal my-progress của chính mình. Portal được OWNER cấp theo nhu cầu theo dõi tiến độ, chủ yếu cho hội viên gói PT. Endpoint cấp tài khoản hiện yêu cầu số điện thoại và không ràng buộc plan_type PT.
+MEMBER chỉ truy cập Portal my-progress của chính mình. OWNER chỉ cấp mới Portal cho hội viên `ACTIVE` có tối thiểu một membership hiệu lực hôm nay; điều kiện này không bắt buộc `plan_type` PT nên khách tự tập đang có gói cũng có thể xem dữ liệu cá nhân. Khách PT là nhóm có thêm lịch, buổi, số đo và mục tiêu để theo dõi.
 
 ### Public
 
@@ -68,7 +68,7 @@ Khách vãng lai chỉ xem trang chủ, bảng giá, thư viện TikTok, bài t�
 
 ### Rate limit
 
-- Login: năm lần sai trong 15 phút theo cả IP và identifier. Kết quả là 429 kèm Retry-After; frontend hiển thị đếm ngược.
+- Login: năm lần sai trong cửa sổ theo dõi 15 phút theo cả IP và identifier sẽ tạo khóa trọn 15 phút từ lần sai thứ năm. Request thứ năm trả 429 kèm Retry-After; frontend hiển thị đếm ngược.
 - Endpoint nhạy cảm: tối đa mười request trong 15 phút theo actor cho đổi password, tạo/reset team user, tạo/reset Portal và AI Advisor.
 - Rate limiter hiện là in-memory, phù hợp một process local; không phải distributed rate limit.
 

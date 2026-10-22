@@ -1,11 +1,13 @@
 package com.gymduongdouble.backend.member.web;
 
 import com.gymduongdouble.backend.common.web.dto.ApiResponse;
+import com.gymduongdouble.backend.common.web.dto.PageResponse;
 import com.gymduongdouble.backend.member.service.MemberService;
 import com.gymduongdouble.backend.member.web.dto.CreatePortalAccountRequest;
 import com.gymduongdouble.backend.member.web.dto.MemberCreateRequest;
 import com.gymduongdouble.backend.member.web.dto.MemberDetailResponse;
 import com.gymduongdouble.backend.member.web.dto.MemberListFilter;
+import com.gymduongdouble.backend.member.web.dto.MemberListStatisticsResponse;
 import com.gymduongdouble.backend.member.web.dto.MemberResponse;
 import com.gymduongdouble.backend.member.web.dto.MemberSummaryResponse;
 import com.gymduongdouble.backend.member.web.dto.MemberUpdateRequest;
@@ -57,6 +59,23 @@ public class MemberController {
         @RequestParam(defaultValue = "ALL") MemberListFilter filter
     ) {
         return ApiResponse.ok(memberService.list(keyword, filter));
+    }
+
+    @GetMapping("/page")
+    @PreAuthorize("hasAnyRole('OWNER', 'PT')")
+    public ApiResponse<PageResponse<MemberSummaryResponse>> listPage(
+        @RequestParam(required = false) String keyword,
+        @RequestParam(defaultValue = "ALL") MemberListFilter filter,
+        @RequestParam(defaultValue = "0") int page,
+        @RequestParam(defaultValue = "10") int size
+    ) {
+        return ApiResponse.ok(memberService.listPage(keyword, filter, page, size));
+    }
+
+    @GetMapping("/statistics")
+    @PreAuthorize("hasAnyRole('OWNER', 'PT')")
+    public ApiResponse<MemberListStatisticsResponse> statistics() {
+        return ApiResponse.ok(memberService.listStatistics());
     }
 
     @PostMapping("/{id}/portal-account")

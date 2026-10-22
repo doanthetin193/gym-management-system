@@ -54,3 +54,33 @@ Trước khi xuất, ghi số record test của hội viên, payment, debt, plan
 Trong `syncGoogleSheet`, frontend tải chi tiết từng member bằng `getMemberDetail`, sau đó POST JSON chứa `token`, `source` và `payload`. Payload gồm `generatedAt`, `period`, `dashboard`, `financeReport`, `memberReport`, `members`, `memberDetails`, `membershipPlans`, `debts`, `payments`. Như vậy request đồng bộ có thể chứa thông tin hội viên và giao dịch, khác với payload tổng hợp gửi Groq trong chức năng AI. Cần xem kỹ người nhận, quyền truy cập sheet và nội dung thực tế trước khi dùng dữ liệu thật.
 
 Frontend kiểm tra HTTP `response.ok`; nếu body bắt đầu bằng `{`, code parse JSON và từ chối khi `success === false`. Kết quả thành công trên UI chỉ cho biết request đã được xử lý theo những kiểm tra đó, không tự chứng minh script đã ghi đầy đủ hoặc có thể khôi phục dữ liệu. Không dùng token thật khi minh họa.
+
+## 9. XLSX được tạo ở đâu và có gì trong file?
+
+[`xlsxExport.ts`](../../../frontend/src/features/reports/lib/xlsxExport.ts) tự tạo một gói ZIP theo cấu trúc Office Open XML tối giản: worksheet XML, workbook XML, relationship XML, bảng CRC32 và `Blob` để tải qua trình duyệt. Không có backend endpoint “export file” và không có thư viện Excel lớn ở luồng này. Điều đó làm export gọn, nhưng cũng có giới hạn: định dạng xuất hiện tại thiên về bảng giá trị/hàng tiêu đề, không phải template Excel có công thức, style phức tạp, macro hay cơ chế restore database.
+
+`ReportsPage` xuất riêng các sheet Hội viên, Thanh toán, Công nợ, Gói tập; backup giao diện ghép năm sheet gồm bốn loại đó và Doanh thu theo các hàng finance report. Tên sheet được làm sạch ký tự cấm và cắt tối đa 31 ký tự trước khi tạo file. Vì rows được tạo từ state frontend đã tải, export phản ánh **dữ liệu/period tại thời điểm màn hình tải**, không phải transaction snapshot do PostgreSQL khóa nhất quán cho một job export server-side.
+
+## 10. Google Sheets là direct client integration
+
+Khi bấm đồng bộ, `ReportsPage` lưu Apps Script URL và token vào `localStorage`, tải thêm chi tiết từng hội viên rồi dùng `fetch` POST trực tiếp tới URL Apps Script. Request có header `Content-Type: text/plain;charset=utf-8` và body bao gồm `token`, `source` và payload báo cáo. Backend không nhận request đồng bộ này, không có hàng đợi, không có retry server-side và không rate-limit nó ở Java vì request đi thẳng từ browser sang Apps Script.
+
+Điều này cần được nói rõ khi review security: token sync nằm ở localStorage của browser OWNER đang dùng, không phải secret Groq ở backend. Chủ phòng phải coi spreadsheet/Web App URL và token là thông tin vận hành nhạy cảm; chỉ chia sẻ cho người được phép, dùng token đủ mạnh và thay token nếu nghi lộ. CORS, quyền triển khai Apps Script, quy tắc ghi đè/thêm dòng, và idempotency nằm ở **mã Apps Script bên ngoài repository này** nên không thể khẳng định từ code hiện tại.
+
+## 11. Phân biệt ba khái niệm dễ bị gọi nhầm là “backup”
+
+| Khái niệm | Có trong hệ thống hiện tại? | Có thể restore PostgreSQL trực tiếp? |
+| --- | --- | --- |
+| Tải XLSX báo cáo trên UI | Có | Không |
+| Gửi snapshot dữ liệu cho Google Sheets | Có | Không, phụ thuộc Apps Script/sheet |
+| Backup database gồm schema, quan hệ, dữ liệu, quy trình restore | Không phải tính năng backend hiện tại | Chỉ làm được bằng công cụ/quy trình PostgreSQL riêng |
+
+Đặt nút “Full Backup” trên UI không thay đổi ranh giới kỹ thuật trên. Trong báo cáo/mentor demo, hãy gọi đúng là “xuất gói dữ liệu XLSX phục vụ đối chiếu/báo cáo”; không nói đây là disaster recovery nếu chưa có dump/restore được kiểm thử.
+
+## 12. Checklist đối chiếu export và sync
+
+1. Tải XLSX dữ liệu test, kiểm tra số sheet, tên sheet, header, một row trống và một chuỗi có dấu/ký tự XML như `&` để thấy `escapeXml` hoạt động.
+2. So số payment trong sheet với list trên màn hình và số doanh thu với finance rows. Phân biệt payment toàn lịch sử với row finance theo năm đang chọn.
+3. Kiểm tra URL/token trống: frontend phải chặn trước khi gọi `fetch`.
+4. Dùng Apps Script test độc lập, kiểm tra HTTP response và sheet đích. Thử gửi lại cùng dữ liệu để biết script đang append, overwrite hay chống trùng; code frontend không quyết định điều đó.
+5. Xóa/đổi cấu hình localStorage chỉ trong tài khoản test để hiểu config không được đồng bộ qua database hay giữa các trình duyệt.

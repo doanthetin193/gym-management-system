@@ -84,7 +84,7 @@ OWNER seed có cả role OWNER và PT. Vì vậy chủ phòng vẫn giữ quyề
 
 ### Rate limit và password policy
 
-- Login: tối đa 5 lần sai trong cửa sổ 15 phút theo IP và identifier.
+- Login: năm lần sai phải nằm trong cửa sổ theo dõi 15 phút theo IP và identifier; lần sai thứ năm tạo khóa mới trọn 15 phút và trả `429` kèm `Retry-After`.
 - Endpoint nhạy cảm: 10 request trong 15 phút theo actor cho đổi/reset password, tạo/reset tài khoản, Portal và AI Advisor.
 - Password được mã hóa BCrypt và phải đạt chính sách tối thiểu của hệ thống.
 

@@ -1,6 +1,8 @@
 import {
   Banknote,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   CreditCard,
   History,
   RefreshCcw,
@@ -8,17 +10,43 @@ import {
   WalletCards,
   X,
 } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ApiClientError } from '../../../shared/api/apiClient'
-import { localIsoDate } from '../../../shared/lib/date'
-import { createPayment, listDebts, listPayments } from '../api/paymentApi'
+import type { PageResponse } from '../../../shared/types/pagination'
+import { createPayment, getFinanceSummary, listDebts, listDebtsPage, listPaymentsPage } from '../api/paymentApi'
 import { PaymentFormModal } from '../components/PaymentFormModal'
 import { paymentMethodLabels } from '../types/payment'
-import type { DebtRecord, DebtStatus, PaymentPayload, PaymentTransaction } from '../types/payment'
+import type { DebtRecord, DebtStatus, FinanceSummary, PaymentPayload, PaymentTransaction } from '../types/payment'
 
 type ActiveTab = 'debts' | 'payments'
 type DebtFilter = 'ALL' | 'OPEN' | 'PAID'
+
+const EMPTY_DEBT_PAGE: PageResponse<DebtRecord> = {
+  items: [],
+  page: 0,
+  size: 10,
+  totalItems: 0,
+  totalPages: 0,
+  first: true,
+  last: true,
+}
+
+const EMPTY_PAYMENT_PAGE: PageResponse<PaymentTransaction> = {
+  items: [],
+  page: 0,
+  size: 10,
+  totalItems: 0,
+  totalPages: 0,
+  first: true,
+  last: true,
+}
+
+const EMPTY_FINANCE_SUMMARY: FinanceSummary = {
+  openDebtCount: 0,
+  totalOpenDebt: 0,
+  paidToday: 0,
+}
 
 const debtFilters: Array<{ value: DebtFilter; label: string }> = [
   { value: 'OPEN', label: 'Cần thu' },
@@ -68,8 +96,10 @@ function debtStatusLabel(status: DebtStatus) {
 export function PaymentsPage() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('debts')
   const [debtFilter, setDebtFilter] = useState<DebtFilter>('OPEN')
-  const [debts, setDebts] = useState<DebtRecord[]>([])
-  const [payments, setPayments] = useState<PaymentTransaction[]>([])
+  const [debtPage, setDebtPage] = useState<PageResponse<DebtRecord>>(EMPTY_DEBT_PAGE)
+  const [paymentPage, setPaymentPage] = useState<PageResponse<PaymentTransaction>>(EMPTY_PAYMENT_PAGE)
+  const [financeSummary, setFinanceSummary] = useState<FinanceSummary>(EMPTY_FINANCE_SUMMARY)
+  const [openDebtOptions, setOpenDebtOptions] = useState<DebtRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [paymentModalOpen, setPaymentModalOpen] = useState(false)
@@ -77,41 +107,36 @@ export function PaymentsPage() {
   const [formError, setFormError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [keyword, setKeyword] = useState('')
-
-  const openDebts = useMemo(
-    () => debts.filter((debt) => debt.status === 'OPEN' || debt.status === 'PARTIALLY_PAID'),
-    [debts],
-  )
-
-  const stats = useMemo(() => {
-    const totalRemaining = debts.reduce((sum, debt) => sum + debt.remainingAmount, 0)
-    const paidToday = payments
-      .filter((payment) => payment.paymentDate === localIsoDate())
-      .reduce((sum, payment) => sum + payment.amount, 0)
-
-    return {
-      openCount: openDebts.length,
-      totalRemaining,
-      paidToday,
-    }
-  }, [debts, openDebts.length, payments])
+  const [page, setPage] = useState(0)
+  const [pageSize, setPageSize] = useState(10)
 
   const loadData = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
-      const [debtData, paymentData] = await Promise.all([
-        listDebts({ status: debtFilter === 'ALL' ? undefined : debtFilter }),
-        listPayments(),
+      const [debtData, paymentData, summaryData] = await Promise.all([
+        listDebtsPage({
+          status: debtFilter === 'ALL' ? undefined : debtFilter,
+          keyword,
+          page,
+          size: pageSize,
+        }),
+        listPaymentsPage({ keyword, page, size: pageSize }),
+        getFinanceSummary(),
       ])
-      setDebts(debtData)
-      setPayments(paymentData)
+      setDebtPage(debtData)
+      setPaymentPage(paymentData)
+      setFinanceSummary(summaryData)
+      const activeResponse = activeTab === 'debts' ? debtData : paymentData
+      if (activeResponse.page !== page) {
+        setPage(activeResponse.page)
+      }
     } catch (caughtError) {
       setError(errorMessage(caughtError))
     } finally {
       setLoading(false)
     }
-  }, [debtFilter])
+  }, [activeTab, debtFilter, keyword, page, pageSize])
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -121,10 +146,16 @@ export function PaymentsPage() {
     return () => window.clearTimeout(timeoutId)
   }, [loadData])
 
-  function openPaymentModal(debt: DebtRecord) {
+  async function openPaymentModal(debt: DebtRecord) {
     setSelectedDebt(debt)
+    setOpenDebtOptions([debt])
     setFormError(null)
     setPaymentModalOpen(true)
+    try {
+      setOpenDebtOptions(await listDebts({ status: 'OPEN' }))
+    } catch (caughtError) {
+      setFormError(errorMessage(caughtError))
+    }
   }
 
   async function handleCreatePayment(payload: PaymentPayload) {
@@ -134,7 +165,7 @@ export function PaymentsPage() {
       await createPayment(payload)
       setPaymentModalOpen(false)
       setSelectedDebt(null)
-      await loadData()
+      await Promise.all([loadData(), listDebts({ status: 'OPEN' }).then(setOpenDebtOptions)])
     } catch (caughtError) {
       setFormError(errorMessage(caughtError))
     } finally {
@@ -142,26 +173,7 @@ export function PaymentsPage() {
     }
   }
 
-  const filteredDebts = useMemo(() => {
-    const q = keyword.trim().toLowerCase()
-    if (!q) return debts
-    return debts.filter(
-      (debt) =>
-        debt.memberName.toLowerCase().includes(q) ||
-        (debt.memberPhone && debt.memberPhone.includes(q)) ||
-        (debt.planName && debt.planName.toLowerCase().includes(q)),
-    )
-  }, [debts, keyword])
-
-  const filteredPayments = useMemo(() => {
-    const q = keyword.trim().toLowerCase()
-    if (!q) return payments
-    return payments.filter(
-      (payment) =>
-        payment.memberName.toLowerCase().includes(q) ||
-        (payment.note && payment.note.toLowerCase().includes(q)),
-    )
-  }, [payments, keyword])
+  const activePage = activeTab === 'debts' ? debtPage : paymentPage
 
   return (
     <div className="mx-auto max-w-7xl space-y-5 pb-12">
@@ -210,7 +222,7 @@ export function PaymentsPage() {
           </div>
           <div className="mt-2 flex items-baseline gap-2">
             <span className="text-2xl font-black text-[var(--text-strong)] sm:text-3xl">
-              {stats.openCount}
+              {financeSummary.openDebtCount}
             </span>
             <span className="text-xs font-bold text-[var(--text-muted)]">hồ sơ nợ</span>
           </div>
@@ -231,7 +243,7 @@ export function PaymentsPage() {
           </div>
           <div className="mt-2 flex items-baseline gap-1">
             <span className="text-2xl font-black text-red-500 sm:text-3xl">
-              {formatMoney(stats.totalRemaining)}
+              {formatMoney(financeSummary.totalOpenDebt)}
             </span>
           </div>
           <p className="mt-2 text-xs font-semibold text-red-400/90">
@@ -251,7 +263,7 @@ export function PaymentsPage() {
           </div>
           <div className="mt-2 flex items-baseline gap-1">
             <span className="text-2xl font-black text-emerald-500 sm:text-3xl">
-              {formatMoney(stats.paidToday)}
+              {formatMoney(financeSummary.paidToday)}
             </span>
           </div>
           <p className="mt-2 text-xs font-semibold text-emerald-500/90">
@@ -268,7 +280,10 @@ export function PaymentsPage() {
           <div className="flex items-center gap-1 rounded-xl border border-[var(--line)] bg-[var(--surface-muted)] p-1">
             <button
               type="button"
-              onClick={() => setActiveTab('debts')}
+              onClick={() => {
+                setActiveTab('debts')
+                setPage(0)
+              }}
               className={[
                 'inline-flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs font-black transition',
                 activeTab === 'debts'
@@ -277,11 +292,14 @@ export function PaymentsPage() {
               ].join(' ')}
             >
               <WalletCards size={15} />
-              Công nợ ({debts.length})
+              Công nợ ({debtPage.totalItems})
             </button>
             <button
               type="button"
-              onClick={() => setActiveTab('payments')}
+              onClick={() => {
+                setActiveTab('payments')
+                setPage(0)
+              }}
               className={[
                 'inline-flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-xs font-black transition',
                 activeTab === 'payments'
@@ -290,7 +308,7 @@ export function PaymentsPage() {
               ].join(' ')}
             >
               <History size={15} />
-              Lịch sử thu ({payments.length})
+              Lịch sử thu ({paymentPage.totalItems})
             </button>
           </div>
 
@@ -302,7 +320,10 @@ export function PaymentsPage() {
                   <button
                     key={filter.value}
                     type="button"
-                    onClick={() => setDebtFilter(filter.value)}
+                    onClick={() => {
+                      setDebtFilter(filter.value)
+                      setPage(0)
+                    }}
                     className={[
                       'rounded-lg px-3 py-1 text-xs font-black transition',
                       debtFilter === filter.value
@@ -321,14 +342,20 @@ export function PaymentsPage() {
               <Search size={14} className="shrink-0 text-[var(--text-muted)]" />
               <input
                 value={keyword}
-                onChange={(e) => setKeyword(e.target.value)}
+                onChange={(e) => {
+                  setKeyword(e.target.value)
+                  setPage(0)
+                }}
                 placeholder="Tìm hội viên, gói tập..."
                 className="ml-2 w-full bg-transparent font-semibold text-[var(--text-strong)] placeholder:text-[var(--text-muted)] outline-none"
               />
               {keyword ? (
                 <button
                   type="button"
-                  onClick={() => setKeyword('')}
+                  onClick={() => {
+                    setKeyword('')
+                    setPage(0)
+                  }}
                   className="rounded-md p-0.5 text-[var(--text-muted)] hover:text-[var(--text-strong)]"
                 >
                   <X size={13} />
@@ -346,16 +373,28 @@ export function PaymentsPage() {
 
         {/* Tab Content Table */}
         {activeTab === 'debts' ? (
-          <DebtTable debts={filteredDebts} loading={loading} onCollect={openPaymentModal} />
+          <DebtTable debts={debtPage.items} loading={loading} onCollect={(debt) => void openPaymentModal(debt)} />
         ) : (
-          <PaymentTable payments={filteredPayments} loading={loading} />
+          <PaymentTable payments={paymentPage.items} loading={loading} />
         )}
+
+        <PaginationFooter
+          page={activePage.page}
+          size={activePage.size}
+          totalItems={activePage.totalItems}
+          totalPages={activePage.totalPages}
+          onPageChange={setPage}
+          onPageSizeChange={(nextSize) => {
+            setPageSize(nextSize)
+            setPage(0)
+          }}
+        />
       </section>
 
       {/* Payment Form Modal */}
       {paymentModalOpen && selectedDebt ? (
         <PaymentFormModal
-          debts={openDebts}
+          debts={openDebtOptions}
           selectedDebt={selectedDebt}
           submitting={submitting}
           error={formError}
@@ -554,6 +593,81 @@ function PaymentTable({ payments, loading }: { payments: PaymentTransaction[]; l
           )}
         </tbody>
       </table>
+    </div>
+  )
+}
+
+function PaginationFooter({
+  page,
+  size,
+  totalItems,
+  totalPages,
+  onPageChange,
+  onPageSizeChange,
+}: {
+  page: number
+  size: number
+  totalItems: number
+  totalPages: number
+  onPageChange: (page: number) => void
+  onPageSizeChange: (size: number) => void
+}) {
+  if (totalItems === 0) {
+    return null
+  }
+
+  const fromIndex = page * size + 1
+  const toIndex = Math.min((page + 1) * size, totalItems)
+
+  return (
+    <div className="flex flex-col gap-3 border-t border-[var(--line)] px-4 py-3 text-xs font-semibold text-[var(--text-muted)] sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-wrap items-center gap-3">
+        <span>
+          Hiển thị <strong className="text-[var(--text-strong)]">{fromIndex}</strong> -{' '}
+          <strong className="text-[var(--text-strong)]">{toIndex}</strong> trên{' '}
+          <strong className="text-[var(--text-strong)]">{totalItems}</strong> bản ghi
+        </span>
+        <label className="flex items-center gap-1.5">
+          <span>Số dòng:</span>
+          <select
+            value={size}
+            onChange={(event) => onPageSizeChange(Number(event.target.value))}
+            className="h-7 rounded-lg border border-[var(--line)] bg-[var(--surface-muted)] px-2 text-xs font-bold text-[var(--text-strong)] outline-none"
+          >
+            {[10, 20, 50].map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      {totalPages > 1 ? (
+        <div className="flex items-center gap-1.5 self-end sm:self-auto">
+          <button
+            type="button"
+            disabled={page === 0}
+            onClick={() => onPageChange(page - 1)}
+            className="inline-flex h-8 items-center gap-1 rounded-lg border border-[var(--line)] bg-[var(--surface)] px-2.5 font-bold text-[var(--text)] transition hover:border-amber-400 hover:text-amber-400 disabled:pointer-events-none disabled:opacity-40"
+          >
+            <ChevronLeft size={14} />
+            <span>Trước</span>
+          </button>
+          <span className="min-w-16 text-center font-bold text-[var(--text-strong)]">
+            {page + 1} / {totalPages}
+          </span>
+          <button
+            type="button"
+            disabled={page >= totalPages - 1}
+            onClick={() => onPageChange(page + 1)}
+            className="inline-flex h-8 items-center gap-1 rounded-lg border border-[var(--line)] bg-[var(--surface)] px-2.5 font-bold text-[var(--text)] transition hover:border-amber-400 hover:text-amber-400 disabled:pointer-events-none disabled:opacity-40"
+          >
+            <span>Sau</span>
+            <ChevronRight size={14} />
+          </button>
+        </div>
+      ) : null}
     </div>
   )
 }

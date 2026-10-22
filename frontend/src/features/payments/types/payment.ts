@@ -55,9 +55,16 @@ export type PaymentPayload = {
   note?: string | null
 }
 
+export type FinanceSummary = {
+  openDebtCount: number
+  totalOpenDebt: number
+  paidToday: number
+}
+
 export type ListDebtsParams = {
   memberId?: number
   status?: DebtStatus | 'OPEN'
+  keyword?: string
 }
 
 export type ListPaymentsParams = {
@@ -65,4 +72,5 @@ export type ListPaymentsParams = {
   fromDate?: string
   toDate?: string
   paymentMethod?: PaymentMethod
+  keyword?: string
 }

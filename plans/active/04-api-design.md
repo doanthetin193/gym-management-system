@@ -29,10 +29,12 @@ Login nhận rememberMe để quyết định thời hạn token. Password polic
 | Method | Endpoint | Quyền | Mục đích |
 | --- | --- | --- | --- |
 | GET | /v1/members | OWNER, PT | Tìm kiếm/lọc hội viên trong phạm vi phân quyền. |
+| GET | /v1/members/page | OWNER, PT | Danh sách hội viên phân trang cho màn quản trị; nhận keyword, filter, page, size. |
+| GET | /v1/members/statistics | OWNER, PT | Tổng số hội viên theo trạng thái gói trong phạm vi phân quyền. |
 | POST | /v1/members | OWNER, PT | Tạo hội viên. |
 | GET | /v1/members/{id} | OWNER, PT | Lấy chi tiết hội viên. |
 | PUT | /v1/members/{id} | OWNER, PT | Cập nhật hồ sơ hội viên. |
-| POST | /v1/members/{id}/portal-account | OWNER | Cấp tài khoản Portal MEMBER. |
+| POST | /v1/members/{id}/portal-account | OWNER | Cấp Portal cho hội viên `ACTIVE` có ít nhất một gói đang hiệu lực; không bắt buộc loại gói PT. |
 | PUT | /v1/members/{id}/portal-account/status | OWNER | Khóa/mở khóa Portal. |
 | POST | /v1/members/{id}/portal-account/reset-password | OWNER | Đặt lại mật khẩu Portal và thu hồi JWT cũ. |
 | DELETE | /v1/members/{id}/portal-account | OWNER | Gỡ liên kết tài khoản Portal khỏi hội viên. |
@@ -60,12 +62,15 @@ Request tạo membership có planId, startDate, giá, giảm giá, initialPaidAm
 | --- | --- | --- | --- |
 | POST | /v1/payments | OWNER, PT | Lập phiếu thu mới, bao gồm thu nợ từng phần. |
 | GET | /v1/payments | OWNER, PT | Lọc phiếu thu theo hội viên, khoảng ngày và phương thức. |
+| GET | /v1/payments/page | OWNER, PT | Danh sách phiếu thu phân trang; hỗ trợ tìm kiếm theo hội viên, gói hoặc ghi chú. |
+| GET | /v1/payments/summary | OWNER, PT | KPI công nợ mở và thực thu hôm nay trong phạm vi dữ liệu được phép xem. |
 | GET | /v1/debts | OWNER, PT | Lấy công nợ theo phạm vi dữ liệu. |
+| GET | /v1/debts/page | OWNER, PT | Danh sách công nợ phân trang; hỗ trợ trạng thái, hội viên và từ khóa. |
 | GET | /v1/settings/vietqr | OWNER | Lấy cấu hình VietQR đầy đủ. |
 | PUT | /v1/settings/vietqr | OWNER | Cập nhật cấu hình VietQR. |
 | GET | /v1/public/vietqr-setting | Public | Lấy thông tin VietQR để hiển thị; frontend chỉ dựng QR khi cấu hình bật và đủ dữ liệu nhận tiền. |
 
-CreatePaymentRequest yêu cầu amount dương và paymentMethod. paymentDate nếu bỏ trống sẽ theo quy tắc service, nhưng không bao giờ được là ngày tương lai.
+CreatePaymentRequest yêu cầu amount dương và paymentMethod. paymentDate nếu bỏ trống sẽ theo quy tắc service, nhưng không bao giờ được là ngày tương lai. Endpoint list gốc được giữ cho các luồng tổng hợp có contract `List<T>`; ba endpoint `/page` phục vụ bảng quản trị và trả `PageResponse<T>`.
 
 ## 6. PT, lịch hẹn và tiến độ
 

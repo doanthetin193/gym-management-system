@@ -70,6 +70,7 @@ Mục tiêu: tạo trải nghiệm xem tiến độ cho học viên PT và kênh
 Đã hoàn thành:
 
 - OWNER cấp/khóa/reset/xóa tài khoản Portal MEMBER.
+- Chỉ cấp mới Portal cho hội viên `ACTIVE` có gói tập hiệu lực; gói tự tập vẫn có thể được cấp để xem thông tin cá nhân, còn dữ liệu PT chỉ hiển thị khi tồn tại.
 - Portal chỉ đọc dữ liệu cá nhân: gói, công nợ, toàn bộ phiếu thu, lịch SCHEDULED còn ở tương lai theo giờ Việt Nam, buổi, số đo và mục tiêu. Gói PT được chọn theo trạng thái và thời hạn thực tế.
 - Thư viện TikTok public, trang chi tiết và trang OWNER quản lý danh mục/video.
 - TikTok chỉ nhúng video để xem; không quản lý lượt xem hay tác giả TikTok.
@@ -115,7 +116,7 @@ Mục tiêu: thêm một ứng dụng AI có giá trị vận hành và hoàn th
 - Rule segment rủi ro/cơ hội, Groq diễn giải và fallback rule-based.
 - Không gửi PII hay giao dịch cá nhân chi tiết sang AI provider.
 - JWT token version để thu hồi token cũ khi đổi/reset mật khẩu.
-- Login rate limit 5 lần sai/15 phút theo IP và identifier.
+- Login rate limit theo IP và identifier: năm lần sai trong cửa sổ theo dõi 15 phút sẽ khóa trọn 15 phút tính từ lần sai thứ năm, trả 429 cùng Retry-After để frontend đếm ngược.
 - Rate limit cho endpoint nhạy cảm.
 - Password policy, lastLoginAt, API security headers, no-cache và CORS local dev.
 

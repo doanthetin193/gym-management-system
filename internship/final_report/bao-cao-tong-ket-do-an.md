@@ -386,15 +386,15 @@ Các nhóm có thể chồng lắp, vì vậy không cộng số khách ở mọ
 
 **Tác nhân:** OWNER. **Mục tiêu:** liên kết một tài khoản MEMBER với hồ sơ hội viên để khách tự theo dõi dữ liệu.
 
-1. Chủ phòng mở hồ sơ hội viên và tạo tài khoản theo biểu mẫu.
-2. Backend kiểm tra quyền, dữ liệu tài khoản và chính sách mật khẩu; liên kết user với member theo logic trong `MemberService`.
+1. Chủ phòng mở hồ sơ hội viên và tạo tài khoản theo biểu mẫu. Nút cấp chỉ khả dụng khi hội viên đang hoạt động và có gói hiệu lực.
+2. Backend kiểm tra quyền, trạng thái `ACTIVE`, ít nhất một membership hiệu lực hôm nay, dữ liệu tài khoản và chính sách mật khẩu; sau đó liên kết user với member theo logic trong `MemberService`.
 3. Hội viên đăng nhập bằng thông tin tài khoản được cấp và truy cập `/my-progress`.
 4. `MemberPortalController` lấy user đã xác thực; `MemberPortalService` tìm hội viên bằng user ID và chỉ tổng hợp dữ liệu của hội viên đó.
 5. OWNER có thể thao tác trạng thái, reset mật khẩu hoặc gỡ liên kết qua các endpoint tương ứng; việc đổi/reset mật khẩu có cơ chế làm token cũ không còn hợp lệ.
 
 Nếu tài khoản chưa liên kết hồ sơ hoặc hội viên đã ngừng hoạt động theo kiểm tra service, portal không trả dữ liệu bình thường. Việc người khác biết số điện thoại không đủ để xem portal; hệ thống hiện dùng tài khoản và mật khẩu.
 
-`createPortalAccount` cần số điện thoại và kiểm tra trùng/khả năng tái sử dụng tài khoản; method hiện không kiểm tra bắt buộc hội viên đã có gói PT. Vì vậy không nên thuyết trình rằng backend đã áp ràng buộc “chỉ cấp portal cho người có gói PT”. Khi xóa liên kết, service có thể xóa user portal thỏa điều kiện hoặc khóa user chỉ có role MEMBER theo nhánh xử lý; không đồng nhất thao tác này với xóa hồ sơ hội viên.
+`createPortalAccount` cần hội viên `ACTIVE`, số điện thoại, ít nhất một membership hiệu lực hôm nay và kiểm tra trùng/khả năng tái sử dụng tài khoản. Rule dùng `MembershipLifecyclePolicy`, vì vậy gói tương lai, chờ thanh toán, hết hạn hoặc hủy không đủ điều kiện cấp mới. Service không yêu cầu loại gói PT: khách tự tập có gói hiệu lực vẫn có thể được cấp để xem dữ liệu cá nhân. Khi xóa liên kết, service có thể xóa user portal thỏa điều kiện hoặc khóa user chỉ có role MEMBER theo nhánh xử lý; không đồng nhất thao tác này với xóa hồ sơ hội viên. Portal đã cấp không tự bị xóa chỉ vì gói sau đó hết hạn.
 
 ### 3.1.13. Đặc tả use case: quản lý danh mục gói
 
@@ -492,7 +492,7 @@ sequenceDiagram
     end
 ```
 
-Bộ đếm thất bại login được giữ trong bộ nhớ tiến trình, theo định danh và IP server nhìn thấy. Trong cửa sổ 15 phút tính từ lần sai đầu, sau khi đạt 5 lần thất bại, lần thử tiếp theo bị chặn nếu cửa sổ còn hiệu lực. Nhập đúng trong lúc bị chặn cũng không vượt qua bước kiểm tra. Restart làm mất bộ đếm; hệ thống chưa dùng bộ đếm phân tán.
+Bộ đếm thất bại login được giữ trong bộ nhớ tiến trình, theo định danh và IP server nhìn thấy. Năm lỗi phải nằm trong cửa sổ theo dõi 15 phút tính từ lần sai đầu; ngay tại lỗi thứ năm, code đặt `lockedUntil` bằng thời điểm đó cộng 15 phút và response trả `429` cùng `Retry-After` gần 900 giây. Nhập đúng trong lúc bị chặn cũng không vượt qua bước kiểm tra. Restart làm mất bộ đếm; hệ thống chưa dùng bộ đếm phân tán.
 
 ### 3.3.2. Luồng đăng ký và thu ban đầu
 
@@ -942,16 +942,16 @@ Backend mặc định chạy tại `http://localhost:8080/api`; các đường d
 | --- | --- | --- |
 | Xác thực | `POST /api/v1/auth/login` | Public; xác thực và nhận JWT. |
 | Phiên | `GET /api/v1/auth/me`, `POST /api/v1/auth/change-password` | Người dùng đã xác thực. |
-| Hội viên | `GET, POST /api/v1/members`; `GET, PUT /api/v1/members/{id}` | OWNER/PT; có kiểm tra phạm vi. |
+| Hội viên | `GET, POST /api/v1/members`; `GET /api/v1/members/page`; `GET /api/v1/members/statistics`; `GET, PUT /api/v1/members/{id}` | OWNER/PT; có kiểm tra phạm vi, bảng quản trị dùng trang phân trang và KPI riêng. |
 | Portal | `GET /api/v1/member-portal/me` | MEMBER xem dữ liệu gắn với tài khoản. |
-| Tài khoản portal | `/api/v1/members/{id}/portal-account` và các thao tác status/reset | OWNER quản lý theo method controller. |
+| Tài khoản portal | `/api/v1/members/{id}/portal-account` và các thao tác status/reset | OWNER quản lý; chỉ cấp mới cho hội viên `ACTIVE` có membership hiệu lực, không bắt buộc gói PT. |
 | Gói | `/api/v1/membership-plans`; `/api/v1/public/membership-plans`; `/api/v1/members/{id}/memberships` | Danh mục nội bộ, bảng giá công khai chỉ gồm gói đang bán và đăng ký theo quyền. |
-| Thu/nợ | `GET, POST /api/v1/payments`; `GET /api/v1/debts` | OWNER/PT, kiểm tra hội viên liên quan. |
+| Thu/nợ | `GET, POST /api/v1/payments`; `GET /api/v1/payments/page`, `/summary`; `GET /api/v1/debts`, `/page` | OWNER/PT, kiểm tra hội viên liên quan; bảng quản trị phân trang, KPI tài chính tách response. |
 | PT | `/api/v1/pt/assignments`, `/schedules`, `/members/{memberId}/...` | Phân công, lịch và ghi nhận PT theo method và quyền. |
 | Dashboard | `/api/v1/dashboard/owner`, `/api/v1/reports/finance`, `/api/v1/reports/members` | OWNER. |
 | AI | `POST /api/v1/ai/retention-revenue-advisor` | OWNER. |
 | Cài đặt | `/api/v1/settings/team-users`, `/api/v1/settings/vietqr` | OWNER quản lý nhân sự và VietQR. |
-| Public settings | `/api/v1/public/membership-plans`, `/api/v1/public/vietqr-setting` | Public; chỉ lấy gói active và cấu hình chuyển khoản đang được bật/đủ dữ liệu để hiển thị. |
+| Public settings | `/api/v1/public/membership-plans`, `/api/v1/public/vietqr-setting` | Public; endpoint gói chỉ trả gói active. Endpoint VietQR trả cấu hình hiện có; frontend chỉ dựng QR khi cấu hình đang bật và đủ dữ liệu nhận tiền. |
 | Thư viện | `/api/v1/public/exercises`, `/api/v1/owner/exercises` | Public xem nội dung công bố; OWNER quản lý. |
 
 Bảng là danh mục rút gọn. Tên method, tham số và request/response chính xác cần đối chiếu controller, DTO và tài liệu `plans/active/04-api-design.md`. Không suy ra có endpoint sửa hoặc xóa cho một tài nguyên nếu controller không khai báo.
@@ -1009,7 +1009,7 @@ Các đường dẫn trong bảng đã bao gồm context `/api`. Quyền ghi ở
 | POST | `/api/v1/settings/team-users/{id}/reset-password` | OWNER; reset mật khẩu nhân sự. |
 | GET, POST | `/api/v1/members` | OWNER/PT; danh sách hoặc tạo hội viên. |
 | GET, PUT | `/api/v1/members/{id}` | OWNER/PT; xem/sửa theo phạm vi service. |
-| POST, DELETE | `/api/v1/members/{id}/portal-account` | OWNER; tạo hoặc gỡ tài khoản portal. |
+| POST, DELETE | `/api/v1/members/{id}/portal-account` | OWNER; tạo Portal khi hội viên `ACTIVE` có gói hiệu lực, hoặc gỡ liên kết. |
 | PUT | `/api/v1/members/{id}/portal-account/status` | OWNER; đổi trạng thái tài khoản portal. |
 | POST | `/api/v1/members/{id}/portal-account/reset-password` | OWNER; reset mật khẩu portal. |
 | GET | `/api/v1/member-portal/me` | MEMBER; dữ liệu của tài khoản đang đăng nhập. |
@@ -1023,8 +1023,8 @@ Các đường dẫn trong bảng đã bao gồm context `/api`. Quyền ghi ở
 | POST | `/api/v1/membership-plans` | OWNER; tạo gói. |
 | PUT | `/api/v1/membership-plans/{id}/active` | OWNER; đổi trạng thái bán gói. |
 | GET, POST | `/api/v1/members/{memberId}/memberships` | OWNER/PT; lịch sử hoặc đăng ký theo phạm vi. |
-| GET, POST | `/api/v1/payments` | OWNER/PT; tra cứu hoặc tạo phiếu thu. |
-| GET | `/api/v1/debts` | OWNER/PT; tra cứu công nợ theo phạm vi. |
+| GET, POST | `/api/v1/payments` | OWNER/PT; tra cứu hoặc tạo phiếu thu. `/page` là contract phân trang; `/summary` trả KPI tài chính. |
+| GET | `/api/v1/debts` | OWNER/PT; tra cứu công nợ theo phạm vi. `/page` là contract phân trang. |
 | GET, POST | `/api/v1/pt/profiles` | OWNER/PT; xem/lưu profile theo điều kiện quyền. |
 | GET | `/api/v1/pt/my-members` | OWNER/PT; danh sách học viên theo quyền. |
 | POST | `/api/v1/pt/assignments` | OWNER/PT; phân công theo điều kiện service. |
@@ -1130,7 +1130,7 @@ Lựa chọn ghi nhớ làm thời hạn phiên dài hơn và dùng localStorage
 
 | Loại | Key và cửa sổ | Điều kiện chặn |
 | --- | --- | --- |
-| Login | Định danh trim/lowercase và IP `getRemoteAddr()`; 15 phút từ lần thất bại đầu trong cửa sổ. | Khi một trong hai bộ đếm đã đạt 5, lần thử tiếp theo bị chặn trong cửa sổ. |
+| Login | Định danh trim/lowercase và IP `getRemoteAddr()`; năm lỗi phải nằm trong cửa sổ theo dõi 15 phút từ lỗi đầu. | Lỗi thứ năm đặt `lockedUntil` mới bằng 15 phút và trả 429 ngay; trong thời gian đó, một trong hai key còn khóa sẽ chặn cả mật khẩu đúng. |
 | Thao tác nhạy cảm | Operation và actor đã xác thực, hoặc IP; 15 phút. | Được tiêu thụ tối đa 10 request trong cửa sổ; các request sau bị chặn theo logic filter. |
 
 Login chuẩn hóa key bằng trim/lowercase, trong khi tra cứu user còn có chuẩn hóa số điện thoại. Vì vậy các cách viết khác nhau của một số có thể tạo các key định danh khác nhau, dù bộ đếm IP vẫn được áp dụng. Bộ đếm bị xóa khi process restart, không chia sẻ giữa instance và có thể ảnh hưởng người dùng chung IP. Một proxy cần cấu hình IP tin cậy trước khi có thể sử dụng chiến lược theo IP đáng tin cậy.
@@ -1334,7 +1334,7 @@ Ví dụ một gói có 40 buổi PT và 40 buổi ôn tập trong thời hạn 
 
 ## 4.8. Portal hội viên
 
-Sau khi OWNER cấp tài khoản portal và hội viên đăng nhập, trang `/my-progress` trình bày dữ liệu gắn với chính tài khoản đó, bao gồm những thông tin được service và giao diện hỗ trợ như gói tập, buổi còn lại, số đo, mục tiêu, lịch, lịch sử và tình trạng thanh toán. Hội viên có thể đổi mật khẩu của mình.
+OWNER chỉ cấp mới Portal khi hội viên `ACTIVE` có ít nhất một gói hiệu lực trong ngày; điều kiện không bắt buộc loại gói PT nên khách tự tập còn gói cũng có thể dùng Portal để xem dữ liệu cá nhân. Sau khi đăng nhập, trang `/my-progress` trình bày dữ liệu gắn với chính tài khoản đó, bao gồm gói tập, lịch sử và tình trạng thanh toán; các khối buổi còn lại, số đo, mục tiêu và lịch có dữ liệu khi nghiệp vụ PT đã tạo bản ghi tương ứng. Hội viên có thể đổi mật khẩu của mình.
 
 Ở phiên bản giao diện hiện tại, form số đo của PT cho nhập cân nặng, vòng ngực, eo, bụng, mông, đùi và tay; request API còn hỗ trợ chiều cao. Portal hiển thị cân nặng, eo, ngực, mông, đùi và tay, nhưng không có thẻ vòng bụng hoặc chiều cao. Mục tiêu trên form/portal tập trung vào cân nặng và vòng eo; `targetBodyFat` có trong DTO/entity nhưng chưa có ô tương ứng trong form mục tiêu hiện tại. Cần phân biệt trường được API hỗ trợ với trường thực sự có trên màn hình.
 
@@ -1555,7 +1555,7 @@ Khi thử khóa đăng nhập, dùng tài khoản và mạng test vì giới h�
 
 ## 5.6. Kiểm thử tự động trong mã nguồn
 
-`backend/src/test/java/com/gymduongdouble/backend/BackendApplicationTests.java` chứa các bài kiểm tra tập trung vào một số chính sách và validation, bao gồm key Groq, request thanh toán, ngày phân công, hiệu lực gói, cách đếm khách mới/gia hạn, số đo, chuẩn hóa số điện thoại, JWT sau reset, mật khẩu, rate limit và contract không còn field lương/tỷ lệ nháp. `RetentionRevenueScenarioCalculatorTests` kiểm tra độc lập phép nhân tỷ lệ, làm tròn và tổng của kịch bản AI. `frontend/tests/portal-selectors.test.mjs` kiểm tra ngày Việt Nam, lựa chọn gói PT hiệu lực và lọc/sắp lịch PT tương lai.
+`backend/src/test/java/com/gymduongdouble/backend/BackendApplicationTests.java` chứa các bài kiểm tra tập trung vào một số chính sách và validation, bao gồm key Groq, request thanh toán, ngày phân công, hiệu lực gói, điều kiện cấp Portal khi chưa có gói hiệu lực, cách đếm khách mới/gia hạn, số đo, chuẩn hóa số điện thoại, JWT sau reset, mật khẩu, khóa rate limit trọn 15 phút từ lỗi thứ năm, metadata cắt trang và contract không còn field lương/tỷ lệ nháp. `RetentionRevenueScenarioCalculatorTests` kiểm tra độc lập phép nhân tỷ lệ, làm tròn và tổng của kịch bản AI. `frontend/tests/portal-selectors.test.mjs` kiểm tra ngày Việt Nam, lựa chọn gói PT hiệu lực và lọc/sắp lịch PT tương lai.
 
 Có thể chạy kiểm thử backend từ thư mục `backend`:
 
@@ -1573,7 +1573,7 @@ npm run build
 
 Kết quả của các lệnh cần được ghi theo lần chạy thực tế. Tập test hiện có không chứng minh mọi luồng tích hợp, UI, đồng thời, bảo mật và dữ liệu sản xuất đã được kiểm thử.
 
-**Lần kiểm tra khi rà soát báo cáo:** ngày 19/10/2026, chạy `.\mvnw.cmd test` trong thư mục `backend`; Maven báo `BUILD SUCCESS`, 16 test được chạy, 0 thất bại, 0 lỗi và 0 bỏ qua. Cùng ngày, `npm run lint`, `npm test` (3 test) và `npm run build` trong `frontend` đều hoàn tất thành công. Kết quả này chỉ phản ánh bộ test tự động hiện có tại lần chạy đó; không thay thế biên bản kiểm thử API, UI, Groq hay kiểm thử đồng thời với PostgreSQL.
+**Lần kiểm tra khi rà soát báo cáo:** ngày 22/10/2026, chạy `.\mvnw.cmd test` trong thư mục `backend`; Maven báo `BUILD SUCCESS`, 18 test được chạy, 0 thất bại, 0 lỗi và 0 bỏ qua. Cùng ngày, `npm run lint`, `npm test` (3 test) và `npm run build` trong `frontend` đều hoàn tất thành công. Bộ test backend hiện bao gồm kiểm tra phân trang `PageResponse`, điều kiện cấp Portal có gói hiệu lực và việc lần đăng nhập sai thứ năm khóa mới đủ 15 phút. Kết quả này chỉ phản ánh bộ test tự động hiện có tại lần chạy đó; không thay thế biên bản kiểm thử API, UI, Groq hay kiểm thử đồng thời với PostgreSQL.
 
 **Kiểm tra contract API cục bộ cùng ngày:** request OWNER không có `scenario` trả `scenario: null`; request ba tỷ lệ hợp lệ trả đủ object kịch bản, tổng bằng ba thành phần và có `insight.scenario`; request chứa tỷ lệ `101` bị từ chối `400`. Một instance test riêng chạy không có `GROQ_API_KEYS` trả `aiGenerated=false` nhưng vẫn có object kịch bản, insight fallback và tổng đúng. Các request kiểm tra này không ghi key hoặc PII vào tài liệu.
 
@@ -1630,6 +1630,7 @@ Ma trận chỉ ra nơi bắt đầu đọc và các ca đại diện, không c�
 | `paymentRequestRequiresPositiveAmountAndPaymentMethod` và test hợp lệ | Validation DTO với số tiền/phương thức mẫu. | Chưa chứng minh transaction thu nợ end-to-end hoặc concurrency. |
 | `ptAssignmentPolicyHonorsAssignmentDates` | Một assignment có ngày bắt đầu/kết thúc được xét tại các mốc biên. | Chưa bao phủ mọi tổ hợp gói, quyền và lịch thực tế. |
 | `membershipLifecyclePrefersEffectiveMembershipAndReportsExpiration` | Ưu tiên gói hiệu lực, tính hết hạn và trường hợp chờ thanh toán mẫu. | Chưa bao phủ toàn bộ dữ liệu lịch sử hoặc transaction đăng ký. |
+| `portalAccountRequiresAnEffectiveMembership` | Không cấp mới Portal cho hội viên `ACTIVE` nhưng không có membership hiệu lực. | Chưa thay thế kiểm thử HTTP/JPA thật hoặc kiểm thử thủ công trường hợp gói tự tập hiệu lực. |
 | `membershipPeriodStatisticsCountsFirstRegistrationAndRenewalByDistinctMember` | Bỏ lượt hủy, phân biệt lượt đầu/lượt sau và không đếm lặp một hội viên có nhiều lần gia hạn trong kỳ. | Chưa là báo cáo tích hợp với dữ liệu PostgreSQL thật. |
 | `publicMembershipPlanResponseContainsOnlyPublicPlanValues` | DTO công khai ánh xạ các thông tin gói cần cho bảng giá. | Không thay thế kiểm thử HTTP hoặc kiểm tra active filter tại repository. |
 | `currentPtAndPlanContractsDoNotExposePayrollOrPriceRatioFields` | Entity/response PT không còn field lương, tỷ lệ dạy, hoa hồng; response gói không còn tỷ lệ giá nháp. | Không thay thế kiểm tra schema PostgreSQL hoặc tính năng payroll tương lai. |
@@ -1637,7 +1638,7 @@ Ma trận chỉ ra nơi bắt đầu đọc và các ca đại diện, không c�
 | `vietnamPhoneNormalizerUsesOneCanonicalMobileFormat` | Một số biến thể điện thoại trả cùng giá trị chuẩn. | Chưa chứng minh mọi số hoặc mọi tình huống trùng đồng thời. |
 | `jwtTokenIsRejectedAfterPasswordResetRevokesActiveTokens` | So version token trước/sau đổi version user bằng đối tượng test. | Chưa là bài test HTTP toàn chuỗi đổi mật khẩu. |
 | `passwordPolicyRequiresLettersDigitsAndNonIdentifierValue` | Một số trường hợp mật khẩu hợp lệ/không hợp lệ. | Không chứng minh mật khẩu an toàn trước mọi kiểu tấn công. |
-| `loginRateLimiterBlocksAfterFiveFailedAttemptsAndClearsAfterSuccess` | Hành vi bộ đếm tại lớp limiter trong ví dụ đơn. | Không mô phỏng nhiều instance, proxy hay toàn bộ request đồng thời. |
+| `loginRateLimiterLocksForFullWindowOnFifthFailureAndClearsAfterSuccess` | Lần sai thứ năm tạo khóa mới đủ 15 phút và bộ đếm được xóa khi đăng nhập thành công. | Không mô phỏng nhiều instance, proxy hay toàn bộ request đồng thời. |
 | `sensitiveRateLimiterAllowsTenRequestsThenBlocksTheNextOne` | Bộ đếm chấp nhận 10 và từ chối lần kế tiếp theo key mẫu. | Không khẳng định mọi endpoint nhạy cảm đã được filter nhận diện. |
 | `RetentionRevenueScenarioCalculatorTests` | Áp dụng ba tỷ lệ, làm tròn `HALF_UP`, giữ nguyên giá trị nền và tính tổng ba nhánh. | Không chứng minh quyền OWNER, validation HTTP, số liệu database hay chất lượng diễn giải Groq. |
 
@@ -1678,7 +1679,7 @@ Trước khi thử `MISSED`, cần biết code hiện tại tiêu định mức 
 
 **Dữ liệu chuẩn bị:** tài khoản demo, client test, key AI trong môi trường bảo mật nếu cần và nguồn dữ liệu tổng hợp nhỏ nhưng có nhiều tình huống.
 
-1. Đăng nhập sai năm lần trong cùng cửa sổ; thử tiếp và quan sát 429 cùng `Retry-After`. Chú ý địa chỉ IP chung và thời điểm bắt đầu cửa sổ.
+1. Đăng nhập sai năm lần trong cùng cửa sổ; quan sát lần thứ năm trả 429 với `Retry-After` gần 15 phút, sau đó thử mật khẩu đúng để xác nhận vẫn bị chặn. Chú ý địa chỉ IP chung và thời điểm bắt đầu cửa sổ.
 2. Đăng nhập hợp lệ bằng một tài khoản test khác hoặc sau thời gian chờ; đổi mật khẩu và thử request với token cũ mà không công bố token.
 3. Gọi API OWNER bằng PT/MEMBER và ghi mã trạng thái; thử cả quyền theo bản ghi tại API PT.
 4. Yêu cầu AI phân tích; đối chiếu một số nhóm với dữ liệu gốc, kiểm tra `aiGenerated` và tính chồng lắp của segment.

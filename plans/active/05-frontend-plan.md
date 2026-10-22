@@ -48,18 +48,19 @@ RoleGuard chặn route ở frontend; backend vẫn là lớp quyết định quy
 ### Hội viên và chi tiết hội viên
 
 - Tìm kiếm, lọc đang tập/sắp hết hạn/hết hạn.
+- Bảng hội viên gọi `/v1/members/page`, phân trang phía server; các KPI và số đếm bộ lọc lấy riêng từ `/v1/members/statistics` nên không thay đổi theo trang đang mở.
 - Form tạo và sửa hồ sơ.
 - Modal đăng ký/gia hạn gói tách rõ ngày bắt đầu gói và ngày thu tiền.
 - Khi thu ngay bằng 0, frontend vô hiệu hóa ngày thu và phương thức thu để người dùng biết không có phiếu thu được tạo.
 - Modal thu nợ lập phiếu thu riêng, hỗ trợ trả từng phần và phương thức thu riêng.
-- OWNER cấp và quản lý Portal ngay trên hồ sơ hội viên.
+- OWNER cấp và quản lý Portal ngay trên hồ sơ hội viên; nút cấp chỉ hiện khi hội viên `ACTIVE` có gói tập hiệu lực, còn backend vẫn kiểm tra lại điều kiện này.
 
 ### Bảng giá, thanh toán và báo cáo
 
 - Bảng giá phân biệt gói đang bán và gói đã ngừng bán.
 - Bảng giá public tải từ `/v1/public/membership-plans`; chỉ hiển thị gói đang active, nên không duy trì danh sách giá tĩnh trong frontend.
 - Khối VietQR public chỉ xuất hiện khi API trả cấu hình đang bật và đủ thông tin nhận tiền; không dùng số tài khoản dự phòng phía client.
-- Payments hiển thị công nợ, phiếu thu, VietQR và thao tác thu nợ.
+- Payments hiển thị công nợ, phiếu thu, VietQR và thao tác thu nợ. Hai bảng dùng `/v1/debts/page` và `/v1/payments/page`; KPI dùng `/v1/payments/summary` để không bị sai khi đổi trang, tìm kiếm hoặc lọc.
 - Reports hiển thị chỉ số tài chính, biểu đồ doanh thu, XLSX, Google Sheet và AI Cố vấn Giữ chân và Doanh thu.
 - Sau kết quả tổng quan, Reports cho OWNER nhập ba tỷ lệ 0-100% và bấm `Phân tích kịch bản`. Giao diện gửi lại cùng endpoint với `scenario`, hiển thị nền tính, giá trị mô phỏng, thứ tự ưu tiên/lưu ý và nêu rõ đây không phải thao tác thu tiền hay thay đổi dữ liệu.
 - Xuất XLSX được tạo ở trình duyệt từ dữ liệu report; không có endpoint export riêng.

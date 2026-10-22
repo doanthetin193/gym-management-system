@@ -1,101 +1,257 @@
 # Tài khoản và luồng đăng nhập
 
-## 1. User khác hội viên như thế nào?
+## 1. Phân Biệt Giữa Tài Khoản (`User`) và Hồ Sơ Hội Viên (`Member`)
 
-[`User`](../../../backend/src/main/java/com/gymduongdouble/backend/user/domain/User.java) là tài khoản đăng nhập: email, điện thoại, password hash, trạng thái, `lastLoginAt`, `authVersion` và tập role. [`Role`](../../../backend/src/main/java/com/gymduongdouble/backend/user/domain/Role.java) biểu diễn quyền; quan hệ nhiều-nhiều qua `user_roles`. Một hội viên được quản lý trong [`Member`](../../../backend/src/main/java/com/gymduongdouble/backend/member/domain/Member.java); hội viên không mặc nhiên có tài khoản portal chỉ vì đã có hồ sơ.
+Trong hệ thống phòng gym Dương Double, hai khái niệm này được tách bạch hoàn toàn:
 
-Ba role thường gặp là `OWNER`, `PT`, `MEMBER`. Tập role cho phép một tài khoản có nhiều role; chủ phòng có thể kiêm PT theo logic quản lý tài khoản. Đừng suy ra PT được xem toàn bộ dữ liệu chỉ vì có role PT: một số service còn kiểm tra quan hệ phân công/hội viên. Quản lý tài khoản nhân sự và portal sẽ được học sâu ở stage nghiệp vụ tương ứng.
-
-## 2. Từ form tới controller
-
-[`LoginPage.tsx`](../../../frontend/src/features/auth/pages/LoginPage.tsx) nhận thông tin người dùng; [`authApi.ts`](../../../frontend/src/features/auth/api/authApi.ts) gọi backend. [`AuthController`](../../../backend/src/main/java/com/gymduongdouble/backend/auth/web/AuthController.java) khai báo:
-
-| Endpoint | Công việc |
-| --- | --- |
-| `POST /api/v1/auth/login` | Nhận định danh, mật khẩu, tùy chọn `rememberMe`. |
-| `GET /api/v1/auth/me` | Trả thông tin người đang được xác thực. |
-| `POST /api/v1/auth/change-password` | Đổi mật khẩu tài khoản hiện tại. |
-
-Trong [`LoginRequest`](../../../backend/src/main/java/com/gymduongdouble/backend/auth/web/dto/LoginRequest.java), trường tên `email` có thể chứa email **hoặc số điện thoại**. `@NotBlank` bảo đảm định danh và mật khẩu không rỗng. `toString()` che mật khẩu; đây không có nghĩa toàn bộ hệ thống tự động an toàn nếu code khác chủ động log dữ liệu nhạy cảm.
-
-## 3. Luồng login trong backend
-
-Mở [`AuthService.login`](../../../backend/src/main/java/com/gymduongdouble/backend/auth/service/AuthService.java):
-
-1. Controller lấy IP bằng `request.getRemoteAddr()` rồi service yêu cầu `InMemoryRateLimiter` kiểm tra trước.
-2. [`CustomUserDetailsService`](../../../backend/src/main/java/com/gymduongdouble/backend/common/security/CustomUserDetailsService.java) tìm email đã trim/lowercase, nếu không thấy thì thử điện thoại qua [`VietnamPhoneNormalizer`](../../../backend/src/main/java/com/gymduongdouble/backend/common/validation/VietnamPhoneNormalizer.java).
-3. `AuthenticatedUser` chứa thông tin cần cho Spring Security. Service kiểm tra tài khoản đang hoạt động/không khóa và dùng `PasswordEncoder.matches()` so sánh mật khẩu với hash.
-4. Thành công: cập nhật `lastLoginAt`, tạo token, xóa bộ đếm lỗi cho định danh và IP được dùng, trả token và thông tin user. Nếu `rememberMe=true`, thời hạn token là 30 ngày; nếu không, dùng `app.security.jwt.access-token-minutes` (mặc định 120 phút).
-5. Sai thông tin hoặc tài khoản không đủ điều kiện: ghi nhận lần đăng nhập thất bại và trả lỗi phù hợp. Sau khi đạt giới hạn, lần thử tiếp theo có thể nhận 429 trước cả khi mật khẩu được kiểm tra.
-
-`BCryptPasswordEncoder` được cấu hình trong [`SecurityConfig`](../../../backend/src/main/java/com/gymduongdouble/backend/common/config/SecurityConfig.java). Password hash không phải mật khẩu gốc và không được giải mã để kiểm tra; `matches()` thực hiện phép so sánh theo cơ chế BCrypt.
-
-## 4. Thực hành đọc code
-
-Mở lần lượt `AuthController` → `LoginRequest` → `AuthService.login` → `CustomUserDetailsService` → `UserRepository` → `JwtService.generateAccessToken`. Theo dõi chính xác dữ liệu trả về trong [`LoginResponse`](../../../backend/src/main/java/com/gymduongdouble/backend/auth/web/dto/LoginResponse.java). Khi đăng nhập bằng số điện thoại, subject JWT vẫn lấy từ `AuthenticatedUser.getUsername()`, tức email của tài khoản trong code hiện tại.
-
-## Tự kiểm tra
-
-1. Có hồ sơ hội viên có đồng nghĩa đã có tài khoản portal không?
-2. `rememberMe` ảnh hưởng cả thời hạn token và vị trí lưu ở frontend như thế nào?
-3. Nếu bị rate limit rồi nhập đúng mật khẩu ngay, tại sao vẫn có thể không đăng nhập được?
-
-## 5. Ví dụ theo dấu email và số điện thoại
-
-Giả sử tài khoản demo có email và điện thoại đã lưu. Người dùng nhập email: `loadUserByUsername` trim, đổi email thành chữ thường, thử `findByEmail`; nếu thấy user thì chuyển thành `AuthenticatedUser`. Nếu nhập số với khoảng trắng, nhánh tìm email không thấy thì normalizer chuẩn hóa số để thử `findByPhone`. Không cần tạo hai user chỉ vì có hai cách đăng nhập. Nhưng khóa rate limit ở `InMemoryRateLimiter` dùng chính định danh request sau trim/lowercase, không lấy ID user; vì vậy hai cách viết khác nhau có thể không chia sẻ cùng khóa account.
-
-Sau khi có `AuthenticatedUser`, `AuthService` dùng `isEnabled()`, `isAccountNonLocked()` và `matches()`. Trong class hiện tại, trạng thái ACTIVE cho `isEnabled=true`; LOCKED khiến `isAccountNonLocked=false`. Nếu user không tồn tại, helper chuyển `UsernameNotFoundException` thành `BadCredentialsException`. Lỗi ở tầng login được handler trả thông tin phù hợp, không trả password hash cho client.
-
-`lastLoginAt` chỉ cập nhật sau khi đã qua kiểm tra và trước khi token được trả trong transaction. Đây là dấu mốc đăng nhập thành công, không phải nhật ký mọi lần gọi API hay lịch sử tất cả thiết bị. Nếu cần điều tra toàn bộ truy cập, trường này một mình không đủ.
-
-## 6. Đổi mật khẩu và những gì người dùng thấy
-
-`AuthController.changePassword` nhận principal hiện tại và `ChangePasswordRequest`. `AuthService` tìm lại entity `User`, kiểm tra mật khẩu cũ với BCrypt, kiểm tra mật khẩu mới không trùng mật khẩu cũ, sau đó áp dụng policy mới, mã hóa, tăng `authVersion` và save. Điều này khác thao tác OWNER reset mật khẩu nhân sự/portal: ở reset, người thực hiện không cần biết mật khẩu cũ của tài khoản được reset, nhưng cần quyền endpoint và dữ liệu hợp lệ.
-
-Khi token cũ không còn hợp lệ, lần request kế tiếp đi qua filter sẽ bị 401; frontend có xử lý xóa token và chuyển về login. Để thử, hãy dùng một tài khoản demo, ghi nhận response trước/sau, và tự giữ mật khẩu mới ở nơi an toàn. Đừng chạy test reset trên tài khoản duy nhất mà mình cần sử dụng.
-
-## 7. Mổ xẻ `AuthService.login` theo từng nhánh
-
-Đoạn trích nguyên văn, đã bỏ phần dựng `LoginResponse` và dấu ngoặc xung quanh để tập trung luồng:
-
-```java
-rateLimiter.requireLoginAllowed(request.email(), clientIp);
-try {
-    AuthenticatedUser user = loadUser(request.email());
-    if (!user.isEnabled() || !user.isAccountNonLocked() || !passwordEncoder.matches(request.password(), user.getPassword())) {
-        throw new BadCredentialsException("Email hoặc mật khẩu không đúng.");
+```mermaid
+erDiagram
+    users {
+        Long id PK
+        String email UK
+        String phone UK
+        String passwordHash
+        UserStatus status
+        Instant lastLoginAt
+        Long authVersion
     }
 
-    userRepository.findById(user.getId()).ifPresent(account -> account.setLastLoginAt(Instant.now()));
-    boolean remember = Boolean.TRUE.equals(request.rememberMe());
-    long expirationMinutes = remember ? 30L * 24 * 60 : jwtProperties.accessTokenMinutes();
-    String token = jwtService.generateAccessToken(user, expirationMinutes);
-    rateLimiter.clearLoginFailures(request.email(), clientIp);
-    // Trả LoginResponse; xem code gốc để đọc đủ các field.
-} catch (BadCredentialsException exception) {
-    rateLimiter.recordLoginFailure(request.email(), clientIp);
-    throw exception;
+    roles {
+        Long id PK
+        String code UK "OWNER, PT, MEMBER"
+        String name
+    }
+
+    members {
+        Long id PK
+        Long userId FK "NULL nếu là khách thường"
+        String fullName
+        String phone UK
+        MemberStatus status "ACTIVE, INACTIVE, ARCHIVED"
+    }
+
+    users ||--|{ roles : "user_roles (Nhiều - Nhiều)"
+    users ||--o| members : "Liên kết 1 - 1 (hội viên đã được cấp Portal)"
+```
+
+### Đặc thù phân quyền và đối tượng tài khoản:
+1. **`User` (Tài khoản đăng nhập)**: Đại diện cho người có quyền truy cập vào hệ thống phần mềm, gồm email, số điện thoại, mật khẩu mã hóa BCrypt, trạng thái hoạt động (`ACTIVE`, `INACTIVE`, `LOCKED`), mốc đăng nhập cuối `lastLoginAt`, phiên bản xác thực `authVersion`, và danh sách vai trò (`Role`).
+2. **`Member` (Hồ sơ khách hàng phòng gym)**: Đại diện cho người đến tập gym (lưu họ tên, ngày sinh, giới tính, địa chỉ, số Zalo, nguồn khách, ghi chú).
+3. **Quy tắc cấp tài khoản trong phòng gym Dương Double:**
+   * **Chủ phòng (`OWNER`)**: Có tài khoản quản trị tối cao. Bản ghi seed mặc định của chủ phòng có cả 2 role `ROLE_OWNER` và `ROLE_PT`, cho phép chủ phòng vừa quản trị vừa trực tiếp dạy PT.
+   * **Huấn luyện viên (`PT`)**: Được cấp tài khoản để quản lý học viên phân công, đặt lịch, chấm buổi tập.
+    * **Hội viên Portal (`MEMBER`)**: OWNER có thể cấp khi hội viên `ACTIVE` có gói tập hiệu lực để họ xem dữ liệu tại `/my-progress`; khi tạo, `member.user_id` trỏ đến `users.id`. Khách PT có thêm dữ liệu tiến độ nếu đã được PT ghi nhận.
+    * **Khách vãng lai hoặc chưa có gói hiệu lực**: Không cấp mới Portal (`member.user_id = null`) và chỉ xem trang công khai. Khách tự tập có gói hiệu lực không thuộc nhóm này.
+
+> **Điểm cần đọc đúng code:** endpoint cấp Portal chỉ dành cho `OWNER`, kiểm tra hội viên chưa có tài khoản, số điện thoại/mật khẩu hợp lệ, trạng thái `ACTIVE` và ít nhất một membership hiệu lực hôm nay. `MemberService.createPortalAccount()` không kiểm tra loại gói PT, nên khách tự tập có gói hiệu lực vẫn có thể được cấp.
+
+---
+
+## 2. Điểm Vào và DTO Đăng Nhập
+
+### Các Endpoint Xác Thực trong [`AuthController.java`](../../../backend/src/main/java/com/gymduongdouble/backend/auth/web/AuthController.java):
+
+| HTTP Method | Endpoint đầy đủ | Quyền hạn | Chức năng |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/v1/auth/login` | Public (Không cần token) | Đăng nhập bằng Email hoặc SĐT, nhận JWT Token. |
+| `GET` | `/api/v1/auth/me` | Authenticated (Cần Bearer token) | Lấy thông tin tài khoản hiện tại và danh sách role. |
+| `POST` | `/api/v1/auth/change-password` | Authenticated (Cần Bearer token) | Đổi mật khẩu của chính mình, đồng thời thu hồi JWT cũ. |
+
+### Cấu trúc [`LoginRequest.java`](../../../backend/src/main/java/com/gymduongdouble/backend/auth/web/dto/LoginRequest.java):
+```java
+public record LoginRequest(
+    @NotBlank(message = "Email hoặc số điện thoại là bắt buộc.")
+    String email,
+
+    @NotBlank(message = "Mật khẩu là bắt buộc.")
+    String password,
+
+    Boolean rememberMe
+) {
+    @Override
+    public String toString() {
+        return "LoginRequest[email=" + email + ", password=***, rememberMe=" + rememberMe + "]";
+    }
+}
+```
+* **Tính năng linh hoạt**: Trường tên là `email` nhưng người dùng có thể nhập **địa chỉ Email** hoặc **Số điện thoại di động Việt Nam**.
+* **Bảo mật log**: Ghi đè `toString()` để in ra `password=***`, ngăn việc vô tình in mật khẩu rõ (plaintext password) vào log khi debug.
+
+---
+
+## 3. Sơ Đồ Tuần Tự Luồng Đăng Nhập (`AuthService.login`)
+
+Dưới đây là sơ đồ chi tiết từng bước kiểm tra từ lúc người dùng bấm nút "Đăng nhập" đến khi nhận Token:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Client as Trình duyệt
+    participant Ctrl as AuthController
+    participant Limiter as InMemoryRateLimiter
+    participant AuthSvc as AuthService
+    participant UserDetailsSvc as CustomUserDetailsService
+    participant UserRepo as UserRepository
+    participant Normalizer as VietnamPhoneNormalizer
+    participant Encoder as BCryptPasswordEncoder
+    participant JwtSvc as JwtService
+
+    Client->>Ctrl: POST /api/v1/auth/login (email/phone, password, rememberMe)
+    Ctrl->>AuthSvc: login(request, clientIp)
+
+    AuthSvc->>AuthSvc: Bước một, kiểm soát tần suất đăng nhập
+    AuthSvc->>Limiter: requireLoginAllowed(identifier, clientIp)
+    alt Account hoặc IP đang có lockedUntil còn hiệu lực
+        Limiter-->>Client: Ném RateLimitExceededException -> HTTP 429 Too Many Requests (Kèm Retry-After)
+    end
+
+    AuthSvc->>AuthSvc: Bước hai, tìm tài khoản theo email hoặc điện thoại
+    AuthSvc->>UserDetailsSvc: loadUser(identifier)
+    UserDetailsSvc->>UserRepo: findByEmailIgnoreCase(identifier)
+    alt Không tìm thấy Email
+        UserDetailsSvc->>Normalizer: normalizeOptional(identifier) -> chuẩn hóa SĐT VN
+        UserDetailsSvc->>UserRepo: findByPhone(normalizedPhone)
+    end
+
+    alt Không tìm thấy tài khoản theo cả Email và SĐT
+        UserDetailsSvc-->>AuthSvc: Ném UsernameNotFoundException
+        AuthSvc->>Limiter: recordLoginFailure(identifier, clientIp)
+        alt Đây là lần sai thứ năm
+            Limiter-->>AuthSvc: Ném RateLimitExceededException
+            AuthSvc-->>Client: Trả HTTP 429 cùng Retry-After 15 phút
+        else Chưa chạm ngưỡng
+            AuthSvc-->>Client: Trả về HTTP 401 Bad Credentials
+        end
+    end
+
+    AuthSvc->>AuthSvc: Bước ba, kiểm tra trạng thái và mật khẩu
+    AuthSvc->>AuthSvc: Kiểm tra user enabled và account non locked
+    AuthSvc->>Encoder: matches(rawPassword, passwordHash)
+    alt Mật khẩu không khớp hoặc tài khoản bị khóa
+        Encoder-->>AuthSvc: false
+        AuthSvc->>Limiter: recordLoginFailure(identifier, clientIp)
+        alt Đây là lần sai thứ năm
+            Limiter-->>AuthSvc: Ném RateLimitExceededException
+            AuthSvc-->>Client: Trả HTTP 429 cùng Retry-After 15 phút
+        else Chưa chạm ngưỡng
+            AuthSvc-->>Client: Trả về HTTP 401 Bad Credentials
+        end
+    end
+
+    AuthSvc->>AuthSvc: Bước bốn, xóa bộ đếm lỗi và cấp token
+    AuthSvc->>UserRepo: Cập nhật lastLoginAt = Instant.now()
+    AuthSvc->>Limiter: clearLoginFailures(identifier, clientIp)
+    AuthSvc->>AuthSvc: Chọn hạn token theo rememberMe
+    AuthSvc->>JwtSvc: generateAccessToken(user, expirationMinutes)
+    JwtSvc-->>AuthSvc: Trả về chuỗi JWT Token
+    AuthSvc-->>Client: Trả về ApiResponse chứa LoginResponse (Token, User Info)
+```
+
+---
+
+## 4. Giải Phẫu Chi Tiết Mã Nguồn [`AuthService.login`](../../../backend/src/main/java/com/gymduongdouble/backend/auth/service/AuthService.java)
+
+```java
+@Transactional
+public LoginResponse login(LoginRequest request, String clientIp) {
+    // 1. Kiểm tra Rate Limiter trước tiên (chặn IP hoặc account đang bị khóa tạm thời)
+    rateLimiter.requireLoginAllowed(request.email(), clientIp);
+
+    try {
+        // 2. Tra cứu tài khoản theo Email hoặc Số điện thoại
+        AuthenticatedUser user = loadUser(request.email());
+
+        // 3. Kiểm tra trạng thái hoạt động và so khớp mật khẩu bằng BCrypt
+        if (!user.isEnabled() || !user.isAccountNonLocked() ||
+            !passwordEncoder.matches(request.password(), user.getPassword())) {
+            throw new BadCredentialsException("Email hoặc mật khẩu không đúng.");
+        }
+
+        // 4. Cập nhật thời điểm đăng nhập thành công (Dirty checking trong @Transactional)
+    userRepository.findById(user.getId())
+            .ifPresent(account -> account.setLastLoginAt(Instant.now()));
+
+        // 5. Xác định thời hạn token theo tùy chọn Remember Me
+        boolean remember = Boolean.TRUE.equals(request.rememberMe());
+        long expirationMinutes = remember ? 30L * 24 * 60 : jwtProperties.accessTokenMinutes();
+
+        // 6. Sinh token JWT chứa authVersion hiện tại của người dùng
+        String token = jwtService.generateAccessToken(user, expirationMinutes);
+
+        // 7. Đăng nhập thành công -> Xóa sạch bộ đếm sai của IP và Account này
+        rateLimiter.clearLoginFailures(request.email(), clientIp);
+
+        return new LoginResponse("Bearer", token, expirationMinutes, AuthUserResponse.from(user));
+    } catch (BadCredentialsException exception) {
+        // Ghi nhận thêm 1 lần thất bại vào bộ đếm RAM
+        rateLimiter.recordLoginFailure(request.email(), clientIp);
+        throw exception;
+    }
 }
 ```
 
-1. Kiểm tra giới hạn **trước** khi kiểm tra mật khẩu. Khi đang bị giới hạn, kể cả mật khẩu đúng cũng chưa được kiểm tra.
-2. `loadUser` tra thông tin định danh; trường tên `email` trong request cũng có thể chứa số điện thoại, hãy đọc `CustomUserDetailsService` để hiểu cách tra cứu.
-3. Tài khoản phải enabled, không locked, và `matches` phải xác nhận mật khẩu nhập khớp hash. Không so sánh mật khẩu rõ với chuỗi hash bằng `equals`.
-4. Khi thành công, cập nhật `lastLoginAt`, chọn thời hạn JWT theo `rememberMe`, tạo token rồi xóa các bộ đếm liên quan. `Boolean.TRUE.equals` an toàn khi giá trị là `null`.
-5. Sai thông tin tạo `BadCredentialsException`; `catch` ghi một lần thất bại rồi ném tiếp để tầng xử lý lỗi trả response. Một lỗi khác loại không tự động đi vào nhánh catch này.
+### Các điểm mấu chốt cần lưu ý:
+1. **Kiểm tra Rate Limit chạy TRƯỚC kiểm tra mật khẩu**: Nếu tài khoản hoặc IP đã bị khóa tạm thời (429), kể cả bạn nhập đúng mật khẩu 100% thì request vẫn bị ngắt ngay từ dòng đầu tiên, không thực hiện truy vấn DB hay so khớp hash.
+2. **Khóa bộ đếm Rate Limiter**: Sử dụng chuỗi định danh sau khi `trim().toLowerCase()`.
+3. **Mã hóa BCrypt là một chiều**: Không bao giờ có chuyện giải mã hash ngược về mật khẩu ban đầu. Hàm `passwordEncoder.matches(raw, hash)` sẽ băm chuỗi thô với `salt` được trích từ chính chuỗi `hash` để so sánh xem kết quả có trùng khớp không.
 
-Ví dụ thực hành, chỉ là dữ liệu giả: `member@example.com` nhập sai ba lần, sau đó đúng trước khi đạt ngưỡng: login thành công và xóa bộ đếm theo identifier/IP đó. Nếu đã đạt ngưỡng, yêu cầu tiếp theo bị chặn trước bước đối chiếu mật khẩu. Đừng thử nhiều lần trên tài khoản đang cần làm việc vì giới hạn tác động thật đến môi trường dev.
+---
 
-## 8. Tại sao có `@Transactional` dù chỉ đổi một trường?
+## 5. Luồng Đổi Mật Khẩu và Thu Hồi Phiên Đăng Nhập
 
-`login` và `changePassword` đều được đánh dấu transaction. Khi đọc entity `User` rồi thay `lastLoginAt`, entity được quản lý trong persistence context; JPA có thể phát hiện field thay đổi và ghi khi flush/commit. Trong `changePassword`, code còn gọi `save` sau khi đổi hash và tăng phiên bản token. Hãy phân biệt transaction database với bộ đếm trong RAM: rollback database không tự đảo ngược thay đổi của `ConcurrentHashMap`.
+Khi người dùng thực hiện đổi mật khẩu tại trang [`ProfilePage.tsx`](../../../frontend/src/features/profile/pages/ProfilePage.tsx):
 
-Tự kiểm chứng bằng debugger trên dữ liệu demo: theo dõi `isEnabled`, `isAccountNonLocked`, kết quả `matches` và `authVersion` trước/sau đổi mật khẩu. Không ghi nội dung mật khẩu, hash hay token thật vào ảnh thuyết trình.
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as Người dùng
+    participant App as Frontend ProfilePage
+    participant Svc as AuthService changePassword
+    participant Policy as PasswordPolicy
+    participant UserEntity as User entity
+    participant Storage as Frontend Storage
 
-## 9. Trang hồ sơ tài khoản và đổi mật khẩu
+    User->>App: Nhập mật khẩu cũ, mật khẩu mới, xác nhận mật khẩu
+    App->>Svc: POST /api/v1/auth/change-password (currentPassword, newPassword)
 
-[`ProfilePage.tsx`](../../../frontend/src/features/profile/pages/ProfilePage.tsx) lấy `user` từ auth context, hiển thị thông tin tài khoản và có form đổi mật khẩu. Form kiểm tra xác nhận mật khẩu trùng nhau và độ dài tối thiểu 8 ký tự; request thực tế gọi `changePassword(currentPassword, newPassword)`. Backend vẫn kiểm tra mật khẩu hiện tại và áp dụng `PasswordPolicy` đầy đủ, không chỉ dựa vào hai kiểm tra ở giao diện.
+    Svc->>Svc: Kiểm tra mật khẩu cũ bằng BCrypt
+    Svc->>Svc: Kiểm tra mật khẩu mới khác mật khẩu cũ
+    Svc->>Policy: 3. Kiểm tra độ mạnh (>= 8 ký tự, có chữ và số, không trùng SĐT/Email)
+    Svc->>Svc: Mã hóa mật khẩu mới bằng BCrypt
 
-Khi đổi thành công, frontend xóa token trong storage, thông báo đăng nhập lại và chuyển đến `/login`. Ở backend, tăng `authVersion` làm các token phiên bản cũ bị từ chối trong những request sau. Đây là hai hành động ở hai tầng, không phải cùng một cơ chế.
+    Svc->>UserEntity: 5. user.revokeActiveTokens() -> TĂNG authVersion++
+    Svc->>UserEntity: 6. user.setPasswordHash(newHash)
 
-Màn hình chọn `user?.roles[0]` làm role hiển thị chính; vì một OWNER có thể có cả OWNER và PT, nhãn này không phải danh sách đầy đủ các role.
+    Svc-->>App: Trả về thành công HTTP 200 OK
+    App->>Storage: Xóa token trong localStorage / sessionStorage
+    App-->>User: Điều hướng về trang /login bắt buộc đăng nhập lại
+
+    User->>Svc: Thiết bị khác gửi token có version cũ
+    Svc-->>User: Filter từ chối request với HTTP 401
+```
+
+* **Bản chất `authVersion`**: Khi đổi mật khẩu, hệ thống tăng `authVersion` từ $N \longrightarrow N + 1$. Mọi JWT cũ trước đó chỉ mang claim `ver = N`. Khi gửi lên, `JwtAuthenticationFilter` phát hiện `ver` trong token khác với `authVersion` trong database sẽ từ chối ngay lập tức!
+
+---
+
+## 6. Trả Lời Chi Tiết Các Câu Hỏi Tự Kiểm Tra
+
+1. **Có hồ sơ hội viên có đồng nghĩa đã có tài khoản portal không?**
+   * **Đáp án:** **HOÀN TOÀN KHÔNG**. Hồ sơ hội viên (`members`) chỉ lưu thông tin khách hàng ở quầy lễ tân. Portal là tài khoản được OWNER chủ động cấp qua API `POST /v1/members/{id}/portal-account`, sau khi backend xác nhận hội viên `ACTIVE` và có ít nhất một gói hiệu lực hôm nay. Vì vậy, một hội viên mới vẫn mặc định `user_id = null` cho đến khi có gói hợp lệ và OWNER cấp Portal.
+2. **`rememberMe` ảnh hưởng cả thời hạn token và vị trí lưu ở frontend như thế nào?**
+   * **Đáp án:**
+     - **Ở Backend:** Nếu `rememberMe = true`, JWT token có hạn 30 ngày (43.200 phút). Nếu `false`, token có hạn mặc định 120 phút.
+     - **Ở Frontend:** Nếu `rememberMe = true`, token được lưu trong `localStorage` (tồn tại vĩnh viễn cả khi tắt trình duyệt). Nếu `false`, token lưu trong `sessionStorage` (tự động mất khi đóng tab trình duyệt).
+3. **Nếu bị rate limit rồi nhập đúng mật khẩu ngay, tại sao vẫn không đăng nhập được?**
+   * **Đáp án:** Vì `rateLimiter.requireLoginAllowed()` nằm ở đầu `login()`, trước `loadUser()` và `passwordEncoder.matches()`. Lần sai thứ năm đã đặt `lockedUntil` bằng thời điểm đó cộng 15 phút. Trong thời gian này, kể cả mật khẩu đúng, request vẫn bị dừng bằng `RateLimitExceededException` (HTTP 429); người dùng phải đợi hết `Retry-After` mới có thể thử lại.
+
+---
+
+## 7. Góc Nhìn Mentor: Bộ Câu Hỏi Phỏng Vấn và Phản Biện Đồ Án
+
+> [!TIP]
+> **Câu hỏi 1: Tại sao em lại lưu `authVersion` trong bảng `users`? Việc này giải quyết điểm yếu gì của kiến trúc JWT Stateless?**
+> * **Cách trả lời:** JWT vốn dĩ là Stateless (phi trạng thái) — server không lưu một `HttpSession` cho từng thiết bị. `authVersion` bổ sung một điểm kiểm tra nhỏ trong database để thu hồi token khi đổi hoặc reset mật khẩu: token cũ có `ver` khác DB sẽ bị từ chối. Lưu ý, **khóa tài khoản không tăng `authVersion`**; filter chặn ngay nhờ trạng thái `LOCKED`/không hoạt động. Nếu sau đó mở khóa lại mà chưa đổi/reset mật khẩu, token cũ còn hạn có thể dùng lại. Đây là khác biệt quan trọng giữa “chặn theo status” và “thu hồi theo version”.
+>
+> **Câu hỏi 2: Tại sao em lại cho phép đăng nhập bằng cả Số điện thoại lẫn Email trên cùng một ô input?**
+> * **Cách trả lời:** Trong mô hình phòng gym thực tế, phần lớn hội viên đi tập chỉ nhớ số điện thoại cá nhân chứ ít khi nhớ email đăng ký. Việc hỗ trợ cả hai giúp tối ưu trải nghiệm người dùng (UX). Ở tầng Backend, `CustomUserDetailsService` sẽ tra cứu Email trước; nếu không thấy, hệ thống dùng `VietnamPhoneNormalizer` để loại bỏ khoảng trắng, dấu chấm, chuẩn hóa đầu số `+84` hoặc `0` rồi truy vấn theo cột `phone`.

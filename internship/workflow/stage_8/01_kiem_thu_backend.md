@@ -4,7 +4,7 @@
 
 Unit test cô lập một hàm/lớp để kiểm tra điều kiện. Integration test chạy qua nhiều thành phần, có thể gồm Spring và database. Kiểm thử API end-to-end gửi request và đối chiếu response/trạng thái dữ liệu. Manual UI test mô phỏng người vận hành trên trình duyệt. Một mức kiểm thử không tự thay thế những mức còn lại.
 
-[`BackendApplicationTests`](../../../backend/src/test/java/com/gymduongdouble/backend/BackendApplicationTests.java) hiện có các test về Groq key, che password khi chuyển request thành string, validation payment, assignment date, lifecycle membership, quy tắc khách mới/gia hạn, số đo, phone normalizer, JWT version, password policy, rate limiter và contract loại bỏ field lương/tỷ lệ nháp. [`RetentionRevenueScenarioCalculatorTests`](../../../backend/src/test/java/com/gymduongdouble/backend/ai/service/RetentionRevenueScenarioCalculatorTests.java) kiểm tra riêng phép nhân tỷ lệ, làm tròn và tổng giá trị của kịch bản AI. Đọc từng method để thấy test tạo đối tượng trực tiếp như thế nào; không mặc định cả application, Postgres, giao diện và Groq thật đều được chạy bởi các test này.
+[`BackendApplicationTests`](../../../backend/src/test/java/com/gymduongdouble/backend/BackendApplicationTests.java) hiện có các test về Groq key, che password khi chuyển request thành string, validation payment, assignment date, lifecycle membership, quy tắc khách mới/gia hạn, số đo, phone normalizer, JWT version, password policy, rate limiter, metadata cắt trang `PageResponse` và contract loại bỏ field lương/tỷ lệ nháp. [`RetentionRevenueScenarioCalculatorTests`](../../../backend/src/test/java/com/gymduongdouble/backend/ai/service/RetentionRevenueScenarioCalculatorTests.java) kiểm tra riêng phép nhân tỷ lệ, làm tròn và tổng giá trị của kịch bản AI. Đọc từng method để thấy test tạo đối tượng trực tiếp như thế nào; không mặc định cả application, Postgres, giao diện và Groq thật đều được chạy bởi các test này.
 
 ## 2. Chạy test trong PowerShell
 
@@ -63,3 +63,53 @@ Kịch bản AI là phép tính đọc dữ liệu, không phải luồng tạo 
 4. Trước và sau request, đối chiếu số phiếu thu, công nợ, lượt đăng ký và lịch PT trong database test; các số này phải không đổi. Khi tắt/mô phỏng lỗi Groq, `aiGenerated=false` nhưng `scenario` và `insight.scenario` vẫn có dữ liệu fallback.
 
 `RetentionRevenueScenarioCalculatorTests` không chứng minh controller validation, quyền OWNER hay failover Groq. Những phần đó cần request API và môi trường test có kiểm soát. Cũng không khẳng định tỷ lệ người dùng nhập sẽ xảy ra trong thực tế; test chỉ chứng minh phép tính và contract phản hồi.
+
+## 8. Test tự động nào thực sự đang có?
+
+Hiện backend có hai file test Java trong `backend/src/test/java`:
+
+- `BackendApplicationTests.java`: các test đơn vị nhỏ cho cấu hình Groq keys, che mật khẩu trong `toString`, Bean Validation payment/số đo, policy membership/PT assignment, chuẩn hóa số điện thoại, JWT bị thu hồi khi reset password, password policy, khóa login đủ 15 phút từ lỗi thứ năm, metadata `PageResponse`, thống kê membership và việc loại bỏ field payroll/price ratio khỏi contract.
+- `ai/service/RetentionRevenueScenarioCalculatorTests.java`: kiểm tra ba nhánh phép tính scenario, làm tròn về đồng và tổng impact.
+
+Tên `BackendApplicationTests` không có nghĩa toàn bộ Spring context/PostgreSQL đã được khởi động trong mọi test. Hãy nhìn annotation và object được khởi tạo: phần lớn test tạo policy/service/DTO trực tiếp, nên chạy nhanh và cô lập nhưng không thay thế integration test controller + security filter + JPA thật. Frontend hiện có test Node `frontend/tests/portal-selectors.test.mjs` cho helper ngày Việt Nam, chọn package PT hiệu lực và lọc lịch sắp tới.
+
+Đây là cách đọc mức độ bao phủ đúng:
+
+| Kiểu kiểm tra | Ví dụ hiện có | Chứng minh được | Không tự chứng minh |
+| --- | --- | --- | --- |
+| Unit test | `PasswordPolicy`, `MembershipLifecyclePolicy`, scenario calculator | Điều kiện/thuật toán cục bộ | Route, JWT filter, database, UI |
+| Frontend helper test | `portalSelectors` | Lọc ngày/gói/lịch trong helper | Response API và giao diện render |
+| Lint/build | `npm run lint`, `npm run build` | Cú pháp, type/build frontend | Tính đúng nghiệp vụ runtime |
+| Manual/API test | đăng nhập, đăng ký gói, thu nợ, PT | Luồng liên kết gần thực tế | Toàn bộ tổ hợp edge case, concurrency |
+
+## 9. Ma trận kiểm thử tối thiểu trước một buổi demo
+
+1. **Auth & security:** đăng nhập đúng/sai, rate limit, 401 token hết hạn/đổi password, 403 khi role sai, 429 có `Retry-After`.
+2. **Hội viên/gói/tài chính:** tạo member, gán gói trả đủ/trả thiếu, thu nợ nhiều đợt khác phương thức, ngày thu quá khứ/hiện tại, chặn ngày thu tương lai.
+3. **PT:** gán PT có gói hiệu lực, đặt lịch không trùng, ghi buổi có scheduleId, trừ đúng một lượt, ghi tự tập, số đo, mục tiêu, portal xem cùng dữ liệu. Khi cấp Portal, kiểm tra hội viên chưa có gói hiệu lực bị từ chối còn hội viên `ACTIVE` có gói tự tập/PT hiệu lực được cấp.
+4. **Báo cáo/AI:** payment theo ngày thu, debt mở, segment AI, scenario 0–100, provider fallback không đổi dữ liệu.
+5. **Public:** không đăng nhập xem gói/video/VietQR; không thể đọc member/payment/report nội bộ.
+
+Sau mỗi lỗi, ghi response HTTP, message, payload đã che dữ liệu nhạy cảm, và dữ liệu trước/sau. Đây là cách phân biệt lỗi validation dự kiến (`400`) với lỗ hổng quyền (`403` phải có nhưng lại trả `200`) hoặc lỗi server (`500`).
+
+## 10. Cách đọc transaction qua test thủ công
+
+Với các luồng ghi nhiều bảng, “nút thành công” chưa đủ. Ví dụ thu nợ cần đối chiếu `Payment`, `DebtRecord.paidAmount/remainingAmount/status` và trạng thái membership; ghi buổi PT cần đối chiếu `PtSessionLog`, bộ đếm package và `PtSchedule` nếu có scheduleId. Nếu request lỗi giữa chừng, dữ liệu phải giữ trạng thái trước transaction.
+
+Để test rollback một cách an toàn, dùng dữ liệu demo và cố tình gửi một request vi phạm backend sau khi đã qua một vài điều kiện, ví dụ gói không thuộc member hoặc schedule đã có log. Đừng sửa SQL trực tiếp để “dàn dựng PASS”; mục tiêu là quan sát transaction do service quản lý. Xung đột đồng thời là bài kiểm tra riêng: `@Version` trên `PtSessionPackage` giúp phát hiện optimistic lock, nhưng cần hai request gần đồng thời mới đánh giá được.
+
+## 11. Mẫu ghi nhận kết quả test
+
+```text
+Ngày/giờ:
+Môi trường: local, profile dev, database test/demo
+Vai trò thực hiện: OWNER | PT | MEMBER | chưa đăng nhập
+Tiền điều kiện: ...
+Request/thao tác: ...
+Kỳ vọng: HTTP ...; dữ liệu ...
+Thực tế: ...
+Đối chiếu sau thao tác: ...
+Kết luận: PASS | FAIL | cần kiểm tra thêm
+```
+
+Mẫu này giúp bạn báo cáo với mentor rõ “đã kiểm tra gì” thay vì chỉ ghi “đã test hệ thống”. Không chép JWT, password, DB password, Groq key hay token Apps Script vào phần thực tế.

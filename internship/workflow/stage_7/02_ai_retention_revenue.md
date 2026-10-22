@@ -98,3 +98,75 @@ Body có `model`, `temperature`, `response_format` và messages; code đọc `ch
 3. Groq tạo diễn giải/đề xuất; người quản lý đánh giá trước khi làm. Các con số cơ hội hay rủi ro là ước tính theo rule, không phải tiền chắc chắn sẽ mất hoặc nhận được. Các nhóm có thể chồng nhau, không tùy tiện cộng tổng từng dòng làm tổng độc lập.
 
 Kịch bản review: với dữ liệu test nhỏ, đối chiếu số thành viên thực tế và từng segment, sau đó kiểm tra payload mock không có PII, thử provider trả lỗi và JSON sai. Nêu rõ kỳ doanh thu có thể theo tháng được chọn còn rủi ro theo ngày hiện tại; đừng gọi đó là snapshot lịch sử nếu code không lưu snapshot.
+
+## 9. Hợp đồng request/response nhìn từ DTO
+
+`RetentionRevenueAdvisorRequest` cho phép body vắng mặt hoặc `year`/`month` null; service sẽ dùng tháng hiện tại. Nếu có `scenario`, object này phải có đủ ba số nguyên `0..100`:
+
+```json
+{
+  "year": 2026,
+  "month": 10,
+  "scenario": {
+    "debtCollectionPercent": 50,
+    "ptRecoveryPercent": 40,
+    "renewalConversionPercent": 30
+  }
+}
+```
+
+Endpoint là `POST /api/v1/ai/retention-revenue-advisor`, chỉ `OWNER` gọi được. Response không chỉ chứa đoạn văn AI; nó có `summary`, các `riskSegments`, `opportunitySegments`, `scenario` numeric (có thể null), `insight`, `generatedAt`, `model` và `aiGenerated`. Dùng kiểu response này có lợi cho frontend: tiền và số lượng được hiển thị từ field số đã do backend kiểm soát, còn câu diễn giải chỉ nằm trong `insight`.
+
+`ScenarioProjection` dùng `long` cho giá trị VND và `BigDecimal` để nhân tỷ lệ/100, làm tròn `HALF_UP` về đồng. `estimatedTotalImpact` đúng bằng tổng ba nhánh `estimatedDebtCollection + estimatedPtRecoveryValue + estimatedRenewalValue`. Nó là giá trị mô phỏng hỗ trợ ưu tiên, không tạo `Payment`, không cập nhật `DebtRecord` và không phải cam kết doanh thu.
+
+## 10. Ba lớp trách nhiệm: rule, calculator và LLM
+
+```mermaid
+sequenceDiagram
+    participant O as OWNER / ReportsPage
+    participant A as AI Advisor Service
+    participant R as Repository + Rule
+    participant C as Scenario Calculator
+    participant G as Groq API
+
+    O->>A: POST period + scenario tùy chọn
+    A->>R: Đọc membership, payment, debt, PT/activity log
+    R-->>A: Dữ liệu nội bộ để tổng hợp segment
+    A->>C: Tính ba giá trị mô phỏng (nếu có scenario)
+    C-->>A: ScenarioProjection số học xác định
+    A->>G: Payload tổng hợp ẩn danh + prompt JSON
+    alt Groq trả JSON hợp lệ
+        G-->>A: Insight diễn giải chiến lược
+    else Key/provider/JSON lỗi
+        A-->>A: fallbackInsight rule-based
+    end
+    A-->>O: Số liệu backend + insight + aiGenerated
+```
+
+- **Rule ở `RetentionRevenueAdvisorService`** đọc database, áp điều kiện có thể kiểm tra và xây segment. Đây là nguồn con số risk/opportunity.
+- **`RetentionRevenueScenarioCalculator`** chỉ làm phép nhân phần trăm trên ba nền tiền. Nó không có repository, không gọi Groq và không ghi database.
+- **`GroqAiClient`** nhận payload đã tổng hợp, gửi system/user prompt và chỉ tạo diễn giải bằng JSON. AI không có quyền truy cập PostgreSQL, không có JWT của owner và không có endpoint để thay đổi dữ liệu.
+
+Tách ba lớp này là quyết định kiến trúc: nếu LLM viết câu khó hiểu thì số liệu và dữ liệu gốc vẫn không đổi; nếu Groq lỗi thì calculator/rule vẫn tạo được response có ích; nếu cần đổi ngưỡng nghiệp vụ, sửa rule mà không huấn luyện model.
+
+## 11. Chính xác về riêng tư và failover Groq
+
+Payload được thiết kế cho Groq là tổng hợp theo kỳ/segment. Nó không đưa tên, số điện thoại, email, Zalo, địa chỉ, mật khẩu, JWT, ID hội viên nội bộ hay từng giao dịch cá nhân vào object gửi provider. Tuy nhiên “không có PII trực tiếp” không có nghĩa anonymization tuyệt đối: một nhóm rất nhỏ vẫn có thể mang tính nhạy cảm theo ngữ cảnh. Vì vậy chỉ OWNER chủ động bấm phân tích, và không nên gửi output/ảnh có dữ liệu nhạy cảm ra ngoài không cần thiết.
+
+`GroqAiClient` lấy danh sách key từ `app.ai.groq.api-keys`, gọi tuần tự. Chỉ lỗi HTTP 401, 403 hoặc 429 được coi retryable để thử key kế tiếp. Lỗi HTTP khác, lỗi parse JSON, timeout/IO hoặc gián đoạn không tự quay vòng key theo code hiện tại; chúng ném exception lên service và service trả fallback `aiGenerated=false`. `response_format: { type: 'json_object' }`, temperature 0.2 và `extractJson` giúp contract ổn định hơn, nhưng không biến output LLM thành dữ liệu chắc chắn.
+
+Không đặt API key vào source, frontend, localStorage, ảnh demo hay báo cáo. Cấu hình provider nằm phía backend; frontend chỉ gọi API nội bộ bằng JWT OWNER.
+
+## 12. Khi nào nên tin số, khi nào chỉ nên xem như gợi ý?
+
+Tin và đối chiếu được: tổng debt lấy từ record mở, payment theo ngày thu, các tỷ lệ scenario và phép cộng ba nhánh. Cần đọc như gợi ý: câu “nguyên nhân có thể”, thứ tự ưu tiên, kịch bản gọi/chăm sóc, và giá trị risk/opportunity của segment. Một hội viên có thể thỏa nhiều rule risk, vì vậy không cộng cơ học mọi `estimatedRevenueAtRisk` của từng dòng thành một tổng doanh thu độc lập.
+
+`aiGenerated=true` chỉ nói provider đã trả JSON parse được theo contract; nó không chứng nhận lời khuyên đúng tuyệt đối. `aiGenerated=false` cũng không làm chức năng vô dụng: fallback sử dụng segment rule-based, action plan mặc định và scenario numeric do backend tính. Khi thuyết trình, đây là điểm mạnh: AI nâng chất lượng diễn giải mà không trở thành single point of failure cho quyết định vận hành.
+
+## 13. Checklist tự review
+
+1. Gọi endpoint không body: xác nhận period dùng ngày hiện tại và `scenario=null`.
+2. Gửi scenario 0%, 100%, và một giá trị 101%; kiểm tra validator 400 và phép tính 0/đúng nền.
+3. Chụp số payment/debt/membership/session log trước-sau khi gọi; tất cả phải giữ nguyên.
+4. Mô phỏng không có key hoặc provider lỗi ở môi trường test; kiểm tra `aiGenerated=false`, `providerMessage` và insight fallback.
+5. Mở Network/log backend trên môi trường an toàn để xác minh payload cấu trúc không chứa PII. Không log key hoặc token chỉ để chứng minh điều này.

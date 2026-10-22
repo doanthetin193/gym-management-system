@@ -18,9 +18,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ApiClientError } from '../../../shared/api/apiClient'
 import { useAuth } from '../../auth/context/authContext'
-import { createMember, getMemberDetail, listMembers, updateMember } from '../api/memberApi'
+import { createMember, getMemberDetail, getMemberListStatistics, listMembersPage, updateMember } from '../api/memberApi'
 import { MemberFormModal } from '../components/MemberFormModal'
-import type { MemberListFilter, MemberPayload, MemberProfile, MemberSummary } from '../types/member'
+import type { MemberListFilter, MemberListStatistics, MemberPayload, MemberProfile, MemberSummary } from '../types/member'
 
 function formatDate(value: string | null) {
   if (!value) {
@@ -97,11 +97,18 @@ export function MembersPage() {
   const { user } = useAuth()
   const canManageStatus = user?.roles.includes('OWNER') ?? false
   const [members, setMembers] = useState<MemberSummary[]>([])
-  const [allMembers, setAllMembers] = useState<MemberSummary[]>([])
   const [keyword, setKeyword] = useState('')
   const [filter, setFilter] = useState<MemberListFilter>('ALL')
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(6)
+  const [totalItems, setTotalItems] = useState(0)
+  const [totalPages, setTotalPages] = useState(0)
+  const [statistics, setStatistics] = useState<MemberListStatistics>({
+    totalMembers: 0,
+    activeMembers: 0,
+    expiringSoonMembers: 0,
+    expiredMembers: 0,
+  })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [formMode, setFormMode] = useState<'create' | 'edit' | null>(null)
@@ -109,66 +116,39 @@ export function MembersPage() {
   const [formError, setFormError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
-  // Full global stats (independent of current active filter)
-  const stats = useMemo(() => {
-    const list = allMembers.length > 0 ? allMembers : members
-    return {
-      total: list.length,
-      active: list.filter(
-        (member) => member.daysUntilExpiration !== null && member.daysUntilExpiration > 7,
-      ).length,
-      expiring: list.filter(
-        (member) =>
-          member.daysUntilExpiration !== null &&
-          member.daysUntilExpiration >= 0 &&
-          member.daysUntilExpiration <= 7,
-      ).length,
-      expired: list.filter(
-        (member) => member.daysUntilExpiration !== null && member.daysUntilExpiration < 0,
-      ).length,
-    }
-  }, [allMembers, members])
-
-  const totalPages = Math.max(1, Math.ceil(members.length / pageSize))
-  const activePage = Math.min(currentPage, totalPages)
-
-  const paginatedMembers = useMemo(() => {
-    const start = (activePage - 1) * pageSize
-    return members.slice(start, start + pageSize)
-  }, [activePage, members, pageSize])
-
-  const fromIndex = members.length === 0 ? 0 : (activePage - 1) * pageSize + 1
-  const toIndex = Math.min(activePage * pageSize, members.length)
+  const displayTotalPages = Math.max(1, totalPages)
+  const activePage = Math.min(currentPage, displayTotalPages)
+  const fromIndex = totalItems === 0 ? 0 : (activePage - 1) * pageSize + 1
+  const toIndex = Math.min(activePage * pageSize, totalItems)
 
   const paginationPages = useMemo(() => {
-    if (totalPages <= 5) {
-      return Array.from({ length: totalPages }, (_, i) => i + 1)
+    if (displayTotalPages <= 5) {
+      return Array.from({ length: displayTotalPages }, (_, i) => i + 1)
     }
     if (activePage <= 3) {
-      return [1, 2, 3, 4, '...', totalPages]
+      return [1, 2, 3, 4, '...', displayTotalPages]
     }
-    if (activePage >= totalPages - 2) {
-      return [1, '...', totalPages - 3, totalPages - 2, totalPages - 1, totalPages]
+    if (activePage >= displayTotalPages - 2) {
+      return [1, '...', displayTotalPages - 3, displayTotalPages - 2, displayTotalPages - 1, displayTotalPages]
     }
-    return [1, '...', activePage - 1, activePage, activePage + 1, '...', totalPages]
-  }, [activePage, totalPages])
+    return [1, '...', activePage - 1, activePage, activePage + 1, '...', displayTotalPages]
+  }, [activePage, displayTotalPages])
 
   const filterOptions = useMemo<Array<{ value: MemberListFilter; label: string; count: number }>>(
     () => [
-      { value: 'ALL', label: 'Tất cả', count: stats.total },
-      { value: 'ACTIVE', label: 'Đang tập', count: stats.active },
-      { value: 'EXPIRING_SOON', label: 'Sắp hết hạn', count: stats.expiring },
-      { value: 'EXPIRED', label: 'Hết hạn', count: stats.expired },
+      { value: 'ALL', label: 'Tất cả', count: statistics.totalMembers },
+      { value: 'ACTIVE', label: 'Đang tập', count: statistics.activeMembers },
+      { value: 'EXPIRING_SOON', label: 'Sắp hết hạn', count: statistics.expiringSoonMembers },
+      { value: 'EXPIRED', label: 'Hết hạn', count: statistics.expiredMembers },
     ],
-    [stats],
+    [statistics],
   )
 
-  const loadAllMembers = useCallback(async () => {
+  const loadStatistics = useCallback(async () => {
     try {
-      const allData = await listMembers({ keyword: '', filter: 'ALL' })
-      setAllMembers(allData)
+      setStatistics(await getMemberListStatistics())
     } catch {
-      // ignore silently for background telemetry
+      // Keep the current statistics visible if the refresh fails.
     }
   }, [])
 
@@ -176,22 +156,32 @@ export function MembersPage() {
     setLoading(true)
     setError(null)
     try {
-      const data = await listMembers({ keyword: keyword.trim(), filter })
-      setMembers(data)
+      const data = await listMembersPage({
+        keyword: keyword.trim(),
+        filter,
+        page: currentPage - 1,
+        size: pageSize,
+      })
+      setMembers(data.items)
+      setTotalItems(data.totalItems)
+      setTotalPages(data.totalPages)
+      if (data.page + 1 !== currentPage) {
+        setCurrentPage(data.page + 1)
+      }
     } catch (caughtError) {
       setError(errorMessage(caughtError))
     } finally {
       setLoading(false)
     }
-  }, [filter, keyword])
+  }, [currentPage, filter, keyword, pageSize])
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
-      void loadAllMembers()
+      void loadStatistics()
     }, 0)
 
     return () => window.clearTimeout(timeoutId)
-  }, [loadAllMembers])
+  }, [loadStatistics])
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -207,10 +197,10 @@ export function MembersPage() {
     try {
       if (formMode === 'edit' && editingMember) {
         await updateMember(editingMember.id, payload)
-        await Promise.all([loadMembers(), loadAllMembers()])
+        await Promise.all([loadMembers(), loadStatistics()])
       } else {
         const created = await createMember(payload)
-        await loadAllMembers()
+        await loadStatistics()
         navigate(`/members/${created.id}`)
       }
       setFormMode(null)
@@ -274,28 +264,28 @@ export function MembersPage() {
       <section className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 md:gap-4">
         <StatCard
           label="Tổng hội viên"
-          value={stats.total}
+          value={statistics.totalMembers}
           subtext="Toàn hệ thống"
           icon={Users}
           tone="blue"
         />
         <StatCard
           label="Đang tập an toàn"
-          value={stats.active}
+          value={statistics.activeMembers}
           subtext="Hạn > 7 ngày"
           icon={UserCheck}
           tone="green"
         />
         <StatCard
           label="Sắp hết hạn"
-          value={stats.expiring}
+          value={statistics.expiringSoonMembers}
           subtext="Cần gọi nhắc"
           icon={CalendarClock}
           tone="yellow"
         />
         <StatCard
           label="Đã hết hạn"
-          value={stats.expired}
+          value={statistics.expiredMembers}
           subtext="Ưu tiên gia hạn"
           icon={AlertCircle}
           tone="red"
@@ -371,7 +361,7 @@ export function MembersPage() {
               type="button"
               onClick={() => {
                 void loadMembers()
-                void loadAllMembers()
+                void loadStatistics()
               }}
               className="inline-flex size-9 items-center justify-center rounded-xl border border-slate-200/80 bg-white text-slate-500 shadow-sm hover:border-[#087ec1] hover:text-[#087ec1] dark:border-white/10 dark:bg-white/5 dark:text-gray-400 dark:hover:border-white/20 dark:hover:text-white transition"
               title="Tải lại danh sách"
@@ -424,7 +414,7 @@ export function MembersPage() {
                   </td>
                 </tr>
               ) : (
-                paginatedMembers.map((member) => {
+                members.map((member) => {
                   const statusBadge = getMemberStatusBadge(member)
                   return (
                     <tr
@@ -565,7 +555,7 @@ export function MembersPage() {
             <span>
               Hiển thị <strong className="text-slate-900 dark:text-white">{fromIndex}</strong> -{' '}
               <strong className="text-slate-900 dark:text-white">{toIndex}</strong> trên{' '}
-              <strong className="text-slate-900 dark:text-white">{members.length}</strong> hội viên
+              <strong className="text-slate-900 dark:text-white">{totalItems}</strong> hội viên
             </span>
 
             <div className="flex items-center gap-1.5 pl-2 border-l border-slate-200 dark:border-white/10">
@@ -640,8 +630,8 @@ export function MembersPage() {
             {/* Next Page Button */}
             <button
               type="button"
-              disabled={activePage >= totalPages}
-              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              disabled={activePage >= displayTotalPages}
+              onClick={() => setCurrentPage((p) => Math.min(displayTotalPages, p + 1))}
               className="inline-flex h-8 items-center gap-1 rounded-xl border border-slate-200/80 bg-white px-2.5 text-xs font-bold text-slate-600 shadow-sm transition hover:border-[#087ec1] hover:text-[#087ec1] disabled:opacity-40 disabled:pointer-events-none dark:border-white/10 dark:bg-white/5 dark:text-gray-300 dark:hover:border-white/20 dark:hover:text-white"
             >
               <span className="hidden sm:inline">Sau</span>

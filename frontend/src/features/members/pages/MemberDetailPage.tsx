@@ -117,6 +117,8 @@ export function MemberDetailPage() {
     )
   }, [detail])
 
+  const canCreatePortal = detail?.profile.status === 'ACTIVE' && detail.activeMemberships.length > 0
+
   const loadDetail = useCallback(async () => {
     if (!Number.isFinite(parsedMemberId)) {
       setError('Mã hội viên không hợp lệ.')
@@ -539,7 +541,7 @@ export function MemberDetailPage() {
             </div>
           </div>
 
-          {/* QUẢN LÝ QUYỀN PORTAL HỌC VIÊN PT */}
+          {/* QUẢN LÝ QUYỀN PORTAL HỘI VIÊN */}
           <div className="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-5 shadow-sm space-y-3.5">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2.5">
@@ -551,7 +553,7 @@ export function MemberDetailPage() {
                     Tài khoản Portal Học Viên
                   </h3>
                   <p className="text-[11px] font-semibold text-[var(--text-muted)]">
-                    Theo dõi lịch tập & chỉ số PT
+                    Theo dõi gói tập & tiến độ cá nhân
                   </p>
                 </div>
               </div>
@@ -594,19 +596,27 @@ export function MemberDetailPage() {
             ) : !detail.profile.userId ? (
               <div className="space-y-2.5 pt-1">
                 <p className="text-xs font-medium text-[var(--text-muted)] leading-relaxed">
-                  Hội viên chưa có tài khoản. Chỉ cấp khi khách mua gói tập PT để xem số đo và lịch hẹn.
+                  Chỉ cấp khi hội viên đang hoạt động và có gói tập đang hiệu lực. Khách PT xem thêm lịch hẹn, buổi tập, chỉ số và mục tiêu.
                 </p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPortalPassword(generateTemporaryPassword())
-                    setPortalModalOpen('create')
-                  }}
-                  className="inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 px-3 text-xs font-black text-black hover:brightness-105 shadow-sm transition"
-                >
-                  <KeyRound size={15} />
-                  + Cấp tài khoản Portal
-                </button>
+                {canCreatePortal ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPortalPassword(generateTemporaryPassword())
+                      setPortalModalOpen('create')
+                    }}
+                    className="inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 px-3 text-xs font-black text-black hover:brightness-105 shadow-sm transition"
+                  >
+                    <KeyRound size={15} />
+                    + Cấp tài khoản Portal
+                  </button>
+                ) : (
+                  <div className="rounded-xl border border-amber-500/25 bg-amber-500/10 p-3 text-xs font-semibold leading-relaxed text-amber-300">
+                    {detail.profile.status !== 'ACTIVE'
+                      ? 'Hội viên đang ngừng hoạt động nên chưa thể được cấp Portal.'
+                      : 'Hội viên chưa có gói tập hiệu lực hôm nay nên chưa thể được cấp Portal.'}
+                  </div>
+                )}
               </div>
             ) : (
               <div className="space-y-2.5 pt-1">

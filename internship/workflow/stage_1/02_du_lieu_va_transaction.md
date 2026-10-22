@@ -1,69 +1,89 @@
 # Entity, repository, transaction và dữ liệu local
 
-## 1. Entity và quan hệ
+## 1. Bản chất Entity và Cơ chế Ánh xạ ORM
 
-JPA entity là object Java được Hibernate ánh xạ với bảng. Ví dụ [`User`](../../../backend/src/main/java/com/gymduongdouble/backend/user/domain/User.java) ánh xạ bảng `users`; email có ràng buộc unique, trạng thái được lưu theo tên enum, quan hệ role dùng `@ManyToMany` qua bảng `user_roles`. Tên field Java không nhất thiết giống tên cột, vì `@Column` có thể đặt tên cột rõ ràng.
+JPA Entity là một đối tượng Java được thư viện Hibernate ánh xạ tương ứng với một bảng trong cơ sở dữ liệu quan hệ PostgreSQL.
+* Ví dụ: Class [`User`](../../../backend/src/main/java/com/gymduongdouble/backend/user/domain/User.java) ánh xạ với bảng `users`.
+* Thuộc tính `email` có ràng buộc duy nhất (`unique = true`).
+* Thuộc tính `status` kiểu enum được lưu dưới dạng chuỗi văn bản (`@Enumerated(EnumType.STRING)`), tránh lưu số nguyên (ORDINAL) vì nếu sau này enum thêm phần tử mới sẽ làm sai lệch dữ liệu cũ.
+* Quan hệ giữa `User` và `Role` là quan hệ nhiều - nhiều (`@ManyToMany`), được nối qua bảng trung gian `user_roles`.
 
-Entity kế thừa [`AuditableEntity`](../../../backend/src/main/java/com/gymduongdouble/backend/common/domain/AuditableEntity.java), lớp này kế thừa [`BaseEntity`](../../../backend/src/main/java/com/gymduongdouble/backend/common/domain/BaseEntity.java):
+### Mối liên kết thực tế giữa Hồ sơ hội viên (`Member`) và Tài khoản (`User`):
+Trong phòng gym Dương Double:
+* Mọi khách hàng đến phòng tập đều có một hồ sơ trong bảng `members`.
+* **Khách tự tập thông thường**: Có thể chỉ lưu thông tin trong bảng `members`, trường `user_id = null` khi không cần đăng nhập. Nếu đang `ACTIVE` và có gói hiệu lực, OWNER vẫn có thể cấp Portal để khách xem dữ liệu cá nhân.
+* **Khách được cấp Portal**: Có thể là khách tự tập hoặc PT, nhưng tại thời điểm cấp mới đều phải đang `ACTIVE` và có membership hiệu lực. Khi được cấp Portal, bản ghi `members` liên kết 1-1 với `users` qua `members.user_id`.
 
-- `id` dùng `GenerationType.IDENTITY`; database cấp khóa chính.
-- `createdAt`, `updatedAt` dùng Spring Data JPA auditing; [`JpaConfig`](../../../backend/src/main/java/com/gymduongdouble/backend/common/config/JpaConfig.java) bật auditing.
-- `deleted` mặc định `false` chỉ là cột nền tảng. Dự án **chưa có cơ chế soft delete hoàn chỉnh tự động áp dụng cho mọi query và thao tác xóa**; không nên trình bày rằng đã có.
+> Service tạo Portal không yêu cầu hội viên có **gói PT**, nhưng có ràng buộc backend khác: hội viên phải `ACTIVE` và có ít nhất một membership hiệu lực hôm nay theo `MembershipLifecyclePolicy`. Đây là quy tắc service, không phải `CHECK` constraint vật lý trong database; đừng diễn giải nhầm thành ràng buộc theo `plan_type = PT`.
 
-`@MappedSuperclass` cho các lớp cha dùng chung mapping; nó không tạo một bảng riêng chỉ vì lớp cha tồn tại. Khi đọc entity, chú ý nullable, unique, loại dữ liệu, `fetch` và cascade được khai báo thực tế, thay vì suy ra từ giao diện.
+```mermaid
+erDiagram
+    users ||--o| members : "liên kết 1-1 (chỉ khách gói PT có user_id)"
+    users }|--|{ roles : "user_roles (OWNER, PT, MEMBER)"
+    members ||--o{ member_memberships : "đăng ký gói"
+    membership_plans ||--o{ member_memberships : "áp dụng bảng giá"
+    member_memberships ||--o{ debt_records : "phát sinh công nợ"
+    member_memberships ||--o{ payment_transactions : "thanh toán thực thu"
+    debt_records ||--o{ payment_transactions : "thu nợ"
+    members ||--o{ pt_assignments : "phân công PT (chỉ gói PT)"
+    users ||--o{ pt_assignments : "PT phụ trách (Role PT / Owner kiêm PT)"
+```
 
-## 2. Repository
+---
 
-[`UserRepository`](../../../backend/src/main/java/com/gymduongdouble/backend/user/repository/UserRepository.java) là ví dụ lớp truy cập dữ liệu. Spring Data tạo implementation từ interface; method tìm theo email/điện thoại phục vụ xác thực. Repository cung cấp cơ chế truy vấn, còn quyết định tài khoản có được đăng nhập hay không thuộc service và security.
+## 2. Cây kế thừa Entity: `BaseEntity` và `AuditableEntity`
 
-Không phải mọi quan hệ được nạp sẵn: `User.roles` dùng `LAZY`. Cấu hình `spring.jpa.open-in-view: false` nghĩa là không duy trì persistence context cho toàn bộ thời gian render response; service cần chuẩn bị dữ liệu cần thiết khi còn trong phạm vi phù hợp.
+Trong dự án, hầu hết các Entity đều kế thừa từ hai lớp cơ sở tại [`backend/src/main/java/com/gymduongdouble/backend/common/domain/`](../../../backend/src/main/java/com/gymduongdouble/backend/common/domain/):
 
-## 3. Transaction thực tế
+```mermaid
+classDiagram
+    class BaseEntity {
+        <<MappedSuperclass>>
+        +Long id
+        +boolean deleted
+    }
 
-Đọc [`AuthService`](../../../backend/src/main/java/com/gymduongdouble/backend/auth/service/AuthService.java). `login()` có `@Transactional`: sau khi xác thực thành công, code lấy `User` từ repository và đặt `lastLoginAt`; Hibernate có thể theo dõi thay đổi entity đang được quản lý và ghi xuống khi transaction commit. `changePassword()` cũng dùng transaction khi thay password hash và tăng phiên bản token.
+    class AuditableEntity {
+        <<MappedSuperclass>>
+        +Instant createdAt
+        +Instant updatedAt
+    }
 
-Trong [`CustomUserDetailsService`](../../../backend/src/main/java/com/gymduongdouble/backend/common/security/CustomUserDetailsService.java), `loadUserByUsername()` dùng `@Transactional(readOnly = true)` để đọc dữ liệu và dựng `AuthenticatedUser`.
+    class User {
+        +String email
+        +String phone
+        +String passwordHash
+        +Long authVersion
+    }
 
-Transaction giúp nhóm thao tác database theo một ranh giới nhất quán; không biến lời gọi HTTP bên ngoài hay trạng thái trong bộ nhớ thành dữ liệu được database tự rollback. Chi tiết rollback còn phụ thuộc loại exception và cấu hình Spring, không nên hiểu là mọi ngoại lệ đều giống nhau.
+    class Member {
+        +Long userId
+        +String fullName
+        +String phone
+        +MemberStatus status
+    }
 
-## 4. Cấu hình local và ngày giờ
+    class MembershipPlan {
+        +String name
+        +PlanType planType
+        +BigDecimal defaultPrice
+        +boolean active
+    }
 
-[`application.yml`](../../../backend/src/main/resources/application.yml) hiện cấu hình PostgreSQL, `ddl-auto: update`, `open-in-view: false` và Flyway `enabled: false`. Hibernate có thể cập nhật schema khi chạy; đây **không phải** lịch sử migration được Flyway quản lý. Không xóa database chỉ để khắc phục lỗi startup nếu chưa sao lưu và xác nhận dữ liệu.
+    class DebtRecord {
+        +BigDecimal originalAmount
+        +BigDecimal remainingAmount
+        +Long version
+    }
 
-[`AppClock`](../../../backend/src/main/java/com/gymduongdouble/backend/common/time/AppClock.java) cung cấp ngày hiện tại theo `Asia/Ho_Chi_Minh`; cấu hình Hibernate cũng chỉ định múi giờ JDBC. `LocalDate` biểu diễn ngày nghiệp vụ không kèm giờ; `Instant` biểu diễn một thời điểm, như `lastLoginAt`. Khi đọc từng service, cần kiểm tra nó thực sự dùng nguồn thời gian nào; không giả định mọi nơi đều gọi `AppClock`.
+    BaseEntity <|-- AuditableEntity : kế thừa
+    AuditableEntity <|-- User : kế thừa
+    AuditableEntity <|-- Member : kế thừa
+    AuditableEntity <|-- MembershipPlan : kế thừa
+    AuditableEntity <|-- DebtRecord : kế thừa
+```
 
-## 5. Khởi tạo dữ liệu
-
-[`DataInitializer`](../../../backend/src/main/java/com/gymduongdouble/backend/common/config/DataInitializer.java) là nơi cần đọc khi tìm dữ liệu khởi tạo. Các thông số owner/demo lấy từ cấu hình; không mặc định seed là công cụ sao lưu hay migration. Trước khi chạy với database đang có dữ liệu, xem điều kiện trong initializer và `DEMO_SEED_ENABLED`.
-
-## Tự kiểm tra
-
-1. `@MappedSuperclass` khác `@Entity` thế nào?
-2. Tại sao sửa `lastLoginAt` trong transaction có thể được lưu dù không gọi `save()` ngay tại dòng đó?
-3. Vì sao `deleted` và Flyway hiện tại không nên được giới thiệu là hai cơ chế đã hoàn chỉnh?
-
-## 6. Persistence context và dirty checking bằng ví dụ
-
-Trong `AuthService.login`, lời gọi `userRepository.findById(...)` tìm entity trong transaction và `setLastLoginAt(Instant.now())`. Entity được quản lý có thể bị Hibernate theo dõi: khi transaction flush/commit, Hibernate so trạng thái và phát sinh update cần thiết. Đây là lý do đoạn code không nhất thiết phải gọi `save` ngay sau setter. Ngược lại, thay một DTO hoặc một object không được quản lý không tự ghi database.
-
-Đừng kết luận một method `@Transactional` chắc chắn thành công chỉ vì đã chạy qua `repository.save`: database vẫn có thể báo lỗi tại flush hoặc commit. Khi có lỗi, cần phân biệt exception xảy ra trước hay sau commit và dữ liệu nào thực sự thuộc transaction. Lời gọi self-invocation trong cùng bean và proxy Spring cũng là chủ đề cần kiểm tra cẩn thận, không mặc định mọi annotation đều được kích hoạt theo cùng cách.
-
-## 7. Quan hệ lazy và DTO
-
-`User.roles` là quan hệ LAZY. Trong `CustomUserDetailsService.loadUserByUsername`, code dựng `AuthenticatedUser` ngay trong method `@Transactional(readOnly = true)` và duyệt role để tạo authorities. Bài học là cần xác định **nơi truy cập quan hệ** và transaction bao quanh, thay vì chỉ thấy `LAZY` rồi kết luận lúc nào cũng có lỗi. Với `open-in-view: false`, trả entity trực tiếp và đợi phần serialize ngoài transaction đọc các quan hệ chưa nạp là cách dễ gặp vấn đề.
-
-Với tiền, đọc annotation `precision=15, scale=2` ở `MemberMembership` và `DebtRecord`; tìm từng phép `BigDecimal.add`, `subtract`, `compareTo` trong service. `precision` và `scale` là ràng buộc biểu diễn ở cột, còn điều kiện số tiền không vượt nợ được kiểm tra ở service/DTO. Hai lớp bảo vệ có vai trò khác nhau.
-
-## 8. Bài thực hành không làm thay đổi dữ liệu
-
-1. Mở entity `User`, viết bảng ánh xạ: tên field Java, tên cột, nullable, unique và quan hệ. Với field không có `@Column(name=...)`, đối chiếu naming strategy trước khi khẳng định tên SQL cụ thể.
-2. Trong `application.yml`, giải thích từng dòng `datasource`, `ddl-auto`, `open-in-view`, múi giờ JDBC và `flyway.enabled`. Đọc biến môi trường chỉ theo tên, không đưa giá trị bí mật vào báo cáo.
-3. Tìm `@Version` trong entity công nợ và đọc handler lỗi xung đột. Tự giải thích tại sao hai transaction cập nhật cùng bản ghi cần kiểm tra phiên bản.
-
-## 9. Từ lớp Java đến bảng: đọc `BaseEntity`
-
-Đoạn trích thực tế, đã bỏ import:
-
+### Chi tiết mã nguồn [`BaseEntity.java`](../../../backend/src/main/java/com/gymduongdouble/backend/common/domain/BaseEntity.java):
 ```java
 @Getter
 @Setter
@@ -77,27 +97,223 @@ public abstract class BaseEntity {
     private boolean deleted = false;
 }
 ```
+* **`@MappedSuperclass`**: Báo cho JPA biết đây là lớp cha dùng để chia sẻ thuộc tính mapping. JPA sẽ nhúng cột `id` và `deleted` vào tất cả các bảng của Entity con. **Nó không tạo ra bảng `base_entity` trong database**.
+* **`@Id` & `@GeneratedValue(strategy = GenerationType.IDENTITY)`**: Đánh dấu khóa chính. Chiến lược `IDENTITY` yêu cầu PostgreSQL tự sinh giá trị tăng dần thông qua cột kiểu `BIGSERIAL` (hoặc sequence). Khóa chính dùng kiểu `Long` (wrapper object) để có thể mang giá trị `null` trước khi được lưu xuống database.
+* **`deleted = false`**: Cờ đánh dấu trạng thái xóa.
 
-`@MappedSuperclass` nghĩa là các entity kế thừa nhận mapping của những field này; nó không mặc nhiên tạo bảng riêng cho `BaseEntity`. `@Id` là khóa chính JPA; `IDENTITY` để database sinh ID khi chèn. `Long` có thể là `null` trước khi lưu, khác `long` nguyên thủy. `nullable = false` là khai báo mapping/schema, không phải nghiệp vụ tự xóa hay tự ẩn dữ liệu.
+### Chi tiết mã nguồn [`AuditableEntity.java`](../../../backend/src/main/java/com/gymduongdouble/backend/common/domain/AuditableEntity.java):
+```java
+@Getter
+@Setter
+@MappedSuperclass
+@EntityListeners(AuditingEntityListener.class)
+public abstract class AuditableEntity extends BaseEntity {
+    @CreatedDate
+    @Column(nullable = false, updatable = false)
+    private Instant createdAt;
 
-`deleted` chỉ là boolean mặc định `false`: code này **không** tự chuyển thành `true` khi gọi `delete`, không tự thêm `WHERE deleted = false`, và không tự khôi phục. Do đó không được thuyết trình rằng dự án đã có soft delete hoàn chỉnh chỉ vì thấy field này. Muốn biết bản ghi nào thực sự bị ẩn hoặc xóa, phải đọc repository và service của từng module.
+    @LastModifiedDate
+    @Column(nullable = false)
+    private Instant updatedAt;
+}
+```
+* **`@EntityListeners(AuditingEntityListener.class)`**: Lắng nghe sự kiện vòng đời của entity. Khi một bản ghi được `INSERT`, nó tự động gán thời gian hiện tại vào `createdAt`. Khi bản ghi được `UPDATE`, nó tự động cập nhật thời gian vào `updatedAt`.
+* Để tính năng này hoạt động, file [`JpaConfig.java`](../../../backend/src/main/java/com/gymduongdouble/backend/common/config/JpaConfig.java) bắt buộc phải có annotation `@EnableJpaAuditing`.
+* Cột `createdAt` có thuộc tính `updatable = false`, đảm bảo Hibernate không bao giờ ghi đè ngày tạo ban đầu khi chạy các lệnh `UPDATE` sau này.
 
-`AuditableEntity` kế thừa cấu trúc này và dùng `@CreatedDate`, `@LastModifiedDate` cùng `AuditingEntityListener`. Hãy tìm thêm `@EnableJpaAuditing`: listener và cấu hình auditing cùng phối hợp điền thời gian. `createdAt` được khai báo `updatable = false`; không nhầm với `lastLoginAt`, một trường nghiệp vụ riêng được cập nhật khi đăng nhập.
+> [!WARNING]
+> **SỰ THẬT VỀ CỘT `deleted` (LƯU Ý PHẢN BIỆN ĐỒ ÁN CỰC KỲ QUAN TRỌNG):**
+> Cột `deleted = false` trong dự án hiện chỉ là **nền tảng dữ liệu dự phòng**, **chưa phải là hệ thống Soft Delete hoàn chỉnh tự động**.
+> * Một cơ chế Soft Delete hoàn chỉnh trong Hibernate bắt buộc phải có annotation `@SQLDelete(sql = "UPDATE ... SET deleted = true WHERE id = ?")` và `@SQLRestriction("deleted = false")` để tự động lọc các bản ghi đã xóa trong mọi câu lệnh `SELECT`.
+> * Hiện tại, dự án chưa cấu hình các annotation này trên toàn hệ thống. Vì vậy, **tuyệt đối không khẳng định trước hội đồng rằng dự án đã có Soft Delete hoàn chỉnh**, mà hãy giải thích chính xác: *"Dự án đã thiết kế sẵn cột `deleted` ở tầng Data Model làm nền tảng để sau này nâng cấp cơ chế lưu trữ (archiving) và khôi phục dữ liệu mà không làm mất tính toàn vẹn khóa ngoại."*
 
-## 10. Transaction nhìn qua ví dụ thu tiền
+---
 
-Ví dụ minh họa ý tưởng, **không phải nguyên văn method**:
+## 3. Tầng Repository và Spring Data JPA
+
+Tầng Repository nằm trong thư mục `repository` của từng module (ví dụ: [`UserRepository.java`](../../../backend/src/main/java/com/gymduongdouble/backend/user/repository/UserRepository.java)):
 
 ```java
-@Transactional
-public void thuTien(...) {
-    // Kiểm tra khoản nợ, số tiền và quyền.
-    // Ghi phiếu thu, cập nhật số đã trả và số còn nợ.
+public interface UserRepository extends JpaRepository<User, Long> {
+    Optional<User> findByEmailIgnoreCase(String email);
+    Optional<User> findByPhone(String phone);
 }
 ```
 
-Nếu đang xử lý một phiếu thu 2 triệu, lưu phiếu thành công nhưng cập nhật công nợ lỗi, hai thay đổi không nên tách rời: transaction giúp chúng cùng commit hoặc rollback theo cấu hình và loại exception. Chỉ riêng annotation không chứng minh mọi hành động bên ngoài, ví dụ HTTP sang dịch vụ thứ ba, đều có thể rollback bằng database. Cũng cần chú ý thời điểm JPA flush: lỗi ràng buộc hay optimistic lock có thể xuất hiện khi flush/commit thay vì ngay dòng `save`.
+* **Cơ chế hoạt động**: Bạn chỉ cần định nghĩa interface kế thừa `JpaRepository<Entity, ID>`. Khi Spring khởi động, nó tự động phân tích tên method (Query Derivation) và sinh ra class Proxy triển khai câu lệnh SQL tương ứng trong runtime.
+* Bạn không cần viết một dòng code JDBC hay câu lệnh SQL thủ công nào cho các thao tác CRUD cơ bản (`save`, `findById`, `findAll`, `deleteById`).
 
-Ở entity `DebtRecord`, `@Version` giúp phát hiện hai transaction cùng sửa từ một phiên bản cũ. Ví dụ cùng đọc version 3; giao dịch A commit thành 4; B còn dựa trên 3 thì bị xung đột và handler trả 409. B phải tải lại trước khi thử lại, không cộng hai phiếu một cách mù quáng. Đây là optimistic locking, không phải tự động xếp hàng chờ như pessimistic lock.
+---
 
-**Bài đọc:** mở `DebtRecord`, `PaymentService.create` và handler `ObjectOptimisticLockingFailureException`; viết ra những bản ghi được cập nhật, kiểm tra lỗi có thể xảy ra, và trạng thái mong đợi sau rollback. Không chạy thử ghi phiếu trên dữ liệu thực chỉ để quan sát transaction.
+## 4. Vòng đời Entity, Persistence Context và "Dirty Checking"
+
+Đây là kiến thức quan trọng nhất về Hibernate mà bất kỳ lập trình viên Java Backend nào cũng phải nắm vững.
+
+### 4 trạng thái của một JPA Entity:
+
+```mermaid
+stateDiagram-v2
+    [*] --> TRANSIENT: Khởi tạo bằng new
+    TRANSIENT --> MANAGED: repository.save() hoặc findById()
+
+    note right of MANAGED
+        Hibernate lưu Snapshot trong RAM.
+        Theo dõi mọi thay đổi qua setter.
+        Tự sinh SQL UPDATE khi commit (Dirty Checking).
+    end note
+
+    MANAGED --> DETACHED: Kết thúc Transaction hoặc Session đóng
+    MANAGED --> REMOVED: repository.delete()
+    REMOVED --> [*]: Xóa khỏi DB khi commit
+    DETACHED --> MANAGED: repository.save() hoặc merge()
+```
+
+1. **New / Transient**: Object vừa được tạo bằng từ khóa `new`, chưa có ID, chưa liên kết với Hibernate Session và chưa có bản ghi trong DB.
+2. **Managed / Persistent**: Object đã gắn liền với một Session (Persistence Context), có ID đại diện trong DB. Mọi thay đổi trên thuộc tính của object này đều được Hibernate theo dõi.
+3. **Detached**: Object từng ở trạng thái Managed nhưng Session đã đóng lại (ví dụ sau khi kết thúc Transaction). Hibernate không còn theo dõi các thay đổi của nó nữa.
+4. **Removed**: Object được đánh dấu để xóa khỏi Database khi transaction commit.
+
+### Cơ chế Dirty Checking diễn ra như thế nào?
+Hãy xem xét method `login` trong [`AuthService.java`](../../../backend/src/main/java/com/gymduongdouble/backend/auth/service/AuthService.java#L47-L56):
+```java
+@Transactional
+public LoginResponse login(LoginRequest request, String clientIp) {
+    ...
+    userRepository.findById(user.getId())
+        .ifPresent(account -> account.setLastLoginAt(Instant.now()));
+    // KHÔNG HỀ CÓ userRepository.save(user); nhưng database vẫn được UPDATE!
+    ...
+}
+```
+**Bản chất từng bước:**
+1. Khi gọi `findById()`, Hibernate tải dữ liệu từ PostgreSQL lên, đưa instance `account` trong lambda vào trạng thái **Managed**.
+2. Đồng thời, Hibernate tạo một bản sao trạng thái ban đầu của đối tượng này lưu trong RAM, gọi là **Snapshot**.
+3. Lập trình viên gọi `account.setLastLoginAt(...)`, thay đổi giá trị thuộc tính trong bộ nhớ.
+4. Khi method `login` kết thúc, Spring Transaction chuẩn bị **Commit**.
+5. Hibernate tự động thực hiện **Dirty Checking**: nó so sánh từng trường của đối tượng `user` hiện tại với bản `Snapshot` ban đầu.
+6. Phát hiện trường `lastLoginAt` đã bị thay đổi, Hibernate **tự động sinh ra câu lệnh SQL `UPDATE users SET last_login_at = ? WHERE id = ?`** và gửi xuống PostgreSQL.
+$\rightarrow$ **Quy tắc vàng:** Trong một method có `@Transactional`, bạn **không cần gọi `repository.save()`** khi cập nhật dữ liệu của một Entity đã ở trạng thái Managed!
+
+---
+
+## 5. Quan hệ `LAZY` và Cấu hình `open-in-view: false`
+
+### Quan hệ LAZY vs EAGER
+* Mặc định các quan hệ tập hợp (`@OneToMany`, `@ManyToMany`) trong JPA có chiến lược tải là `FetchType.LAZY`.
+* Ví dụ: Trong class `User`, quan hệ `roles` là `LAZY`. Khi bạn truy vấn `userRepository.findById(1L)`, Hibernate chỉ sinh câu SQL `SELECT * FROM users WHERE id = 1`. Nó **chưa hề tải danh sách roles** để tối ưu hiệu năng.
+* Chỉ khi nào bạn thực sự gọi `user.getRoles().size()`, Hibernate mới phát sinh thêm một câu lệnh SQL thứ hai để lấy các vai trò từ bảng `user_roles`.
+
+### Tại sao dự án tắt OSIV (`spring.jpa.open-in-view: false`)?
+Trong [`application.yml`](../../../backend/src/main/resources/application.yml#L19), ta thấy:
+```yaml
+spring:
+  jpa:
+    open-in-view: false
+```
+* **Mặc định của Spring Boot (OSIV = true):** Mở kết nối Database từ lúc request bắt đầu cho đến tận khi Controller chuyển đổi JSON xong. Nếu có 1000 người dùng đồng thời, connection pool của PostgreSQL sẽ cạn kiệt rất nhanh, làm tê liệt hệ thống.
+* **Khi đặt `open-in-view: false`:** Kết nối Database sẽ được giải phóng ngay khi luồng chạy kết thúc tầng `@Service` (khi transaction đóng lại).
+* **Hậu quả nếu code ẩu:** Nếu Service trả về thẳng Entity cho Controller, đến khi Jackson chuyển đổi JSON ở tầng Web, việc gọi getter của quan hệ LAZY sẽ ném ngoại lệ kinh điển:
+  `LazyInitializationException: could not initialize proxy - no Session`.
+* **Giải pháp chuẩn mực của dự án:** Luôn chuyển đổi Entity sang DTO ngay trong tầng Service (ví dụ: `UserResponse.from(user)` trong phương thức có `@Transactional`).
+
+---
+
+## 6. Kiểu Dữ Liệu Tiền Tệ: `BigDecimal`
+
+Trong hệ thống phòng gym, tiền bạc (giá gói, số tiền đã thu, công nợ) được lưu trữ cực kỳ nghiêm ngặt:
+* **Tuyệt đối không dùng `float` hay `double`:** Các kiểu số thực dấu phẩy động tuân theo chuẩn IEEE 754, gây ra lỗi làm tròn số học (ví dụ: $0.1 + 0.2 = 0.30000000000000004$). Trong tài chính, sai lệch 1 đồng cũng là lỗi nghiêm trọng.
+* **Dự án dùng `BigDecimal`:**
+  * Trong Database: Khai báo `@Column(precision = 15, scale = 2)`. Cho phép lưu tối đa 15 chữ số, trong đó có 2 chữ số thập phân (đáp ứng số tiền lên đến hàng nghìn tỷ đồng).
+  * Trong Java: Không dùng toán tử `+`, `-`, `>`, `<`. Toàn bộ phép tính phải dùng method: `.add()`, `.subtract()`, `.multiply()`, và so sánh bằng `.compareTo()`.
+
+---
+
+## 7. Ranh giới Transaction và Khóa Lạc Quan (`@Version`)
+
+### Ranh giới Transaction (`@Transactional`)
+Xét ví dụ thu tiền trong [`PaymentService.java`](../../../backend/src/main/java/com/gymduongdouble/backend/finance/service/PaymentService.java):
+```java
+@Transactional
+public PaymentResponse create(CreatePaymentRequest request) {
+    // 1. Tạo phiếu thu mới trong bảng payment_transactions
+    Payment payment = paymentRepository.save(...);
+
+    // 2. Cập nhật số tiền đã trả và số tiền còn nợ trong bảng debt_records
+    debtRecord.setPaidAmount(newPaidAmount);
+    debtRecord.setRemainingAmount(newRemainingAmount);
+
+    // Nếu bước 2 bị lỗi ngoại lệ (RuntimeException), bước 1 sẽ tự động ROLLBACK!
+}
+```
+Nhờ `@Transactional`, hai thao tác trên được bọc chung trong một Atomic Transaction: **cùng thành công (Commit) hoặc cùng thất bại (Rollback)**. Không bao giờ xảy ra tình trạng tiền đã lưu phiếu thu nhưng công nợ thì không giảm.
+
+### Khóa Lạc Quan (Optimistic Locking) với `@Version`
+Trong file [`DebtRecord.java`](../../../backend/src/main/java/com/gymduongdouble/backend/finance/domain/DebtRecord.java#L48):
+```java
+@Version
+private Long version;
+```
+
+Sơ đồ trình tự xử lý xung đột đồng thời giữa 2 thu ngân:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor A as Thu ngân A
+    actor B as Thu ngân B
+    participant App as Spring Backend
+    participant DB as PostgreSQL debt_records
+
+    DB->>DB: Bản ghi nợ ID 10 còn 1.000.000 và version 1
+    A->>App: Mở màn hình thu tiền khách X
+    App->>DB: SELECT * FROM debt_records WHERE id=10
+    DB-->>App: Trả về nợ 1.000.000, version=1
+    App-->>A: Hiển thị nợ: 1.000.000 VNĐ
+
+    B->>App: Cùng lúc mở màn hình thu tiền khách X
+    App->>DB: SELECT * FROM debt_records WHERE id=10
+    DB-->>App: Trả về nợ 1.000.000, version=1
+    App-->>B: Hiển thị nợ: 1.000.000 VNĐ
+
+    A->>App: Thu 400.000 VNĐ (công nợ mới 600.000 VNĐ)
+    App->>DB: UPDATE debt_records SET remaining_amount = 600000, version = 2 WHERE id = 10 AND version = 1;
+    DB->>DB: Khớp version 1, cập nhật thành công và tăng lên version 2
+    DB-->>App: 1 row updated
+    App-->>A: Báo thu tiền thành công (HTTP 200)
+
+    B->>App: Thu 300.000 VNĐ (tính nợ còn 700.000 VNĐ)
+    App->>DB: UPDATE debt_records SET remaining_amount = 700000, version = 2 WHERE id = 10 AND version = 1;
+    DB->>DB: Version hiện tại là 2, không khớp version 1
+    DB-->>App: 0 row updated
+    App->>App: Hibernate ném ObjectOptimisticLockingFailureException
+    App-->>B: Bắt lỗi, trả về HTTP 409 Conflict (Dữ liệu đã thay đổi, vui lòng tải lại trang)
+```
+
+---
+
+## 8. Trả lời chi tiết các câu hỏi tự kiểm tra
+
+1. **`@MappedSuperclass` khác `@Entity` thế nào?**
+   * **Đáp án:** `@Entity` đại diện cho một bảng độc lập trong database. `@MappedSuperclass` không đại diện cho bảng nào cả, nó chỉ định nghĩa các trường dùng chung để các entity con kế thừa và nhúng các cột đó vào bảng riêng của chúng.
+2. **Tại sao sửa `lastLoginAt` trong transaction có thể được lưu dù không gọi `save()` ngay tại dòng đó?**
+   * **Đáp án:** Nhờ cơ chế **Dirty Checking** của Hibernate. Khi một Entity đã ở trạng thái Managed bên trong `@Transactional`, trước khi transaction commit, Hibernate sẽ so sánh đối tượng với bản snapshot lưu trong RAM. Nếu thấy có sự thay đổi, Hibernate tự động sinh câu lệnh SQL `UPDATE`.
+3. **Vì sao `deleted` và Flyway hiện tại không nên được giới thiệu là hai cơ chế đã hoàn chỉnh?**
+   * **Đáp án:**
+     - Cột `deleted` hiện mới chỉ là một trường boolean thông thường, hệ thống chưa có cấu hình `@SQLRestriction` để tự động lọc bản ghi bị xóa trên tất cả các câu truy vấn.
+     - Flyway đã được thêm dependency trong `pom.xml`, nhưng trong `application.yml` đang đặt cấu hình `flyway.enabled: false`. Database hiện chạy bằng chế độ tự cập nhật của Hibernate (`ddl-auto: update`), chưa phải là các file migration versioned chính thức.
+4. **Tại sao hai transaction cập nhật cùng bản ghi công nợ cần kiểm tra phiên bản `@Version`?**
+   * **Đáp án:** Để ngăn chặn lỗi mất dữ liệu do ghi đè (Lost Update Problem). Nếu không có `@Version`, thao tác của thu ngân B sẽ ghi đè một cách mù quáng lên kết quả của thu ngân A, khiến số tiền nợ bị tính toán sai lệch nghiêm trọng. Khóa lạc quan giúp phát hiện xung đột và yêu cầu người thao tác sau phải tải lại dữ liệu mới nhất.
+
+---
+
+## 9. Góc nhìn Mentor: Bộ câu hỏi phỏng vấn và phản biện đồ án
+
+> [!TIP]
+> **Câu hỏi 1: Tại sao em lại cấu hình `spring.jpa.open-in-view: false`? Việc này đem lại lợi ích gì và đòi hỏi lập trình viên phải lưu ý điều gì?**
+> * **Cách trả lời:** Em tắt Open-Session-In-View để giải phóng kết nối database ngay sau khi rời khỏi tầng Service. Việc này giúp tiết kiệm tài nguyên connection pool của PostgreSQL, tránh tình trạng ứng dụng bị nghẽn kết nối khi tải cao. Tuy nhiên, việc này đòi hỏi lập trình viên phải chuyển đổi đầy đủ các quan hệ LAZY sang DTO ngay trong tầng Service khi Transaction còn đang mở, nếu không sẽ gặp lỗi `LazyInitializationException` khi serialize JSON ở tầng Controller.
+>
+> **Câu hỏi 2: Sự khác nhau giữa Khóa lạc quan (Optimistic Locking) và Khóa bi quan (Pessimistic Locking)? Tại sao em lại chọn Khóa lạc quan cho công nợ?**
+> * **Cách trả lời:**
+>   - Khóa bi quan (`Pessimistic Lock`) sử dụng câu lệnh `SELECT ... FOR UPDATE` của Database để khóa cứng dòng dữ liệu, bắt các transaction khác phải chờ (block). Cách này làm giảm hiệu năng hệ thống nếu giữ khóa lâu.
+>   - Khóa lạc quan (`Optimistic Lock`) không khóa dòng trong database, mà dựa vào cột `@Version`. Các transaction cứ đọc ghi tự do; khi lưu mới kiểm tra version. Nếu có xung đột, hệ thống sẽ báo lỗi để người dùng tải lại dữ liệu.
+>   - Trong nghiệp vụ thu tiền phòng gym, xác suất hai thu ngân cùng mở và thu tiền cho một khách hàng tại cùng một giây là rất thấp, do đó dùng Khóa lạc quan vừa đảm bảo toàn vẹn dữ liệu, vừa giúp hệ thống đạt hiệu năng cao nhất.

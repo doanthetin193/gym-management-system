@@ -63,3 +63,35 @@ Kịch bản không tạo `Payment`, `DebtRecord`, `MemberMembership`, `PtSessio
 5. Tắt key Groq trong môi trường test hoặc dùng mock provider lỗi; xác nhận `aiGenerated=false` nhưng vẫn có lời khuyên fallback và giá trị kịch bản.
 
 Khi trình bày với mentor, nên nói rõ rule và calculator tạo số liệu có kiểm soát, AI làm phần diễn giải chiến lược. Cách tách này giảm chi phí, tránh giao AI quyền thay đổi nghiệp vụ và vẫn cho thấy ứng dụng AI được dùng đúng mức cho bài toán vận hành.
+
+## 8. Kịch bản không phải “nút tạo doanh thu”
+
+Ba input scenario là giả định quản trị trong một lần phân tích: tỷ lệ có thể thu công nợ, tỷ lệ khôi phục giá trị PT rủi ro, và tỷ lệ chuyển đổi gia hạn/quay lại. Frontend giữ chúng trong state cục bộ của form; tải lại trang sẽ quay về giá trị khởi tạo. Backend nhận request, tính projection trong bộ nhớ và trả response; không có bảng scenario, không tạo job, không gửi Zalo, không tự áp khuyến mãi và không thay đổi payment/debt/membership.
+
+Điều này giữ mô hình tài chính trung thực. Nếu owner nhập 50%, đó là một câu hỏi “nếu thu được một nửa nhóm này thì dòng giá trị ước tính là bao nhiêu?”, không phải lời hứa 50% khách sẽ trả. Sau khi xem, owner vẫn phải dùng luồng nghiệp vụ thật để gọi khách, thu tiền hoặc gia hạn.
+
+## 9. Dữ liệu cần đối chiếu khi demo
+
+Để demo kịch bản có trách nhiệm, chuẩn bị dữ liệu test có ít nhất một debt mở, một gói PT rủi ro và một cơ hội renewal. Trước khi bấm AI, ghi ba nền có trong response: `debtCollectionPotential`, `ptRecoveryPotential`, `renewalOpportunityPotential`. Với input ví dụ 50%, 40%, 25%, tự nhân từng nền và so với `estimated...`; sau đó cộng ba giá trị để so với `estimatedTotalImpact`.
+
+Không lấy text của Groq để kiểm tra tiền. Text được phép nêu ưu tiên/cảnh báo; field numeric từ `ScenarioProjection` mới là nguồn hiển thị số. Đây là cách ứng dụng LLM mà không để model thực hiện phép tính tài chính không kiểm soát.
+
+## 10. Cách kiểm thử fallback tách với tính toán scenario
+
+Có hai điều kiện khác nhau cần kiểm:
+
+1. Validator request: thiếu một phần trăm hoặc gửi -1/101 phải dừng bằng 400 trước khi service tạo projection hợp lệ.
+2. Provider failure: khi Groq không có key, trả lỗi retryable hết key hoặc nội dung không parse được, `RetentionRevenueAdvisorService` bắt `RuntimeException` và trả fallback. `aiGenerated=false`; response vẫn có summary, segment và scenario numeric nếu request có scenario.
+
+Vì fallback nằm sau khi `buildPayload`/calculator chạy, nó không chứng minh API key “ổn” và cũng không biến output fallback thành AI. Khi báo cáo, ghi đúng trạng thái provider mà bạn đã test; đừng gắn nhãn Groq cho kết quả rule-based.
+
+## 11. Checklist review code cho AI
+
+1. Controller có `hasRole('OWNER')` và request `@Valid` chưa?
+2. `buildPayload` có lấy dữ liệu qua repository nhưng chỉ truyền aggregate sang client không?
+3. `RetentionRevenueScenarioCalculator` có bất kỳ repository/save nào không? Nếu không, giải thích vì sao tính toán là read-only.
+4. `GroqAiClient` có log/raw return key không? Có xử lý JSON/code fence/timeout như thế nào?
+5. `fallbackInsight` có dùng con số từ payload và `aiGenerated` có phản ánh đúng đường đi không?
+6. Frontend có dùng response numeric để render số và không gọi trực tiếp Groq không?
+
+Đọc theo checklist này giúp bạn trả lời những câu mentor hay hỏi: “AI có thấy dữ liệu cá nhân không?”, “AI lỗi thì hệ thống có chết không?”, “có phải chatbot không?”, “con số do AI bịa hay do backend tính?”.

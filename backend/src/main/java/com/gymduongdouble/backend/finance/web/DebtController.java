@@ -2,6 +2,7 @@ package com.gymduongdouble.backend.finance.web;
 
 import com.gymduongdouble.backend.common.enums.DebtStatus;
 import com.gymduongdouble.backend.common.web.dto.ApiResponse;
+import com.gymduongdouble.backend.common.web.dto.PageResponse;
 import com.gymduongdouble.backend.finance.service.PaymentService;
 import com.gymduongdouble.backend.finance.web.dto.DebtRecordResponse;
 import java.util.List;
@@ -26,5 +27,17 @@ public class DebtController {
         @RequestParam(required = false) DebtStatus status
     ) {
         return ApiResponse.ok(paymentService.listDebts(memberId, status));
+    }
+
+    @GetMapping("/page")
+    @PreAuthorize("hasAnyRole('OWNER', 'PT')")
+    public ApiResponse<PageResponse<DebtRecordResponse>> listPage(
+        @RequestParam(required = false) Long memberId,
+        @RequestParam(required = false) DebtStatus status,
+        @RequestParam(required = false) String keyword,
+        @RequestParam(defaultValue = "0") int page,
+        @RequestParam(defaultValue = "10") int size
+    ) {
+        return ApiResponse.ok(paymentService.listDebtsPage(memberId, status, keyword, page, size));
     }
 }

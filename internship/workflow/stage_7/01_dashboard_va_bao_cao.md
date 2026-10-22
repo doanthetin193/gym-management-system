@@ -56,3 +56,51 @@ Giả sử phiếu 5 triệu ngày 30/09 và phiếu 6 triệu ngày 01/10: báo
 Khi thấy “hội viên đang tập”, hỏi: đếm hồ sơ active hay gói có hiệu lực? Khi thấy “3 khoản nợ”, hỏi: ba `DebtRecord` hay ba người? Với báo cáo kỳ cũ, phân biệt số tính theo kỳ đăng ký/payment và tình trạng lấy theo ngày hiện tại. Đọc từng response DTO và phương thức xây nó; cùng chữ “tháng” không bảo đảm mọi chỉ số là snapshot cuối tháng.
 
 Để tự kiểm thử, tạo phiếu demo ở hai tháng khác nhau, một khoản nợ chưa thu và một lượt đăng ký tương lai; so report với danh sách bản ghi. Ghi công thức, thời điểm và bộ lọc của từng chỉ số trước khi nhận xét sự chênh lệch.
+
+## 8. Đọc `DashboardService` theo từng câu hỏi nghiệp vụ
+
+`DashboardController` gom bốn endpoint OWNER-only: `/v1/dashboard/owner`, `/v1/reports/finance`, `/v1/reports/members` và `/v1/notifications`. Các query parameter `year`/`month` được Bean Validation giới hạn năm 2020–2100 và tháng 1–12. Nếu không truyền, `resolvePeriod` dùng tháng hiện tại của `AppClock.today()`.
+
+| Câu hỏi trên UI | Method/nguồn chính | Ý nghĩa đúng |
+| --- | --- | --- |
+| Doanh thu tháng là bao nhiêu? | `revenueBetween` -> `PaymentRepository.sumAmountByPaymentDateBetween` | Tổng phiếu thu theo **ngày thu tiền**, không phải tổng giá niêm yết gói. |
+| Còn bao nhiêu công nợ? | `openDebts()` | `DebtRecord` `OPEN`/`PARTIALLY_PAID` có `remainingAmount > 0`. |
+| Có bao nhiêu khách đang tập? | `currentMembershipsByMember()` + lifecycle policy | Mỗi member active chọn membership ưu tiên tại ngày hiện tại; không đơn giản đếm tất cả membership `ACTIVE` trong database. |
+| Sắp hết hạn/hết hạn? | membership ưu tiên của từng member | So sánh `endDate` với hôm nay; sắp hết hạn trong tối đa 7 ngày. |
+| Khách mới/gia hạn kỳ báo cáo? | `MembershipPeriodStatistics` | Thống kê theo khoảng start/end của kỳ, cần đọc policy để hiểu quy tắc phân loại. |
+
+`currentMembershipsByMember()` nhóm membership theo `memberId`, bỏ membership `CANCELLED` và hội viên không `ACTIVE`, sau đó gọi `preferredMembership`. Đây là phần bảo vệ trường hợp khách mua gia hạn trước: hệ thống ưu tiên gói hiệu lực hôm nay thay vì vô tình lấy gói tương lai có `endDate` xa nhất rồi làm khách đang tập biến mất khỏi thống kê.
+
+## 9. Notification là danh sách gợi ý, không phải hàng đợi gửi tin
+
+`notifications()` tạo bốn loại bằng code mỗi lần endpoint được gọi: `EXPIRING_MEMBERSHIP`, `BIRTHDAY`, `OPEN_DEBT`, `LOW_PT_SESSIONS`. Chúng không được lưu thành bảng notification, không có cờ “đã gửi” bền vững và không kích hoạt Zalo/SMS/email. Field `read=false` trong `NotificationResponse` hiện là dữ liệu response, không phải workflow đọc/đánh dấu đã xử lý.
+
+Ngưỡng hiện có là 7 ngày cho gói sắp hết hạn/sinh nhật và 2 buổi cho PT sắp cạn. Gói PT lọc `SessionPackageStatus.ACTIVE`, hội viên active và lifecycle policy hiệu lực hôm nay. Những ngưỡng này là hằng số trong `DashboardService`, không phải setting mà Owner đang chỉnh được trên UI.
+
+Khi mentor hỏi “hệ thống có tự gửi nhắc không?”, câu trả lời đúng là: hệ thống **tổng hợp danh sách cần chú ý**; trang Nhắc việc soạn nội dung và hỗ trợ sao chép/mở Zalo thủ công. Không được gọi đây là scheduler hay marketing automation.
+
+## 10. Vì sao số dashboard, ReportsPage và danh sách chi tiết có thể khác cách đếm?
+
+Backend Owner Dashboard và báo cáo thành viên có contract rõ ràng. [`ReportsPage.tsx`](../../../frontend/src/features/reports/pages/ReportsPage.tsx) còn tải danh sách hội viên, gói, nợ và payment để dựng bảng, biểu đồ 6 tháng, tỷ trọng phương thức thu và export. Một vài khối presentation tự phân loại dựa trên `endDate` và dữ liệu list để hiển thị nhanh.
+
+Vì vậy khi đối chiếu chênh lệch phải hỏi khối UI đang dùng nguồn nào, không mặc định tất cả nhãn “đang tập” trên mọi widget gọi cùng endpoint. Cách debug chuẩn:
+
+1. Mở Network, ghi response `ownerDashboard`, `memberReport`, `financeReport`.
+2. Xác định widget lấy state nào trong `ReportsPage`.
+3. Đối chiếu ngày local frontend với `AppClock.today()` backend.
+4. Kiểm tra gói mua trước, membership bị hủy, member inactive và payment có ngày thu cũ.
+
+Đây không phải lý do để sửa số bằng tay ở UI. Hãy sửa policy/source nếu phát hiện sai nghiệp vụ, rồi để mọi màn hình dùng contract phù hợp.
+
+## 11. Những giới hạn chủ động của báo cáo tài chính
+
+Hệ thống chỉ quản lý dòng **thu từ khách hàng** qua `Payment` và các khoản phải thu qua `DebtRecord`. Không có transaction `EXPENSE`, form nhập chi phí, lợi nhuận sau chi phí, lương PT hoặc phân bổ hoa hồng. Vì thế phải gọi chỉ số là “doanh thu hệ thống/tiền đã thu”, không gọi là “lợi nhuận”.
+
+Khoản nợ cũng không phải tiền âm. Nó là nghĩa vụ thanh toán còn lại của một lượt đăng ký; khi tạo phiếu thu mới, `PaymentService` đồng bộ paid/remaining/status trong transaction. Bảng báo cáo có thể hiển thị công nợ cùng doanh thu để chủ phòng ưu tiên thu, nhưng không được trừ công nợ khỏi doanh thu đã thu để tạo ra một “lợi nhuận” không có cơ sở.
+
+## 12. Bài tập review
+
+1. Tạo một membership tương lai cho khách vẫn còn gói hiện tại; đọc `preferredMembership` và quan sát dashboard không làm mất khách đang hoạt động.
+2. Tạo hai phiếu thu cho cùng membership ở hai tháng khác nhau; so sánh finance report từng tháng với giá gói.
+3. Để gói PT còn 2 lượt; kiểm tra notification. Ghi thêm buổi để còn 1 lượt và xác nhận nguyên tắc vẫn theo bộ đếm gói/lifecycle.
+4. Đánh dấu một member inactive và quan sát điều gì còn/không còn ở dashboard, report và notification. Ghi lại đúng API nào đã lọc chứ không chỉ ảnh chụp UI.

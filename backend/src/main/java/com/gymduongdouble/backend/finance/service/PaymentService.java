@@ -9,12 +9,14 @@ import com.gymduongdouble.backend.common.exception.BadRequestException;
 import com.gymduongdouble.backend.common.exception.ResourceNotFoundException;
 import com.gymduongdouble.backend.common.security.SecurityUtils;
 import com.gymduongdouble.backend.common.time.AppClock;
+import com.gymduongdouble.backend.common.web.dto.PageResponse;
 import com.gymduongdouble.backend.finance.domain.DebtRecord;
 import com.gymduongdouble.backend.finance.domain.Payment;
 import com.gymduongdouble.backend.finance.repository.DebtRecordRepository;
 import com.gymduongdouble.backend.finance.repository.PaymentRepository;
 import com.gymduongdouble.backend.finance.web.dto.CreatePaymentRequest;
 import com.gymduongdouble.backend.finance.web.dto.DebtRecordResponse;
+import com.gymduongdouble.backend.finance.web.dto.FinanceSummaryResponse;
 import com.gymduongdouble.backend.finance.web.dto.PaymentResponse;
 import com.gymduongdouble.backend.member.domain.Member;
 import com.gymduongdouble.backend.member.service.MemberAccessService;
@@ -27,6 +29,7 @@ import com.gymduongdouble.backend.user.repository.UserRepository;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Locale;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -95,12 +98,18 @@ public class PaymentService {
 
     @Transactional(readOnly = true)
     public List<DebtRecordResponse> listDebts(Long memberId, DebtStatus status) {
-        return debtRecordRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt")).stream()
-            .filter(debtRecord -> memberAccessService.canAccessMember(debtRecord.getMember().getId()))
-            .filter(debtRecord -> memberId == null || debtRecord.getMember().getId().equals(memberId))
-            .filter(debtRecord -> matchesDebtStatus(debtRecord, status))
-            .map(DebtRecordResponse::from)
-            .toList();
+        return resolveDebts(memberId, status, null);
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<DebtRecordResponse> listDebtsPage(
+        Long memberId,
+        DebtStatus status,
+        String keyword,
+        int page,
+        int size
+    ) {
+        return PageResponse.fromItems(resolveDebts(memberId, status, keyword), page, size, 10);
     }
 
     @Transactional(readOnly = true)
@@ -110,12 +119,81 @@ public class PaymentService {
         LocalDate toDate,
         PaymentMethod paymentMethod
     ) {
+        return resolvePayments(memberId, fromDate, toDate, paymentMethod, null);
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<PaymentResponse> listPaymentsPage(
+        Long memberId,
+        LocalDate fromDate,
+        LocalDate toDate,
+        PaymentMethod paymentMethod,
+        String keyword,
+        int page,
+        int size
+    ) {
+        return PageResponse.fromItems(resolvePayments(memberId, fromDate, toDate, paymentMethod, keyword), page, size, 10);
+    }
+
+    @Transactional(readOnly = true)
+    public FinanceSummaryResponse summary() {
+        List<DebtRecord> openDebts = debtRecordRepository.findAll().stream()
+            .filter(debtRecord -> memberAccessService.canAccessMember(debtRecord.getMember().getId()))
+            .filter(debtRecord -> debtRecord.getStatus() == DebtStatus.OPEN || debtRecord.getStatus() == DebtStatus.PARTIALLY_PAID)
+            .toList();
+        BigDecimal totalOpenDebt = openDebts.stream()
+            .map(DebtRecord::getRemainingAmount)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+        LocalDate today = AppClock.today();
+        BigDecimal paidToday = paymentRepository.findByPaymentDateBetween(today, today).stream()
+            .filter(payment -> memberAccessService.canAccessMember(payment.getMember().getId()))
+            .map(Payment::getAmount)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        return new FinanceSummaryResponse(openDebts.size(), totalOpenDebt, paidToday);
+    }
+
+    private List<DebtRecordResponse> resolveDebts(Long memberId, DebtStatus status, String keyword) {
+        String normalizedKeyword = normalizeKeyword(keyword);
+        return debtRecordRepository.findAll(Sort.by(Sort.Direction.DESC, "createdAt")).stream()
+            .filter(debtRecord -> memberAccessService.canAccessMember(debtRecord.getMember().getId()))
+            .filter(debtRecord -> memberId == null || debtRecord.getMember().getId().equals(memberId))
+            .filter(debtRecord -> matchesDebtStatus(debtRecord, status))
+            .filter(debtRecord -> matchesKeyword(
+                normalizedKeyword,
+                debtRecord.getMember().getFullName(),
+                debtRecord.getMember().getPhone(),
+                debtRecord.getMembership() == null || debtRecord.getMembership().getPlan() == null
+                    ? null
+                    : debtRecord.getMembership().getPlan().getName()
+            ))
+            .map(DebtRecordResponse::from)
+            .toList();
+    }
+
+    private List<PaymentResponse> resolvePayments(
+        Long memberId,
+        LocalDate fromDate,
+        LocalDate toDate,
+        PaymentMethod paymentMethod,
+        String keyword
+    ) {
+        String normalizedKeyword = normalizeKeyword(keyword);
         return paymentRepository.findAll(Sort.by(Sort.Direction.DESC, "paymentDate").and(Sort.by(Sort.Direction.DESC, "id"))).stream()
             .filter(payment -> memberAccessService.canAccessMember(payment.getMember().getId()))
             .filter(payment -> memberId == null || payment.getMember().getId().equals(memberId))
             .filter(payment -> fromDate == null || !payment.getPaymentDate().isBefore(fromDate))
             .filter(payment -> toDate == null || !payment.getPaymentDate().isAfter(toDate))
             .filter(payment -> paymentMethod == null || payment.getPaymentMethod() == paymentMethod)
+            .filter(payment -> matchesKeyword(
+                normalizedKeyword,
+                payment.getMember().getFullName(),
+                payment.getMember().getPhone(),
+                payment.getMembership() == null || payment.getMembership().getPlan() == null
+                    ? null
+                    : payment.getMembership().getPlan().getName(),
+                payment.getDescription()
+            ))
             .map(PaymentResponse::from)
             .toList();
     }
@@ -218,6 +296,22 @@ public class PaymentService {
             return debtRecord.getStatus() == DebtStatus.OPEN || debtRecord.getStatus() == DebtStatus.PARTIALLY_PAID;
         }
         return debtRecord.getStatus() == status;
+    }
+
+    private String normalizeKeyword(String keyword) {
+        return keyword == null || keyword.isBlank() ? null : keyword.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private boolean matchesKeyword(String keyword, String... values) {
+        if (keyword == null) {
+            return true;
+        }
+        for (String value : values) {
+            if (value != null && value.toLowerCase(Locale.ROOT).contains(keyword)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private User currentUserOrNull() {

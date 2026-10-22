@@ -41,6 +41,13 @@ export const memberStatusLabels: Record<MemberStatus, string> = {
 
 export type MemberListFilter = 'ALL' | 'ACTIVE' | 'EXPIRING_SOON' | 'EXPIRED'
 
+export type MemberListStatistics = {
+  totalMembers: number
+  activeMembers: number
+  expiringSoonMembers: number
+  expiredMembers: number
+}
+
 export type MemberSummary = {
   id: number
   fullName: string

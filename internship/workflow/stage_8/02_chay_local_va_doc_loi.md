@@ -44,3 +44,49 @@ Ví dụ `ClassFormatError` với file trong `target/classes`: đây là lỗi b
 5. Xem stack trace ở server, ghép request với exception, chỉ thay đổi cấu hình sau khi xác định nguyên nhân.
 
 Không cần xóa database để chữa lỗi chiếm cổng hay bytecode. Sao lưu và kiểm tra mục tiêu trước mọi thao tác tác động dữ liệu.
+
+## 7. Hai script khởi động và các biến bắt buộc
+
+Ở root có `run-backend.bat` và `run-frontend.bat`. Batch backend đổi thư mục sang `backend` rồi gọi `run-backend.ps1`; PowerShell script đọc `.env` ở root nếu có, chỉ đưa một biến vào process khi biến môi trường chưa được đặt trước đó. Sau đó script yêu cầu tối thiểu `DB_PASSWORD`, `JWT_SECRET`, `OWNER_PASSWORD`; thiếu một trong ba thì dừng với thông báo rõ thay vì cố chạy bằng secret rỗng. Các giá trị khác có default cục bộ như JDBC URL, user `postgres`, JWT 120 phút và email owner demo.
+
+`run-frontend.bat` đổi sang `frontend` rồi chạy `npm run dev`; Vite được cấu hình cổng 5173. Frontend gọi `VITE_API_BASE_URL` nếu có, nếu không thì dùng `http://localhost:8080/api`. Backend dùng context path `/api` và mặc định cổng 8080. Vì vậy URL cần kiểm tra khi local là:
+
+```text
+Frontend: http://localhost:5173
+Backend health: http://localhost:8080/api/actuator/health
+Backend API prefix: http://localhost:8080/api/v1
+```
+
+Không commit `.env` có password, JWT secret hoặc Groq keys. Cũng không đưa giá trị thật vào ảnh chụp/log gửi mentor.
+
+## 8. Cấu hình database, Hibernate và Flyway hiện tại
+
+`application.yml` dùng PostgreSQL, `spring.jpa.hibernate.ddl-auto: update`, `open-in-view: false`, timezone Hibernate `Asia/Ho_Chi_Minh` và profile mặc định `dev`. Flyway dependency và location `classpath:db/migration` đã được chuẩn bị, nhưng `spring.flyway.enabled: false` hiện tắt. Nghĩa là ở local hiện tại Hibernate update mapping; Flyway chưa thực thi migration. Không mô tả sai rằng mỗi lần chạy app đang migration database qua Flyway.
+
+Giữ Flyway là định hướng mở rộng hợp lý: khi schema ổn định và cần cập nhật môi trường có dữ liệu, đội dự án có thể đưa các migration versioned vào `db/migration`, bật cấu hình theo kế hoạch và kiểm thử migrate/rollback. Trước khi bật, phải có migration khớp schema hiện hữu và backup; không chỉ chuyển `enabled=true` trên một database bất kỳ.
+
+## 9. Cây quyết định chẩn đoán local
+
+```mermaid
+flowchart TD
+    A[Frontend báo lỗi hoặc backend không chạy] --> B{Có process/cổng 8080?}
+    B -->|Không| C[Kiểm tra .env, Java 21, Maven và DB_URL]
+    B -->|Có| D{Actuator health phản hồi?}
+    D -->|Không| E[Đọc log Spring: DB, schema, bean, bytecode]
+    D -->|Có| F{Browser Network có request tới /api?}
+    F -->|Không| G[Kiểm tra VITE_API_BASE_URL, URL frontend, console]
+    F -->|Có| H{HTTP status}
+    H -->|401| I[Token/phiên/tài khoản]
+    H -->|403| J[Role hoặc service ownership]
+    H -->|429| K[Rate limit và Retry-After]
+    H -->|400| L[Payload/validation/ngày/số tiền]
+    H -->|500| M[Stack trace và transaction]
+```
+
+Với `port 8080 already in use`, tìm process đang lắng nghe trước. Có thể đó là backend đã chạy thành công từ terminal khác; chạy bản thứ hai sẽ thất bại nhưng không làm server thứ nhất hỏng. Với `ClassFormatError` trong `target/classes`, ưu tiên kiểm tra compiler/Java/output build và biên dịch lại output; đó không phải lý do mặc định để drop PostgreSQL.
+
+## 10. Cách dùng Maven/NPM mà không tự làm mất dữ liệu
+
+Các lệnh build/test đọc source và tạo output trong `target` hoặc `dist`; chúng không phải lệnh xóa database. `mvnw.cmd clean` xóa `backend/target` (bytecode/build artifacts), không xóa schema/data PostgreSQL. Tuy vậy `ddl-auto:update`, seed và cấu hình môi trường vẫn có thể ảnh hưởng database nếu bạn chạy app trỏ nhầm DB; luôn kiểm tra `DB_URL` trước khi chạy.
+
+Với frontend, `npm run lint`, `npm test`, `npm run build` kiểm tra source/build artifacts. `npm run dev` là server phát triển, không phải production deployment. Nếu cần thay cổng, chỉnh Vite/biến môi trường và cả `app.cors.allowed-origins` backend cho phù hợp; chỉ đổi một phía sẽ tạo lỗi CORS khó hiểu.

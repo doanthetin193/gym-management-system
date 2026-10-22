@@ -30,15 +30,7 @@ export type Exercise = {
   published: boolean
 }
 
-export type PageResponse<T> = {
-  items: T[]
-  page: number
-  size: number
-  totalItems: number
-  totalPages: number
-  first: boolean
-  last: boolean
-}
+export type { PageResponse } from '../../../shared/types/pagination'
 
 export type ExercisePayload = {
   categoryId: number
