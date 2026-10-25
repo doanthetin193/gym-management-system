@@ -32,6 +32,9 @@ public class Member extends AuditableEntity {
     @Column(name = "full_name", nullable = false, length = 150)
     private String fullName;
 
+    // [TUYẾN PHÒNG THỦ TẦNG DATABASE - DEFENSE IN DEPTH]:
+    // Cột phone có ràng buộc UNIQUE cứng trong PostgreSQL để chống race-condition
+    // (nếu 2 thao tác cùng bấm tạo hồ sơ tại cùng 1 tích tắc, DB sẽ chặn đứng câu lệnh INSERT thứ hai).
     @Column(nullable = false, unique = true, length = 20)
     private String phone;
 

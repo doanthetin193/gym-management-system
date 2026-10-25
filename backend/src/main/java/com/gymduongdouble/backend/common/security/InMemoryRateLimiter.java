@@ -95,6 +95,13 @@ public class InMemoryRateLimiter {
         loginAttempts.entrySet().removeIf(entry -> isLoginStateExpired(entry.getValue(), now));
     }
 
+    /**
+     * [TRUY VẾT: CỔNG KIỂM TRA PRE-CHECK TRƯỚC KHI ĐĂNG NHẬP]
+     * Kiểm tra một key (Account hoặc IP) xem có bị cấm đăng nhập hay không:
+     * - Chưa từng sai (state == null) -> Cho qua.
+     * - Đã quá hạn phạt/quá hạn theo dõi (isLoginStateExpired) -> Xóa khỏi Map, cho qua.
+     * - ĐANG TRONG THỜI GIAN KHÓA (lockedUntil > now) -> Ném RateLimitExceededException ngay, không cho đi tiếp!
+     */
     private void requireLoginKeyAllowed(String key) {
         cleanupExpiredEntries();
         LoginAttemptState state = loginAttempts.get(key);
@@ -112,6 +119,14 @@ public class InMemoryRateLimiter {
         }
     }
 
+    /**
+     * [TRUY VẾT: GHI NHẬN LỖI SAI VÀ TÍNH TOÁN KHÓA CỨNG 15 PHÚT]
+     * Sử dụng compute() để cập nhật an toàn đa luồng:
+     * - Sai lần 1 (hoặc sau khi cửa sổ 15 phút cũ đã hết hạn): Tạo state mới, failureCount = 1, lockedUntil = null.
+     * - Sai lần 2, 3, 4: failureCount tăng lên, lockedUntil vẫn là null.
+     * - Sai LẦN THỨ 5: failureCount = 5 -> Chốt lockedUntil = now + 15 phút!
+     * Trả về số giây phải chờ (retryAfterSeconds) nếu bị khóa, hoặc 0 nếu chưa bị khóa.
+     */
     private long registerLoginFailure(String key) {
         cleanupExpiredEntries();
         Instant now = Instant.now();
@@ -126,6 +141,11 @@ public class InMemoryRateLimiter {
         return updated.lockedUntil() == null ? 0 : retryAfterSeconds(updated.lockedUntil(), now);
     }
 
+    /**
+     * [TRUY VẾT: XÁC ĐỊNH HỒ SƠ LỖI ĐÃ HẾT HẠN CHƯA]
+     * 1. Nếu đang bị khóa (lockedUntil != null): Kiểm tra xem thời điểm hiện tại đã vượt qua mốc lockedUntil chưa.
+     * 2. Nếu chưa bị khóa: Kiểm tra xem đã qua 15 phút kể từ lần sai đầu tiên (firstFailureAt) chưa.
+     */
     private boolean isLoginStateExpired(LoginAttemptState state, Instant now) {
         if (state.lockedUntil() != null) {
             return !state.lockedUntil().isAfter(now);

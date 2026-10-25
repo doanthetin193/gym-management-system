@@ -19,6 +19,16 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+/**
+ * Entity đại diện cho Gói buổi tập PT của Hội viên (PT Session Package / Balance Quota).
+ * <p>
+ * THIẾT KẾ ĐỊNH MỨC & SỐ DƯ BUỔI TẬP:
+ * 1. "Chiếc ví" định mức số buổi:
+ *    - Quản lý 2 loại buổi tập: Buổi tập có HLV kèm 1:1 (`remainingPtSessions`) và Buổi tự ôn tập (`remainingPracticeSessions`).
+ *    - Được khởi tạo tự động khi hội viên mua gói dịch vụ PT (tại MemberMembershipService.create).
+ * 2. Khóa lạc quan (@Version):
+ *    - Ngăn chặn lỗi Lost Update khi có nhiều yêu cầu điểm danh hoặc trừ buổi tập đồng thời trên cùng một gói.
+ */
 @Getter
 @Setter
 @NoArgsConstructor
@@ -26,6 +36,10 @@ import lombok.Setter;
 @Table(name = "pt_session_packages")
 public class PtSessionPackage extends AuditableEntity {
 
+    /**
+     * Khóa lạc quan chống trừ buổi đồng thời:
+     * Đảm bảo tính nhất quán của số dư remainingPtSessions khi có race-condition.
+     */
     @Version
     @Column(nullable = false, columnDefinition = "bigint default 0")
     private Long version = 0L;

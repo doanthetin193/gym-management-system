@@ -54,6 +54,11 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.UNAUTHORIZED, "BAD_CREDENTIALS", exception.getMessage());
     }
 
+    /**
+     * [TRUY VẾT RATE LIMIT - BƯỚC 3: PHẢN HỒI LỖI 429 RA CLIENT]:
+     * Bắt ngoại lệ RateLimitExceededException và chuyển đổi thành HTTP 429 Too Many Requests.
+     * Gắn header chuẩn 'Retry-After' chứa số giây phải chờ (vd: 900 giây = 15 phút) để Frontend kích hoạt đồng hồ đếm ngược.
+     */
     @ExceptionHandler(RateLimitExceededException.class)
     ResponseEntity<ApiResponse<Void>> handleRateLimit(RateLimitExceededException exception) {
         ApiError error = ApiError.of("RATE_LIMITED", exception.getMessage());

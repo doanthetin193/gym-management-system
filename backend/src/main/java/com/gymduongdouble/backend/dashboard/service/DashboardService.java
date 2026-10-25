@@ -228,6 +228,14 @@ public class DashboardService {
             .toList();
     }
 
+    /**
+     * Tính tổng doanh thu thực thu trong khoảng thời gian.
+     * <p>
+     * ĐẶC ĐIỂM BÁO CÁO TÀI CHÍNH:
+     * - Đây là DOANH THU THUẦN THỰC THU (Gross Cash Inflow) dựa trên các phiếu thu thực tế phát sinh (paymentDate).
+     * - Hệ thống hiện tại chưa quản lý chi phí vận hành (Cash Outflow: mặt bằng, điện nước, lương PT),
+     *   vì vậy số liệu này phản ánh dòng tiền thu vào quỹ, chưa phải là Lợi nhuận ròng (Net Profit).
+     */
     private BigDecimal revenueBetween(LocalDate start, LocalDate end) {
         return paymentRepository.sumAmountByPaymentDateBetween(start, end);
     }
@@ -244,6 +252,11 @@ public class DashboardService {
             .toList();
     }
 
+    /**
+     * Quét các khoản công nợ chưa tất toán để hiển thị cảnh báo trên Dashboard:
+     * - Lọc các bản ghi nợ có trạng thái OPEN hoặc PARTIALLY_PAID và remainingAmount > 0.
+     * - Sắp xếp theo hạn chót thanh toán (dueDate) tăng dần để nhân viên ưu tiên đôn đốc các khoản nợ sắp đến hạn.
+     */
     private List<DebtRecord> openDebts() {
         return debtRecordRepository.findByStatusInOrderByDueDateAsc(List.of(DebtStatus.OPEN, DebtStatus.PARTIALLY_PAID)).stream()
             .filter(debt -> debt.getRemainingAmount().compareTo(BigDecimal.ZERO) > 0)

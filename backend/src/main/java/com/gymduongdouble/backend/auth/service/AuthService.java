@@ -36,6 +36,10 @@ public class AuthService {
 
     @Transactional
     public LoginResponse login(LoginRequest request, String clientIp) {
+        // [TRUY VẾT RATE LIMIT - BƯỚC 2.1: CỔNG BẢO VỆ ĐẦU TIÊN]
+        // Kiểm tra xem Account hoặc IP này có đang bị 'lockedUntil' còn hiệu lực hay không.
+        // Nếu đang bị khóa (ví dụ lần thứ 6 thử lại): Ném RateLimitExceededException (HTTP 429) NGAY TẠI ĐÂY!
+        // Server ngắt request lập tức, KHÔNG tốn tài nguyên truy vấn Database hay tính toán hash BCrypt bên dưới.
         rateLimiter.requireLoginAllowed(request.email(), clientIp);
         try {
             AuthenticatedUser user = loadUser(request.email());
@@ -49,6 +53,9 @@ public class AuthService {
             long expirationMinutes = remember ? 30L * 24 * 60 : jwtProperties.accessTokenMinutes();
 
             String token = jwtService.generateAccessToken(user, expirationMinutes);
+
+            // [TRUY VẾT RATE LIMIT - BƯỚC 2.2: KỊCH BẢN ĐĂNG NHẬP THÀNH CÔNG]
+            // Khi mật khẩu đúng: Xóa sạch toàn bộ lịch sử gõ sai của cả Account và IP khỏi ConcurrentHashMap trong RAM.
             rateLimiter.clearLoginFailures(request.email(), clientIp);
             return new LoginResponse(
                 "Bearer",
@@ -57,6 +64,11 @@ public class AuthService {
                 AuthUserResponse.from(user)
             );
         } catch (BadCredentialsException exception) {
+            // [TRUY VẾT RATE LIMIT - BƯỚC 2.3: KỊCH BẢN NHẬP SAI MẬT KHẨU]
+            // Ghi nhận thêm 1 lần sai vào bộ đếm RAM:
+            // - Lần sai 1, 2, 3, 4: failureCount tăng lên, chưa khóa. Hàm kết thúc bình thường, ném tiếp BadCredentialsException -> HTTP 401.
+            // - Lần sai THỨ 5: failureCount = 5 -> đặt lockedUntil = now + 15 phút.
+            //   Chính hàm recordLoginFailure sẽ ném RateLimitExceededException -> biến thành HTTP 429 ngay tại cú click thứ 5 này!
             rateLimiter.recordLoginFailure(request.email(), clientIp);
             throw exception;
         }

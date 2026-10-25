@@ -19,6 +19,19 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+/**
+ * Entity đại diện cho khoản công nợ phải thu của hội viên (Accounts Receivable).
+ * <p>
+ * THIẾT KẾ KIẾN TRÚC & TÀI CHÍNH:
+ * 1. Tách biệt Công nợ (DebtRecord) và Dòng tiền (Payment):
+ *    - DebtRecord đại diện cho NGHĨA VỤ TÀI CHÍNH còn nợ của hội viên sau khi đăng ký gói tập.
+ *    - DebtRecord CỐ TÌNH KHÔNG LƯU `paymentMethod`. Lý do: Một khoản công nợ có thể được tất toán
+ *      thành nhiều đợt (installments) với nhiều phương thức thanh toán khác nhau (ví dụ: đợt 1 chuyển
+ *      khoản ngân hàng qua VietQR, đợt 2 trả tiền mặt tại quầy). Phương thức thanh toán thuộc về
+ *      từng giao dịch thực thu (Payment), không thuộc về bản ghi nợ.
+ * 2. Ràng buộc với gói tập (MemberMembership):
+ *    - Mỗi khoản nợ gắn với một lượt đăng ký gói cụ thể để đảm bảo minh bạch dòng tiền và đối soát.
+ */
 @Getter
 @Setter
 @NoArgsConstructor
@@ -26,6 +39,14 @@ import lombok.Setter;
 @Table(name = "debt_records")
 public class DebtRecord extends AuditableEntity {
 
+    /**
+     * KHÓA LẠC QUAN (Optimistic Locking):
+     * Ngăn chặn lỗi Lost Update (mất mát dữ liệu khi ghi đè) trong kịch bản đồng thời (concurrency):
+     * Ví dụ: 2 phiên thao tác cùng mở phiếu thu để gạch nợ cho một hội viên tại cùng một thời điểm.
+     * Khi phiên A commit trước, version tăng lên 1. Khi phiên B commit sau với version cũ (0),
+     * Hibernate sẽ phát hiện version không khớp và ném ra ObjectOptimisticLockingFailureException.
+     * Ngoại lệ này được GlobalExceptionHandler bắt và chuyển thành HTTP 409 Conflict (CONCURRENT_UPDATE).
+     */
     @Version
     @Column(nullable = false, columnDefinition = "bigint default 0")
     private Long version = 0L;

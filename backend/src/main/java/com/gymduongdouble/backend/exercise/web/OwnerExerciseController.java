@@ -24,6 +24,14 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * Controller Quản trị Thư viện Bài tập và Danh mục (Dành riêng cho OWNER).
+ * 
+ * PHẠM VI QUẢN TRỊ:
+ * - Quản lý Danh mục: Tạo mới, cập nhật, sắp xếp thứ tự hiển thị (sortOrder), ẩn/hiện danh mục.
+ * - Quản lý Bài tập: Tạo mới, cập nhật metadata/link TikTok, lọc bài nháp (published=false),
+ *   bật/tắt trạng thái xuất bản (`PATCH .../published`), và xóa vật lý bài tập (`DELETE`).
+ */
 @RestController
 @RequestMapping("/v1/owner")
 @RequiredArgsConstructor
@@ -50,6 +58,11 @@ public class OwnerExerciseController {
         return ApiResponse.ok(exerciseService.updateCategory(id, request));
     }
 
+    /**
+     * API quản trị phân trang bài tập (Owner):
+     * - Hỗ trợ lọc trạng thái published (true/false) để xem cả bài nháp.
+     * - Kết quả được sắp xếp theo updatedAt DESC (mới cập nhật lên đầu).
+     */
     @GetMapping("/exercises")
     public ApiResponse<PageResponse<ExerciseResponse>> listExercises(
         @RequestParam(required = false) String categorySlug,

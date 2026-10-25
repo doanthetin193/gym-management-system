@@ -14,6 +14,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ApiClientError } from '../../../shared/api/apiClient'
 import type { PageResponse } from '../../../shared/types/pagination'
+import { getVietQrSetting } from '../../settings/api/settingsApi'
+import type { VietQrSetting } from '../../settings/types/settings'
 import { createPayment, getFinanceSummary, listDebts, listDebtsPage, listPaymentsPage } from '../api/paymentApi'
 import { PaymentFormModal } from '../components/PaymentFormModal'
 import { paymentMethodLabels } from '../types/payment'
@@ -100,6 +102,7 @@ export function PaymentsPage() {
   const [paymentPage, setPaymentPage] = useState<PageResponse<PaymentTransaction>>(EMPTY_PAYMENT_PAGE)
   const [financeSummary, setFinanceSummary] = useState<FinanceSummary>(EMPTY_FINANCE_SUMMARY)
   const [openDebtOptions, setOpenDebtOptions] = useState<DebtRecord[]>([])
+  const [vietQrSetting, setVietQrSetting] = useState<VietQrSetting | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [paymentModalOpen, setPaymentModalOpen] = useState(false)
@@ -114,7 +117,7 @@ export function PaymentsPage() {
     setLoading(true)
     setError(null)
     try {
-      const [debtData, paymentData, summaryData] = await Promise.all([
+      const [debtData, paymentData, summaryData, vietQrData] = await Promise.all([
         listDebtsPage({
           status: debtFilter === 'ALL' ? undefined : debtFilter,
           keyword,
@@ -123,10 +126,12 @@ export function PaymentsPage() {
         }),
         listPaymentsPage({ keyword, page, size: pageSize }),
         getFinanceSummary(),
+        getVietQrSetting().catch(() => null),
       ])
       setDebtPage(debtData)
       setPaymentPage(paymentData)
       setFinanceSummary(summaryData)
+      setVietQrSetting(vietQrData)
       const activeResponse = activeTab === 'debts' ? debtData : paymentData
       if (activeResponse.page !== page) {
         setPage(activeResponse.page)
@@ -396,6 +401,7 @@ export function PaymentsPage() {
         <PaymentFormModal
           debts={openDebtOptions}
           selectedDebt={selectedDebt}
+          vietQrSetting={vietQrSetting}
           submitting={submitting}
           error={formError}
           onClose={() => {
@@ -535,13 +541,14 @@ function DebtTable({
 function PaymentTable({ payments, loading }: { payments: PaymentTransaction[]; loading: boolean }) {
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[860px] border-collapse text-left">
+      <table className="w-full min-w-[980px] border-collapse text-left">
         <thead>
           <tr className="border-b border-[var(--line)] bg-[var(--surface-muted)]/50 text-[11px] font-black uppercase tracking-wider text-[var(--text-muted)]">
             <th className="px-5 py-3">Ngày thu</th>
             <th className="px-5 py-3">Hội viên</th>
             <th className="px-5 py-3 text-right">Số tiền thu</th>
             <th className="px-5 py-3 text-center">Phương thức</th>
+            <th className="px-5 py-3">Người thu</th>
             <th className="px-5 py-3">Mã công nợ</th>
             <th className="px-5 py-3">Ghi chú</th>
           </tr>
@@ -549,13 +556,13 @@ function PaymentTable({ payments, loading }: { payments: PaymentTransaction[]; l
         <tbody className="divide-y divide-[var(--line)]">
           {loading ? (
             <tr>
-              <td colSpan={6} className="px-5 py-12 text-center text-xs font-bold text-[var(--text-muted)]">
+              <td colSpan={7} className="px-5 py-12 text-center text-xs font-bold text-[var(--text-muted)]">
                 Đang tải lịch sử thanh toán...
               </td>
             </tr>
           ) : payments.length === 0 ? (
             <tr>
-              <td colSpan={6} className="px-5 py-12 text-center text-xs font-bold text-[var(--text-muted)]">
+              <td colSpan={7} className="px-5 py-12 text-center text-xs font-bold text-[var(--text-muted)]">
                 Chưa có giao dịch thanh toán nào được ghi nhận.
               </td>
             </tr>
@@ -575,6 +582,9 @@ function PaymentTable({ payments, loading }: { payments: PaymentTransaction[]; l
                   <span className={payment.paymentMethod === 'BANK_TRANSFER' ? 'inline-flex rounded-lg border border-blue-500/30 bg-blue-500/10 px-2.5 py-0.5 text-xs font-bold text-blue-400' : 'inline-flex rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-xs font-bold text-emerald-400'}>
                     {paymentMethodLabels[payment.paymentMethod] ?? payment.paymentMethod}
                   </span>
+                </td>
+                <td className="px-5 py-3.5 text-xs font-semibold text-[var(--text-strong)]">
+                  {payment.createdByName ?? '-'}
                 </td>
                 <td className="px-5 py-3.5 text-xs font-semibold text-[var(--text-muted)]">
                   {payment.debtRecordId ? (

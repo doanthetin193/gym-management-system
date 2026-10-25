@@ -69,6 +69,8 @@ export function LoginPage() {
       await login(email, password, rememberMe)
     } catch (caughtError) {
       if (caughtError instanceof ApiClientError) {
+        // [TRUY VẾT RATE LIMIT]: Nếu Backend trả về mã HTTP 429 kèm số giây chờ (retryAfterSeconds),
+        // Frontend sẽ tính mốc tương lai lockUntil để kích hoạt đồng hồ đếm ngược thời gian thực trên giao diện.
         if (caughtError.status === 429 && caughtError.retryAfterSeconds) {
           setLockUntil(Date.now() + caughtError.retryAfterSeconds * 1_000)
           setNow(Date.now())

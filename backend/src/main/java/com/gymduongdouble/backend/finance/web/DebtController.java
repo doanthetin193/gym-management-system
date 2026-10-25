@@ -29,6 +29,11 @@ public class DebtController {
         return ApiResponse.ok(paymentService.listDebts(memberId, status));
     }
 
+    /**
+     * API phân trang danh sách công nợ:
+     * - page: Số thứ tự trang (zero-based: 0 là trang đầu tiên).
+     * - size: Số lượng bản ghi mỗi trang (mặc định 10).
+     */
     @GetMapping("/page")
     @PreAuthorize("hasAnyRole('OWNER', 'PT')")
     public ApiResponse<PageResponse<DebtRecordResponse>> listPage(

@@ -19,6 +19,15 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+/**
+ * Entity lưu trữ Mục tiêu luyện tập của hội viên cùng Huấn luyện viên (Training Goal).
+ * <p>
+ * NGUYÊN TẮC QUẢN TRỊ MỤC TIÊU:
+ * 1. Dữ liệu kỳ vọng (Target / Expected Data): Lưu trữ các đích đến thể chất (targetWeight, targetBodyFat, targetWaist).
+ * 2. Độc lập với số đo: Lưu mục tiêu không tự sinh ra số đo thực tế.
+ * 3. Không tự động hoàn thành: Hệ thống cố tình không tự động chuyển trạng thái sang COMPLETED khi
+ *    cân nặng chạm ngưỡng, mà để HLV và hội viên cùng đánh giá toàn diện vóc dáng thực tế.
+ */
 @Getter
 @Setter
 @NoArgsConstructor

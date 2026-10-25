@@ -35,6 +35,20 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * Service quản lý Tài chính, Công nợ và Phiếu thu (Finance & Debt Coordination).
+ * <p>
+ * NGUYÊN TẮC THIẾT KẾ & ĐIỀU PHỐI DÒNG TIỀN:
+ * 1. Phân định ranh giới giữa Công nợ (DebtRecord) và Thực thu (Payment):
+ *    - DebtRecord: Theo dõi nghĩa vụ tài chính còn nợ (Accounts Receivable).
+ *    - Payment: Ghi nhận dòng tiền thực tế vào quỹ (Cash Inflow).
+ * 2. Tính toàn vẹn giao dịch (ACID & Transactional Consistency):
+ *    - Toàn bộ thao tác tạo phiếu thu, gạch nợ và cập nhật trạng thái gói tập được bao bọc trong @Transactional.
+ *    - Áp dụng Khóa lạc quan (@Version) trên DebtRecord để ngăn chặn xung đột thanh toán đồng thời (Lost Update).
+ * 3. Tận dụng Hibernate Dirty Checking:
+ *    - Sau khi persist `Payment`, các entity `DebtRecord` và `MemberMembership` chỉ cần thay đổi trạng thái qua setters.
+ *    - Hibernate tự động phát hiện thay đổi và sinh lệnh SQL UPDATE đồng bộ khi commit transaction.
+ */
 @Service
 @RequiredArgsConstructor
 public class PaymentService {
@@ -46,13 +60,27 @@ public class PaymentService {
     private final UserRepository userRepository;
     private final MemberAccessService memberAccessService;
 
+    /**
+     * Tạo phiếu thu mới và điều phối gạch nợ tự động.
+     * <p>
+     * QUY TRÌNH 6 CỔNG KIỂM SOÁT NGHIỆP VỤ (6 ENFORCEMENT GATES):
+     * - Cổng 1 (Security): Kiểm tra quyền truy cập hội viên (IDOR defense - PT chỉ thao tác với học viên phụ trách).
+     * - Cổng 2 (Integrity): Xác định & thẩm định khoản công nợ (phải thuộc hội viên, đúng gói tập, từ chối nợ đã PAID/CANCELLED).
+     * - Cổng 3 (Financial): Thẩm định số tiền thu (chặn overpay: số tiền thu <= số tiền nợ còn lại).
+     * - Cổng 4 (Accounting): Tự động phân loại danh mục doanh thu (RevenueCategory) theo cấu hình gói tập.
+     * - Cổng 5 (Timeline): Thẩm định ngày lập phiếu thu (paymentDate <= today - không thu tiền ở tương lai).
+     * - Cổng 6 (Synchronization): Lưu Payment và cập nhật số dư công nợ/gói tập qua Hibernate Dirty Checking.
+     */
     @Transactional
     public PaymentResponse create(CreatePaymentRequest request) {
+        // [CỔNG 1] IDOR Defense: Kiểm tra quyền truy cập hội viên (PT chỉ thao tác với học viên phụ trách)
         memberAccessService.ensureCanAccessMember(request.memberId());
         Member member = memberService.findEntity(request.memberId());
         MemberMembership membership = request.membershipId() == null
             ? null
             : memberMembershipService.findEntity(request.membershipId());
+
+        // [CỔNG 2] Tìm kiếm khoản nợ tương ứng (theo debtRecordId hoặc quét khoản nợ chưa tất toán của gói)
         DebtRecord debtRecord = resolveDebtRecord(request, member, membership);
 
         if (membership != null && !membership.getMember().getId().equals(member.getId())) {
@@ -61,16 +89,23 @@ public class PaymentService {
         if (debtRecord == null) {
             throw new BadRequestException("Phiếu thu phải thuộc một khoản công nợ của gói tập.");
         }
+        // Thẩm định tính toàn vẹn: nợ phải thuộc hội viên, đúng gói, và chưa tất toán
         validateDebtRecord(debtRecord, member, membership);
         membership = debtRecord.getMembership();
         if (membership == null) {
             throw new BadRequestException("Khoản công nợ không gắn với lượt đăng ký gói tập.");
         }
+
+        // [CỔNG 3] Chặn Overpay: Số tiền thu không được vượt quá số nợ còn lại (remainingAmount)
         validatePaymentAmount(request.amount(), debtRecord);
 
+        // [CỔNG 4] Tự động suy luận danh mục doanh thu từ loại gói tập (tránh gian lận kế toán nếu để client gửi lên)
         RevenueCategory revenueCategory = inferRevenueCategory(membership);
+
+        // [CỔNG 5] Kiểm tra ngày thu: Ngày ghi nhận không được vượt quá ngày hiện tại (AppClock.today())
         LocalDate paymentDate = resolvePaymentDate(request.paymentDate());
 
+        // [CỔNG 6 - Thao tác 1] Khởi tạo và lưu phiếu thu thực tế vào cơ sở dữ liệu
         Payment payment = new Payment();
         payment.setMember(member);
         payment.setMembership(membership);
@@ -83,11 +118,20 @@ public class PaymentService {
         payment.setCreatedBy(currentUserOrNull());
 
         Payment savedPayment = paymentRepository.save(payment);
+
+        // [CỔNG 6 - Thao tác 2] ĐỒNG BỘ CÔNG NỢ & GÓI TẬP (Hibernate Dirty Checking):
+        // Không cần gọi explicit debtRecordRepository.save() hay membershipRepository.save().
+        // Do phương thức được đánh dấu @Transactional, Hibernate Session sẽ tự động theo dõi (Dirty Check)
+        // các Managed Entity này và phát sinh các câu lệnh SQL UPDATE tương ứng khi commit transaction.
         syncDebtAndMembership(debtRecord, membership, request.amount());
 
         return PaymentResponse.from(savedPayment);
     }
 
+    /**
+     * Xác định và kiểm tra tính hợp lệ của ngày lập phiếu thu.
+     * Quy tắc kế toán: Không cho phép lập phiếu thu cho các ngày ở tương lai (paymentDate <= today).
+     */
     private LocalDate resolvePaymentDate(LocalDate requestedDate) {
         LocalDate paymentDate = requestedDate == null ? AppClock.today() : requestedDate;
         if (paymentDate.isAfter(AppClock.today())) {
@@ -101,6 +145,10 @@ public class PaymentService {
         return resolveDebts(memberId, status, null);
     }
 
+    /**
+     * Phân trang danh sách công nợ (In-memory Bounded Pagination via PageResponse.fromItems).
+     * Áp dụng bảo mật phân quyền: PT chỉ xem được công nợ của học viên mình quản lý (canAccessMember).
+     */
     @Transactional(readOnly = true)
     public PageResponse<DebtRecordResponse> listDebtsPage(
         Long memberId,
@@ -122,6 +170,10 @@ public class PaymentService {
         return resolvePayments(memberId, fromDate, toDate, paymentMethod, null);
     }
 
+    /**
+     * Phân trang danh sách phiếu thu (In-memory Bounded Pagination via PageResponse.fromItems).
+     * Tương tự công nợ, phiếu thu cũng được lọc bảo mật phân quyền PT (canAccessMember) trước khi cắt trang.
+     */
     @Transactional(readOnly = true)
     public PageResponse<PaymentResponse> listPaymentsPage(
         Long memberId,
@@ -198,6 +250,17 @@ public class PaymentService {
             .toList();
     }
 
+    /**
+     * Tự động suy luận danh mục doanh thu (RevenueCategory) từ cấu trúc gói tập:
+     * - SELF_TRAINING -> Doanh thu gói tự tập.
+     * - GUIDANCE -> Doanh thu gói có người hướng dẫn.
+     * - PT (NEW) -> Doanh thu HLV mới kèm 1:1.
+     * - PT -> Doanh thu HLV tiêu chuẩn/master kèm 1:1.
+     * - Khác -> OTHER_INCOME.
+     * <p>
+     * THIẾT KẾ BẢO VỆ DỮ LIỆU TÀI CHÍNH:
+     * Không cho phép nhân viên quầy tự chọn danh mục doanh thu trên UI để tránh gian lận hoặc sai lệch báo cáo tài chính.
+     */
     private RevenueCategory inferRevenueCategory(MemberMembership membership) {
         MembershipPlan plan = membership.getPlan();
         if (plan.getPlanType() == PlanType.SELF_TRAINING) {
@@ -215,6 +278,11 @@ public class PaymentService {
         return RevenueCategory.OTHER_INCOME;
     }
 
+    /**
+     * Xác định bản ghi công nợ cần thanh toán:
+     * 1. Nếu client chỉ định rõ debtRecordId -> Tìm nợ trực tiếp theo ID.
+     * 2. Nếu chỉ có membershipId -> Tự động tìm khoản công nợ gần nhất của gói chưa tất toán (!= PAID && != CANCELLED).
+     */
     private DebtRecord resolveDebtRecord(
         CreatePaymentRequest request,
         Member member,
@@ -234,6 +302,12 @@ public class PaymentService {
             .orElse(null);
     }
 
+    /**
+     * Thẩm định tính toàn vẹn và hợp lệ của khoản nợ:
+     * - Phải thuộc đúng hội viên.
+     * - Phải gắn đúng với gói tập tương ứng.
+     * - Chặn thanh toán cho khoản nợ đã trả hết (PAID) hoặc đã bị hủy (CANCELLED).
+     */
     private void validateDebtRecord(DebtRecord debtRecord, Member member, MemberMembership membership) {
         if (!debtRecord.getMember().getId().equals(member.getId())) {
             throw new BadRequestException("Khoản công nợ không thuộc khách hàng này.");
@@ -250,12 +324,23 @@ public class PaymentService {
         }
     }
 
+    /**
+     * Chặn Overpay (Thu vượt số nợ):
+     * Số tiền thu tuyệt đối không được vượt quá số tiền còn nợ thực tế (amount <= remainingAmount).
+     */
     private void validatePaymentAmount(BigDecimal amount, DebtRecord debtRecord) {
         if (amount.compareTo(debtRecord.getRemainingAmount()) > 0) {
             throw new BadRequestException("Số tiền thu không được lớn hơn số tiền còn nợ.");
         }
     }
 
+    /**
+     * Đồng bộ số dư nợ và số tiền đã thanh toán giữa DebtRecord và MemberMembership:
+     * - Sử dụng BigDecimal để đảm bảo độ chính xác tuyệt đối trong phép toán tài chính (không bị lỗi dấu phẩy động IEEE 754).
+     * - Sử dụng `.max(BigDecimal.ZERO)` để chặn số âm do sai lệch làm tròn.
+     * - Sử dụng `.min(...)` để chặn số tiền đã thu vượt quá giá trị nợ gốc ban đầu (originalAmount) hoặc số phải trả (payableAmount).
+     * - Cập nhật trạng thái công nợ qua resolveDebtStatus().
+     */
     private void syncDebtAndMembership(DebtRecord debtRecord, MemberMembership membership, BigDecimal amount) {
         if (debtRecord == null && membership == null) {
             return;
@@ -278,6 +363,12 @@ public class PaymentService {
         }
     }
 
+    /**
+     * Suy luận trạng thái công nợ sau khi gạch nợ:
+     * - remainingAmount <= 0 -> PAID (Đã tất toán).
+     * - paidAmount > 0 (nhưng remainingAmount > 0) -> PARTIALLY_PAID (Đã thanh toán một phần).
+     * - Ngược lại -> OPEN (Chưa thanh toán).
+     */
     private DebtStatus resolveDebtStatus(DebtRecord debtRecord) {
         if (debtRecord.getRemainingAmount().compareTo(BigDecimal.ZERO) <= 0) {
             return DebtStatus.PAID;
@@ -288,6 +379,12 @@ public class PaymentService {
         return DebtStatus.OPEN;
     }
 
+    /**
+     * LOGIC LỌC TRẠNG THÁI CÔNG NỢ PHỤC VỤ THỰC TẾ VẬN HÀNH:
+     * - Khi bộ lọc UI yêu cầu `DebtStatus.OPEN` (Còn nợ), hệ thống trả về cả bản ghi OPEN lẫn PARTIALLY_PAID.
+     * - Lý do: Đối với Chủ phòng, bất kỳ hội viên nào chưa thanh toán hết 100% nghĩa vụ tài chính
+     *   đều nằm trong danh sách "Cần theo dõi/thu tiền", tránh việc bỏ sót các hội viên mới đóng cọc một phần.
+     */
     private boolean matchesDebtStatus(DebtRecord debtRecord, DebtStatus status) {
         if (status == null) {
             return true;

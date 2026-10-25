@@ -448,6 +448,11 @@ export function MemberDetailPage() {
                         <p className="mt-0.5 text-xs text-[var(--text-muted)]">
                           {formatDate(payment.paymentDate)} · {payment.note ?? (revenueCategoryLabels[payment.revenueCategory] ?? payment.revenueCategory)}
                         </p>
+                        {payment.createdByName ? (
+                          <p className="mt-0.5 text-xs text-[var(--text-muted)]">
+                            Người thu: {payment.createdByName}
+                          </p>
+                        ) : null}
                       </div>
                     </div>
                     <span className="w-fit rounded-full border border-blue-500/30 bg-blue-500/10 px-2.5 py-0.5 text-xs font-semibold text-blue-400">

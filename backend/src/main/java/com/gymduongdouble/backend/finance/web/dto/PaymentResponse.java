@@ -16,7 +16,8 @@ public record PaymentResponse(
     BigDecimal amount,
     PaymentMethod paymentMethod,
     RevenueCategory revenueCategory,
-    String note
+    String note,
+    String createdByName
 ) {
 
     public static PaymentResponse from(Payment payment) {
@@ -30,7 +31,8 @@ public record PaymentResponse(
             payment.getAmount(),
             payment.getPaymentMethod(),
             payment.getRevenueCategory(),
-            payment.getDescription()
+            payment.getDescription(),
+            payment.getCreatedBy() == null ? null : payment.getCreatedBy().getFullName()
         );
     }
 }

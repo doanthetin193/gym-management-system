@@ -23,6 +23,18 @@ import lombok.Setter;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
+/**
+ * Entity ghi nhận các hoạt động tập luyện khác của hội viên (Activity Log).
+ * <p>
+ * HAI LOẠI HOẠT ĐỘNG CHÍNH (ActivityType):
+ * 1. `PRACTICE` (Buổi tự ôn tập):
+ *    - Gắn với PtSessionPackage của gói PT.
+ *    - Ghi nhận việc hội viên tự đến phòng tập luyện mà không có HLV đi kèm 1:1.
+ *    - Tiêu hao số buổi ôn tập (remainingPracticeSessions - 1).
+ * 2. `GUIDANCE_CHECKIN` (Điểm danh gói hướng dẫn / Cổ Vai Gáy):
+ *    - Gắn với MemberMembership loại GUIDANCE.
+ *    - Kiểm soát theo định mức số buổi hướng dẫn (guidanceSessionCount) khai báo trên gói.
+ */
 @Getter
 @Setter
 @NoArgsConstructor

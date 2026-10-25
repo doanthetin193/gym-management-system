@@ -13,6 +13,11 @@ public record PageResponse<T>(
     boolean last
 ) {
 
+    /**
+     * [CHIẾN LƯỢC 1: PHÂN TRANG TẠI DATABASE (SQL LIMIT/OFFSET)]
+     * Chuyển đổi từ Page<T> của Spring Data JPA sang DTO PageResponse chuẩn hoá.
+     * Lược bỏ các trường rườm rà của framework (pageable, sort...), chỉ giữ lại 7 trường cốt lõi.
+     */
     public static <T> PageResponse<T> from(Page<T> page) {
         return new PageResponse<>(
             page.getContent(),
@@ -26,8 +31,13 @@ public record PageResponse<T>(
     }
 
     /**
-     * Creates a bounded page from an already authorized and filtered in-memory list.
-     * This is useful where business access rules must run before a page is exposed.
+     * [CHIẾN LƯỢC 2: PHÂN TRANG TRÊN BỘ NHỚ RAM (IN-MEMORY BOUNDED PAGINATION)]
+     * Dùng khi dữ liệu cần chạy qua logic phân quyền bảo mật (vd: PT canAccessMember)
+     * hoặc tính toán trạng thái động theo ngày (AppClock.today()) trước khi cắt trang.
+     * 
+     * - Math.min(requestedSize, 50): Chống tấn công DDOS/OOM làm tràn bộ nhớ server.
+     * - Math.min(..., totalPages - 1): Chuẩn hóa số trang, tránh văng IndexOutOfBoundsException khi page vượt ngưỡng.
+     * - items.subList(fromIndex, toIndex): Cắt đúng khoảng phần tử cần trả về cho Client.
      */
     public static <T> PageResponse<T> fromItems(List<T> items, int requestedPage, int requestedSize, int defaultSize) {
         int size = requestedSize <= 0 ? defaultSize : Math.min(requestedSize, 50);

@@ -11,6 +11,27 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * Dịch vụ Quản lý Cấu hình Cổng thanh toán chuyển khoản VietQR.
+ * 
+ * ====================================================================================
+ * KIẾN TRÚC & QUY TẮC AN TOÀN (MENTOR NOTES):
+ * 1. Mô hình Cấu hình Key-Value (Dynamic System Settings Pattern):
+ *    - Các tham số VietQR được lưu dạng Key-Value trong bảng `system_settings` (tiền tố `payment.vietqr.*`).
+ *    - Ưu điểm: Chủ phòng có thể thay đổi số tài khoản nhận tiền hoặc ngân hàng linh hoạt ngay trên UI
+ *      mà không cần sửa code, không cần cấu hình lại `application.yml` và không cần restart server.
+ * 2. Ranh giới Bảo mật (Security Boundary):
+ *    - Cấu hình này được công khai qua endpoint `GET /v1/public/vietqr-setting` để frontend
+ *      render mã QR cho học viên quét chuyển khoản.
+ *    - NGUYÊN TẮC SỐNG CÒN: Chỉ lưu các thông tin công khai (Số TK, Tên chủ TK, Mã ngân hàng VietQR).
+ *      TUYỆT ĐỐI KHÔNG lưu API Secret, Private Key, Token ngân hàng vào bảng `system_settings`.
+ * 3. Mô hình Vận hành Thực tế (Manual Confirmation vs Automatic Webhook):
+ *    - Sinh mã VietQR KHÔNG đồng nghĩa với việc tiền đã vào tài khoản và KHÔNG tự động gạch nợ.
+ *    - Hệ thống áp dụng luồng đối soát thủ công (Owner Cashier Confirmation):
+ *      Học viên quét mã chuyển khoản -> Chủ phòng check biến động số dư trên app ngân hàng ->
+ *      Chủ phòng bấm nút "Thu tiền" trên hệ thống để ghi nhận `Payment` và giảm trừ `DebtRecord`.
+ * ====================================================================================
+ */
 @Service
 @RequiredArgsConstructor
 public class VietQrSettingService {
@@ -25,6 +46,10 @@ public class VietQrSettingService {
 
     private final SystemSettingRepository systemSettingRepository;
 
+    /**
+     * Lấy cấu hình VietQR hiện tại từ database.
+     * Cung cấp giá trị mặc định an toàn (enabled = false, prefix = "GYMDD", template = "compact2") nếu chưa cấu hình.
+     */
     @Transactional(readOnly = true)
     public VietQrSettingResponse get() {
         Map<String, String> settings = systemSettingRepository.findAllById(
@@ -50,6 +75,10 @@ public class VietQrSettingService {
         );
     }
 
+    /**
+     * Cập nhật thông tin cấu hình VietQR (Chỉ dành riêng cho vai trò OWNER).
+     * Áp dụng Upsert cho từng tham số trong bảng system_settings.
+     */
     @Transactional
     public VietQrSettingResponse update(UpdateVietQrSettingRequest request) {
         upsert(ENABLED_KEY, Boolean.toString(Boolean.TRUE.equals(request.enabled())), "Bật/tắt hiển thị VietQR khi thu tiền");
@@ -62,6 +91,9 @@ public class VietQrSettingService {
         return get();
     }
 
+    /**
+     * Thao tác Upsert: Nếu khóa đã tồn tại thì cập nhật giá trị mới, nếu chưa thì tạo mới bản ghi.
+     */
     private void upsert(String key, String value, String description) {
         SystemSetting setting = systemSettingRepository.findById(key).orElseGet(SystemSetting::new);
         setting.setKey(key);

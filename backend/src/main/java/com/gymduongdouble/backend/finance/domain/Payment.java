@@ -24,6 +24,17 @@ import lombok.Setter;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
+/**
+ * Entity đại diện cho phiếu thu / giao dịch thực thu dòng tiền vào phòng gym (Payment Transaction).
+ * <p>
+ * NGUYÊN TẮC QUẢN TRỊ DÒNG TIỀN (CASH-BASIS ACCOUNTING):
+ * 1. Doanh thu chỉ được ghi nhận khi phiếu thu (Payment) được tạo thành công vào DB,
+ *    tuyệt đối không ghi nhận doanh thu tại thời điểm đăng ký gói tập hay phát sinh công nợ.
+ * 2. Tách biệt rõ ràng 3 mốc thời gian:
+ *    - `paymentDate`: Ngày kế toán ghi nhận giao dịch thu tiền (dùng cho thống kê doanh thu, báo cáo ngày/tháng).
+ *    - `createdAt`: Dấu vết kiểm toán thực tế (Audit Timestamp) do hệ thống tự sinh khi insert bản ghi.
+ *    - `startDate`/`endDate` (từ MemberMembership): Thời hạn sử dụng dịch vụ của hội viên.
+ */
 @Getter
 @Setter
 @NoArgsConstructor

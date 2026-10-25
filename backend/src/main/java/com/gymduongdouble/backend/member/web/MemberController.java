@@ -34,6 +34,12 @@ public class MemberController {
 
     private final MemberService memberService;
 
+    /**
+     * [LUỒNG TẠO HỒ SƠ - BƯỚC 1: TIẾP NHẬN TẠI CONTROLLER]:
+     * - @PreAuthorize("hasAnyRole('OWNER', 'PT')"): Cả Chủ phòng và HLV đều có quyền tiếp nhận thông tin khách tại quầy.
+     * - @Valid: Kích hoạt Bean Validation trên MemberCreateRequest (kiểm tra @NotBlank cho họ tên và SĐT).
+     * - ApiResponse.created(): Trả về chuẩn mã HTTP 201 Created để báo hiệu tài nguyên mới đã được tạo thành công.
+     */
     @PostMapping
     @PreAuthorize("hasAnyRole('OWNER', 'PT')")
     public ApiResponse<MemberResponse> create(@Valid @RequestBody MemberCreateRequest request) {
@@ -46,6 +52,12 @@ public class MemberController {
         return ApiResponse.ok(memberService.getDetail(id));
     }
 
+    /**
+     * Cập nhật thông tin hồ sơ hội viên:
+     * - Phân quyền: Cả OWNER và PT đều được phép gọi (PT dùng để cập nhật Zalo/ghi chú cho học viên của mình).
+     * - Lưu ý bảo mật: Ở tầng Service, chỉ OWNER mới có quyền đổi trường 'status' (ACTIVE, INACTIVE, ARCHIVED).
+     *   Nếu PT gửi yêu cầu đổi status sẽ bị chặn bởi AccessDeniedException.
+     */
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('OWNER', 'PT')")
     public ApiResponse<MemberResponse> update(@PathVariable Long id, @Valid @RequestBody MemberUpdateRequest request) {
@@ -61,6 +73,11 @@ public class MemberController {
         return ApiResponse.ok(memberService.list(keyword, filter));
     }
 
+    /**
+     * API phân trang danh sách hội viên:
+     * - page: Số thứ tự trang (zero-based: 0 là trang đầu tiên).
+     * - size: Số lượng phần tử mỗi trang (mặc định 10).
+     */
     @GetMapping("/page")
     @PreAuthorize("hasAnyRole('OWNER', 'PT')")
     public ApiResponse<PageResponse<MemberSummaryResponse>> listPage(
@@ -77,6 +94,12 @@ public class MemberController {
     public ApiResponse<MemberListStatisticsResponse> statistics() {
         return ApiResponse.ok(memberService.listStatistics());
     }
+
+    // =========================================================================
+    // NHÓM API QUẢN LÝ TÀI KHOẢN PORTAL HỘI VIÊN:
+    // - Giới hạn nghiêm ngặt: Chỉ Chủ phòng (@PreAuthorize("hasRole('OWNER')")) mới có quyền quản lý.
+    // - PT hoàn toàn không có quyền cấp phát, mở khóa, đổi mật khẩu hay hủy liên kết Portal của học viên.
+    // =========================================================================
 
     @PostMapping("/{id}/portal-account")
     @PreAuthorize("hasRole('OWNER')")

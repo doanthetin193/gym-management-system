@@ -69,6 +69,8 @@ function unboxApiResponse(response: AxiosResponse<ApiResponse<unknown>>) {
 function normalizeApiError(error: AxiosError<ApiResponse<unknown>>) {
   const status = error.response?.status ?? 0
   const payload = error.response?.data
+  // [TRUY VẾT RATE LIMIT]: Trích xuất header 'Retry-After' do Backend gửi về khi dính lỗi HTTP 429.
+  // Nhờ cấu hình CORS (exposedHeaders: ['Retry-After']), Axios ở Frontend mới đọc được giá trị số giây này.
   const retryAfter = Number(error.response?.headers?.['retry-after'])
   const retryAfterSeconds = Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : undefined
 

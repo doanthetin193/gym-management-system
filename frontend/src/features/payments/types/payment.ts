@@ -43,6 +43,7 @@ export type PaymentTransaction = {
   paymentMethod: PaymentMethod
   revenueCategory: RevenueCategory
   note: string | null
+  createdByName: string | null
 }
 
 export type PaymentPayload = {

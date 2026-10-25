@@ -43,6 +43,11 @@ public class PaymentController {
         return ApiResponse.ok(paymentService.listPayments(memberId, fromDate, toDate, paymentMethod));
     }
 
+    /**
+     * API phân trang danh sách phiếu thu:
+     * - page: Số thứ tự trang (zero-based: 0 là trang đầu tiên).
+     * - size: Số lượng bản ghi mỗi trang (mặc định 10).
+     */
     @GetMapping("/page")
     @PreAuthorize("hasAnyRole('OWNER', 'PT')")
     public ApiResponse<PageResponse<PaymentResponse>> listPage(

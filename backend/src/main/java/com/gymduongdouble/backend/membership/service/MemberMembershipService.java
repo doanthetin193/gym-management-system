@@ -54,6 +54,17 @@ public class MemberMembershipService {
     private final MemberAccessService memberAccessService;
     private final MembershipLifecyclePolicy membershipLifecyclePolicy;
 
+    /**
+     * Tạo mới lượt đăng ký gói tập và điều phối 4 thực thể trong 1 Transaction duy nhất:
+     * 
+     * [ĐIỀU PHỐI GIAO DỊCH & TÍNH TOÀN VẸN DỮ LIỆU (ACID Atomicity)]:
+     * 1. MemberMembership: Hợp đồng quyền lợi tập luyện theo ngày (startDate -> endDate).
+     * 2. DebtRecord: Công nợ phát sinh nếu khách chưa thanh toán đủ (có @Version khóa lạc quan).
+     * 3. Payment: Phiếu thu tiền thực tế nếu khách trả trước đợt 1 (phục vụ kế toán/doanh thu).
+     * 4. PtSessionPackage: Quyền lợi buổi tập PT (nếu là gói PT, sao chép số buổi dạy 1-1 và tự ôn tập).
+     * - Bất kỳ bước nào gặp lỗi (lỗi validate tài khoản PT, lỗi ngày thu tiền...), toàn bộ Transaction
+     *   sẽ bị Rollback ngay lập tức, không để lại bản ghi rác trong cơ sở dữ liệu.
+     */
     @Transactional
     public MemberMembershipResponse create(Long memberId, CreateMemberMembershipRequest request) {
         Member member = memberService.findEntity(memberId);
@@ -93,11 +104,18 @@ public class MemberMembershipService {
         membership.setDiscountAmount(discountAmount);
         membership.setPaidAmount(BigDecimal.ZERO);
         membership.setDebtAmount(debtAmount);
+
+        // [QUY TẮC NGHIỆP VỤ & PENDING_PAYMENT]:
+        // Khách nợ tiền (debtAmount > 0) KHÔNG đồng nghĩa với việc gói bị treo PENDING_PAYMENT.
+        // Gói tập được kích hoạt ACTIVE ngay để khách có thể sử dụng dịch vụ, còn phần tiền chưa trả
+        // được tách riêng và quản lý độc lập tại bảng công nợ (DebtRecord bên dưới).
+        // Trạng thái PENDING_PAYMENT trong enum là dự phòng cho tính năng mua online qua cổng thanh toán sau này.
         membership.setStatus(MembershipStatus.ACTIVE);
         membership.setNote(request.note());
         membership.setCreatedBy(currentUserOrNull());
 
         MemberMembership saved = memberMembershipRepository.save(membership);
+        // Tách số tiền còn thiếu thành bản ghi công nợ để theo dõi thu hồi độc lập
         DebtRecord debtRecord = createDebtIfNeeded(saved, debtAmount);
         createInitialPaymentIfNeeded(saved, debtRecord, initialPaidAmount, request);
         createPtPackageIfNeeded(saved, resolvePtUserId(request.ptUserId(), plan.getPlanType()));
@@ -123,6 +141,14 @@ public class MemberMembershipService {
             .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy lượt đăng ký gói."));
     }
 
+    /**
+     * Thuật toán xác định ngày bắt đầu gói tập:
+     * 1. Nhánh quá khứ (requestedStartDate < today): Cho phép giữ nguyên ngày để nhập bù dữ liệu cũ từ sổ sách.
+     * 2. Nhánh gia hạn nối tiếp (Sequential Renewal):
+     *    - Nếu khách đang có gói chưa hết hạn (endDate >= requestedStartDate), hệ thống tự động lấy
+     *      max(endDate) + 1 ngày làm ngày bắt đầu của gói mới.
+     *    - Giúp khách hàng không bị mất các ngày tập còn lại của gói cũ khi đến đóng tiền gia hạn sớm!
+     */
     private LocalDate resolveStartDate(Long memberId, LocalDate requestedStartDate) {
         if (requestedStartDate.isBefore(AppClock.today())) {
             return requestedStartDate;
@@ -136,6 +162,10 @@ public class MemberMembershipService {
             .orElse(requestedStartDate);
     }
 
+    /**
+     * Chống chồng lấn thời gian đối với dữ liệu lịch sử:
+     * Đảm bảo gói nhập bù trong quá khứ không đè lên khoảng ngày của bất kỳ gói nào chưa hủy.
+     */
     private void ensureHistoricalDatesDoNotOverlap(Long memberId, LocalDate startDate, LocalDate endDate) {
         if (!startDate.isBefore(AppClock.today())) {
             return;
@@ -149,6 +179,13 @@ public class MemberMembershipService {
         }
     }
 
+    /**
+     * Tính toán ngày kết thúc của gói tập:
+     * - Nếu request không truyền endDate thủ công:
+     *   Công thức: endDate = startDate.plusDays(durationDays - 1L).
+     * - [TẠI SAO TRỪ 1 NGÀY (- 1L)?]: Vì ngày bắt đầu (startDate) đã là ngày đầu tiên được tập.
+     *   Ví dụ: Gói 30 ngày bắt đầu ngày 01/10 sẽ kết thúc ngày 30/10 (khoảng khép kín [01/10, 30/10] có đúng 30 ngày).
+     */
     private LocalDate resolveEndDate(MembershipPlan plan, CreateMemberMembershipRequest request, LocalDate startDate) {
         if (request.endDate() != null) {
             if (request.endDate().isBefore(startDate)) {
@@ -162,6 +199,13 @@ public class MemberMembershipService {
         return startDate.plusDays(plan.getDurationDays() - 1L);
     }
 
+    /**
+     * Khởi tạo bản ghi công nợ (DebtRecord):
+     * - Chỉ sinh công nợ nếu debtAmount > 0 (số tiền phải thu lớn hơn 0).
+     * - Trạng thái ban đầu: OPEN, số tiền nợ còn lại (remainingAmount) = debtAmount.
+     * - Lưu ý bảo mật & đồng thời: Entity DebtRecord có trường @Version để áp dụng Khóa Lạc Quan
+     *   (Optimistic Locking), ngăn chặn triệt để lỗi Lost Update khi 2 thu ngân cùng thu nợ một lúc.
+     */
     private DebtRecord createDebtIfNeeded(MemberMembership membership, BigDecimal debtAmount) {
         if (debtAmount.compareTo(BigDecimal.ZERO) <= 0) {
             return null;
@@ -179,6 +223,12 @@ public class MemberMembershipService {
         return debtRecordRepository.save(debtRecord);
     }
 
+    /**
+     * Khởi tạo phiếu thu tiền ban đầu (Payment):
+     * - Ghi nhận dòng tiền thực tế chảy vào tài khoản/két sắt phục vụ báo cáo doanh thu kế toán.
+     * - Bắt buộc kiểm tra: Ngày thu tiền (paymentDate) tuyệt đối không được ghi nhận ở tương lai.
+     * - Gọi syncDebtAndMembership để đối trừ công nợ và cập nhật trạng thái nợ (PAID / PARTIALLY_PAID).
+     */
     private void createInitialPaymentIfNeeded(
         MemberMembership membership,
         DebtRecord debtRecord,
@@ -216,6 +266,12 @@ public class MemberMembershipService {
         return paymentDate;
     }
 
+    /**
+     * Khởi tạo gói buổi tập với Huấn luyện viên (PtSessionPackage):
+     * - Điều kiện kích hoạt: planType == PlanType.PT.
+     * - Khởi tạo số buổi: used = 0, remaining = total (lấy từ cấu hình MembershipPlan).
+     * - Thời hạn sử dụng gói buổi PT được đồng bộ hoàn toàn theo ngày bắt đầu/kết thúc của hợp đồng.
+     */
     private void createPtPackageIfNeeded(MemberMembership membership, Long ptUserId) {
         MembershipPlan plan = membership.getPlan();
         if (plan.getPlanType() != PlanType.PT) {
@@ -286,6 +342,12 @@ public class MemberMembershipService {
         return SecurityUtils.currentUserIdOrNull() == null ? null : findUserOrNull(SecurityUtils.currentUserIdOrNull());
     }
 
+    /**
+     * Xác định người bán gói (Sales Attribution):
+     * - Chủ phòng (OWNER): Có thể chọn bất kỳ nhân sự active nào trong phòng tập đứng tên bán gói (hoặc chính mình).
+     * - Huấn luyện viên (PT): Bị khóa cứng - chỉ được phép ghi nhận chính tài khoản của mình bán gói.
+     *   Chặn đứng hành vi nhận vơ doanh số của đồng nghiệp thông qua rejectForeignPtUser().
+     */
     private User resolveSoldByUser(Long requestedUserId) {
         if (isOwner()) {
             User seller = requestedUserId == null ? currentUserOrNull() : findUser(requestedUserId);
@@ -297,6 +359,11 @@ public class MemberMembershipService {
         return currentPt;
     }
 
+    /**
+     * Xác định Huấn luyện viên phụ trách gói PT:
+     * - Chủ phòng (OWNER): Có toàn quyền phân công bất kỳ PT nào.
+     * - Huấn luyện viên (PT): Chỉ được phép tự phân công cho chính mình.
+     */
     private Long resolvePtUserId(Long requestedPtUserId, PlanType planType) {
         if (isOwner()) {
             return requestedPtUserId;
@@ -314,6 +381,11 @@ public class MemberMembershipService {
         return user;
     }
 
+    /**
+     * Chống mạo danh & gian lận phân công (Anti-Impersonation Defense):
+     * Nếu tài khoản hiện tại là PT và client cố tình gửi ID của một nhân sự khác,
+     * hệ thống lập tức chặn lại với AccessDeniedException (HTTP 403).
+     */
     private void rejectForeignPtUser(Long requestedUserId, Long currentUserId) {
         if (requestedUserId != null && !requestedUserId.equals(currentUserId)) {
             throw new AccessDeniedException("PT chỉ có thể ghi nhận chính mình là người bán hoặc phụ trách gói.");

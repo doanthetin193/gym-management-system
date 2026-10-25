@@ -27,6 +27,34 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * Dịch vụ Quản lý Thư viện Bài tập và Video hướng dẫn kỹ thuật TikTok.
+ * 
+ * ====================================================================================
+ * CÁC QUY TẮC THIẾT KẾ & TỐI ƯU CỐT LÕI (MENTOR NOTES):
+ * 1. Cơ chế Nhúng Video TikTok (Third-Party Embed Architecture):
+ *    - Hệ thống chỉ lưu TRÍCH YẾU DỮ LIỆU (Metadata: URL, Video ID, Thumbnail, Tên, Mô tả, v.v.).
+ *    - Backend KHÔNG tải file MP4 về lưu trữ để tiết kiệm dung lượng, băng thông và tránh rủi ro bản quyền.
+ *    - Frontend sử dụng `tiktokVideoId` để dựng iFrame nhúng trình phát chính thức từ CDN của TikTok.
+ * 2. Xác thực Link TikTok & Chặn Link Rút Gọn (SSRF & Thread Pool Protection):
+ *    - `validateTiktokUrl` bắt buộc link đầy đủ có dạng `/video/{id}` (bắt bằng regex `/video/(\\d+)`).
+ *    - Link rút gọn (`vt.tiktok.com/...`) bị TỪ CHỐI vì nó đòi hỏi backend phải thực hiện HTTP redirect
+ *      ra internet ngoài để lấy URL gốc -> Gây nghẽn thread pool backend và tiềm ẩn nguy cơ SSRF.
+ * 3. Sinh Slug chuẩn SEO & Xử lý Trùng lặp (SEO Slugification):
+ *    - Tự động bỏ dấu tiếng Việt (Normalizer Form NFD), chuyển thường và thay khoảng trắng bằng dấu gạch ngang.
+ *    - Nếu slug bị trùng, tự động gắn hậu tố `-2`, `-3`...
+ * 4. Ràng buộc Kép khi Hiển thị Public (Double Active Constraint):
+ *    - Bài tập public CHỈ hiển thị khi: `exercise.active == true` VÀ `category.active == true`.
+ *    - Nếu danh mục bị ẩn, tất cả bài tập thuộc danh mục đó tự động biến mất khỏi public mà không cần update DB.
+ * 5. Tối ưu N+1 Query & Câu lệnh COUNT Phân trang:
+ *    - Trong `exerciseSpec`, chỉ kích hoạt `root.fetch("category")` khi query lấy Entity dữ liệu.
+ *    - Khi Hibernate chạy query COUNT tính tổng số bản ghi phân trang, fetch join được BỎ QUA để
+ *      tránh ngoại lệ SemanticException và tăng tốc câu lệnh COUNT.
+ * 6. Ẩn (Soft Toggle) vs Xóa vật lý (Hard Delete):
+ *    - `setPublished`: Thay đổi cờ `active` (Ẩn/Hiện bài viết, dữ liệu vẫn được bảo tồn).
+ *    - `deleteExercise`: Gọi `repository.delete()` -> XÓA VẬT LÝ hoàn toàn khỏi DB.
+ * ====================================================================================
+ */
 @Service
 @RequiredArgsConstructor
 public class ExerciseService {
@@ -65,6 +93,17 @@ public class ExerciseService {
         return ExerciseCategoryResponse.from(category);
     }
 
+    /**
+     * Phân trang trực tiếp tại Database (Database Pagination via JPA & SQL LIMIT/OFFSET).
+     * 
+     * [LUỒNG XỬ LÝ]:
+     * 1. Specification (exerciseSpec): Lắp ghép điều kiện WHERE động (keyword, difficulty, category...).
+     * 2. Pageable (PageRequest.of): Chỉ định page, size và thứ tự sắp xếp -> Dịch thành LIMIT, OFFSET, ORDER BY.
+     * 3. exerciseRepository.findAll(): Thực thi 2 câu lệnh SQL (SELECT LIMIT/OFFSET lấy dữ liệu trang + SELECT COUNT tính tổng).
+     * 4. .map(ExerciseResponse::from): Chuyển Entity sang DTO ngay trong @Transactional (Session DB còn mở),
+     *    đảm bảo nạp an toàn quan hệ LAZY (category.getName()) mà không bị LazyInitializationException.
+     * 5. PageResponse.from(): Đóng gói Page<DTO> thành DTO chuẩn hoá gọn gàng gửi về cho Client.
+     */
     @Transactional(readOnly = true)
     public PageResponse<ExerciseResponse> listPublicExercises(
         String categorySlug,
@@ -80,6 +119,11 @@ public class ExerciseService {
         ).map(ExerciseResponse::from));
     }
 
+    /**
+     * Phân trang danh sách bài tập dành cho Owner (Quản trị viên):
+     * - Khác với Public (chỉ xem bài đã published), Owner có thể lọc cả bài nháp (published = false).
+     * - Sắp xếp theo updatedAt DESC để bài tập vừa chỉnh sửa/tạo mới luôn nổi lên đầu danh sách.
+     */
     @Transactional(readOnly = true)
     public PageResponse<ExerciseResponse> listOwnerExercises(
         String categorySlug,
@@ -117,6 +161,11 @@ public class ExerciseService {
         return ExerciseResponse.from(exercise);
     }
 
+    /**
+     * Ẩn / Hiện bài tập (Soft Toggle):
+     * Chỉ thay đổi cờ boolean active, bản ghi vẫn lưu trong DB.
+     * Khi active = false, bài tập lập tức bị ẩn khỏi trang Public.
+     */
     @Transactional
     public ExerciseResponse setPublished(Long id, PublishExerciseRequest request) {
         Exercise exercise = exerciseRepository.findById(id)
@@ -125,6 +174,11 @@ public class ExerciseService {
         return ExerciseResponse.from(exercise);
     }
 
+    /**
+     * Xóa bài tập khỏi hệ thống:
+     * LƯU Ý: Đây là XÓA VẬT LÝ (Hard Physical Delete) bằng repository.delete(),
+     * KHÔNG PHẢI xóa mềm (Soft Delete). Bản ghi và metadata sẽ bị xóa hẳn khỏi database.
+     */
     @Transactional
     public void deleteExercise(Long id) {
         Exercise exercise = exerciseRepository.findById(id)
@@ -144,6 +198,12 @@ public class ExerciseService {
         category.setActive(request.active() == null || request.active());
     }
 
+    /**
+     * Đồng bộ thông tin từ ExerciseRequest vào Entity:
+     * - Xác thực danh mục tồn tại.
+     * - Kiểm tra và trích xuất TikTok video ID.
+     * - Sinh slug duy nhất nếu chưa có hoặc có yêu cầu slug tùy chỉnh.
+     */
     private void applyExercise(Exercise exercise, ExerciseRequest request) {
         ExerciseCategory category = categoryRepository.findById(request.categoryId())
             .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy danh mục bài tập."));
@@ -168,6 +228,12 @@ public class ExerciseService {
         exercise.setActive(request.published() == null || request.published());
     }
 
+    /**
+     * Xây dựng câu lệnh WHERE động (Dynamic Query) bằng JPA Specification:
+     * - Tránh việc phải viết hàng chục method tìm kiếm trong Repository.
+     * - Khi câu query lấy dữ liệu (getResultType != Long.class): Dùng root.fetch("category") để giải quyết triệt để lỗi N+1 Query.
+     * - Khi câu query đếm số lượng (getResultType == Long.class - tức COUNT query): Bỏ qua fetch join để câu lệnh COUNT chạy tối ưu nhất.
+     */
     private Specification<Exercise> exerciseSpec(
         String categorySlug,
         ExerciseDifficulty level,
@@ -176,11 +242,13 @@ public class ExerciseService {
         Boolean published
     ) {
         return (root, query, criteriaBuilder) -> {
+            // Fetch join bảng Category để tránh N+1 khi query dữ liệu; bỏ qua khi query COUNT
             if (query.getResultType() != Long.class && query.getResultType() != long.class) {
                 root.fetch("category", JoinType.LEFT);
             }
             var predicates = criteriaBuilder.conjunction();
 
+            // RÀNG BUỘC KÉP: Nếu bài tập published = true, thì category của bài tập cũng BẮT BUỘC active = true
             if (published != null) {
                 predicates = criteriaBuilder.and(predicates, criteriaBuilder.equal(root.get("active"), published));
                 if (Boolean.TRUE.equals(published)) {
@@ -209,6 +277,11 @@ public class ExerciseService {
         };
     }
 
+    /**
+     * Tìm bài tập chi tiết cho trang Public theo ID số hoặc SEO slug:
+     * - Tự động nhận diện chuỗi số để tìm theo ID, ngược lại tìm theo slug.
+     * - Yêu cầu BẮT BUỘC cả bài tập và danh mục đều đang ACTIVE (active = true).
+     */
     private Exercise findPublicBySlugOrId(String slugOrId) {
         if (slugOrId.chars().allMatch(Character::isDigit)) {
             return exerciseRepository.findByIdAndActiveTrue(Long.valueOf(slugOrId))
@@ -221,6 +294,10 @@ public class ExerciseService {
             .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy bài tập/video."));
     }
 
+    /**
+     * Sinh Slug duy nhất cho Bài tập hoặc Danh mục:
+     * - Nếu slug đã tồn tại (khác ID hiện tại đang update), tự động tăng hậu tố -2, -3, ...
+     */
     private String uniqueSlug(String requestedSlug, String fallbackText, Long currentId, boolean categorySlug) {
         String base = slugify(Optional.ofNullable(trimToNull(requestedSlug)).orElse(fallbackText));
         String candidate = base;
@@ -246,6 +323,11 @@ public class ExerciseService {
             .orElse(false);
     }
 
+    /**
+     * Chuẩn hóa chuỗi tiếng Việt thành SEO Slug (VD: "Bài Tập Ngực Dưới" -> "bai-tap-nguc-duoi"):
+     * - Dùng Normalizer Form NFD tách dấu thanh, thay đ/Đ thành d/D, xóa dấu tổ hợp Unicode \p{M}.
+     * - Đổi sang chữ thường và thay mọi ký tự không phải chữ/số thành dấu gạch ngang (-).
+     */
     private String slugify(String raw) {
         String normalized = Normalizer.normalize(raw, Normalizer.Form.NFD)
             .replace("đ", "d")
@@ -262,11 +344,20 @@ public class ExerciseService {
         return normalized;
     }
 
+    /**
+     * Trích xuất mã số Video ID của TikTok từ URL bằng biểu thức chính quy /video/(\\d+).
+     */
     private String extractTiktokVideoId(String url) {
         Matcher matcher = TIKTOK_VIDEO_PATTERN.matcher(url);
         return matcher.find() ? matcher.group(1) : null;
     }
 
+    /**
+     * Kiểm tra tính hợp lệ của liên kết TikTok:
+     * - Bắt buộc chứa domain tiktok.com hoặc vt.tiktok.com.
+     * - BẮT BUỘC trích xuất được Video ID. Link rút gọn (vt.tiktok.com/ZS...) không chứa video ID
+     *   sẽ bị từ chối ngay để tránh rủi ro không nhúng được player ở Frontend.
+     */
     private void validateTiktokUrl(String url) {
         if (url == null || !(url.contains("tiktok.com") || url.contains("vt.tiktok.com"))) {
             throw new BadRequestException("Vui lòng nhập đúng link TikTok.");
@@ -283,6 +374,11 @@ public class ExerciseService {
         return value.trim();
     }
 
+    /**
+     * Giới hạn kích thước trang (Page Size Guard):
+     * Nếu client truyền size <= 0 thì lấy mặc định 12 (lưới 3x4).
+     * Giới hạn tối đa 50 bản ghi/trang để chống tấn công DoS làm tràn RAM server (Heap OutOfMemory).
+     */
     private int normalizeSize(int size) {
         if (size <= 0) {
             return 12;
@@ -290,6 +386,9 @@ public class ExerciseService {
         return Math.min(size, 50);
     }
 
+    /**
+     * Ngăn chặn số trang âm (Zero-based Page Index Guard).
+     */
     private int normalizePage(int page) {
         return Math.max(page, 0);
     }

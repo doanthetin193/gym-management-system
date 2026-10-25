@@ -18,6 +18,19 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+/**
+ * Entity đại diện cho Lịch hẹn tập luyện giữa Huấn luyện viên và Hội viên (PT Schedule / Slot Booking).
+ * <p>
+ * NGUYÊN TẮC THIẾT KẾ KẾ HOẠCH & TRẠNG THÁI:
+ * 1. Kế hoạch thời gian (Plan / Slot booking):
+ *    - Xác định khung giờ tập cụ thể (scheduleDate, startTime, endTime).
+ *    - Đặt lịch KHÔNG trừ buổi tập của học viên. Nếu buổi tập bị hủy (CANCELLED) hoặc dời lịch (RESCHEDULED),
+ *      số buổi tập trong PtSessionPackage hoàn toàn không bị ảnh hưởng, tránh phải hoàn trả phức tạp.
+ * 2. Linh hoạt:
+ *    - Có thể gắn với một hội viên cụ thể (member != null) hoặc là lịch cá nhân/bận của PT (member == null).
+ * 3. Kiểm soát xung đột:
+ *    - Hệ thống áp dụng thuật toán `overlaps()` để kiểm tra không trùng lịch cả 2 phía: PT và học viên.
+ */
 @Getter
 @Setter
 @NoArgsConstructor

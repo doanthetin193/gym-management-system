@@ -35,6 +35,18 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * Service tổng hợp dữ liệu phục vụ Cổng thông tin Hội viên (Member Portal Service).
+ * <p>
+ * NGUYÊN TẮC THIẾT KẾ & TỔNG HỢP DỮ LIỆU:
+ * 1. Góc nhìn toàn diện 360 độ (360-degree Member View):
+ *    - Gom toàn bộ dữ liệu đa module (Hội viên, Gói tập, Huấn luyện viên PT, Tài chính & Công nợ)
+ *      vào một DTO duy nhất (MemberPortalResponse) để frontend hiển thị mượt mà chỉ với 1 request.
+ * 2. Bảo mật chống IDOR:
+ *    - Nhận `userId` từ JWT Principal đã xác thực, tra cứu ngược ra `Member` duy nhất qua quan hệ khóa ngoại 1-1.
+ * 3. Kiểm soát trạng thái vận hành:
+ *    - Bắt buộc hội viên phải ở trạng thái ACTIVE; nếu hội viên đã bị tạm ngưng thì từ chối truy cập.
+ */
 @Service
 @RequiredArgsConstructor
 public class MemberPortalService {
@@ -50,8 +62,25 @@ public class MemberPortalService {
     private final PtGoalRepository ptGoalRepository;
     private final MembershipLifecyclePolicy membershipLifecyclePolicy;
 
+    /**
+     * Tra cứu và tổng hợp toàn bộ dữ liệu của hội viên theo ID tài khoản đăng nhập (userId).
+     * <p>
+     * Dữ liệu tổng hợp gồm 11 thành phần:
+     * 1. Profile: Thông tin hồ sơ hội viên.
+     * 2. Active Memberships: Các gói tập đang có hiệu lực hôm nay (tính theo MembershipLifecyclePolicy).
+     * 3. Membership History: Lịch sử các gói tập cũ đã hết hạn hoặc gói tương lai.
+     * 4. PT Session Packages: Gói buổi tập PT kèm 1:1 và buổi tự ôn tập (số buổi còn lại, thời hạn).
+     * 5. Debts: Toàn bộ danh sách công nợ.
+     * 6. Payments: Lịch sử các phiếu thu dòng tiền đã nộp.
+     * 7. Schedules: Lịch hẹn tập luyện với PT (được frontend lọc lấy lịch sắp tới).
+     * 8. Session Logs: Nhật ký điểm danh các buổi tập đã thực hiện.
+     * 9. Body Measurements: Lịch sử số đo cơ thể InBody (dùng vẽ biểu đồ biến thiên thể trạng).
+     * 10. Goals: Danh sách mục tiêu luyện tập đã thiết lập cùng HLV.
+     * 11. Total Debt: Tổng số tiền công nợ mở còn phải nộp (OPEN hoặc PARTIALLY_PAID).
+     */
     @Transactional(readOnly = true)
     public MemberPortalResponse getPortal(Long userId) {
+        // Tra cứu hồ sơ hội viên gắn liền với tài khoản User đăng nhập (IDOR Defense)
         Member member = memberRepository.findByUserId(userId)
             .orElseThrow(() -> new ResourceNotFoundException("Tai khoan hoi vien chua duoc lien ket voi ho so khach hang."));
         if (member.getStatus() != MemberStatus.ACTIVE) {

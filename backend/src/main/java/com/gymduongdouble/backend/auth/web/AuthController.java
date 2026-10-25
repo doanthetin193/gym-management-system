@@ -24,6 +24,11 @@ public class AuthController {
 
     private final AuthService authService;
 
+    /**
+     * [TRUY VẾT RATE LIMIT - BƯỚC 1]: Điểm tiếp nhận request đăng nhập từ Frontend.
+     * - Trích xuất địa chỉ IP của Client qua `servletRequest.getRemoteAddr()` (vd: 127.0.0.1).
+     * - Truyền đồng thời cả `request` (chứa email/phone) và `clientIp` sang AuthService để kích hoạt cơ chế khóa kép.
+     */
     @PostMapping("/login")
     public ApiResponse<LoginResponse> login(@Valid @RequestBody LoginRequest request, HttpServletRequest servletRequest) {
         return ApiResponse.ok(authService.login(request, servletRequest.getRemoteAddr()));

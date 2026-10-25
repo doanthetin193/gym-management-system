@@ -22,6 +22,15 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * Controller quản lý tài khoản đội ngũ nhân sự nội bộ (Team Users Management).
+ * <p>
+ * PHÂN QUYỀN & PHẠM VI (Authorization Scope):
+ * 1. OWNER-Only: Toàn bộ controller được bảo vệ bởi `@PreAuthorize("hasRole('OWNER')")`.
+ * 2. Phạm vi quản lý: Chỉ quản lý 2 vai trò nhân sự nội bộ: Chủ phòng (`OWNER`) và Huấn luyện viên (`PT`).
+ * 3. Chốt an toàn: Mọi thao tác đổi vai trò, khóa tài khoản đều được đối soát để bảo vệ Chủ phòng
+ *    đang hoạt động cuối cùng và ngăn chặn người dùng tự thao tác trên chính mình.
+ */
 @RestController
 @RequestMapping("/v1/settings/team-users")
 @RequiredArgsConstructor
@@ -30,16 +39,27 @@ public class TeamUserController {
 
     private final TeamUserService teamUserService;
 
+    /**
+     * Lấy danh sách toàn bộ nhân sự nội bộ (Chủ phòng và PT) để hiển thị lên bảng quản lý.
+     */
     @GetMapping
     public ApiResponse<List<TeamUserResponse>> listTeamUsers() {
         return ApiResponse.ok(teamUserService.listTeamUsers());
     }
 
+    /**
+     * Tạo tài khoản nhân sự mới (Chủ phòng hoặc Huấn luyện viên PT).
+     * Tự động sinh PtProfile cho nhân sự để có thể nhận lịch dạy.
+     */
     @PostMapping
     public ApiResponse<TeamUserResponse> createTeamUser(@Valid @RequestBody CreateTeamUserRequest request) {
         return ApiResponse.created(teamUserService.createTeamUser(request));
     }
 
+    /**
+     * Thay đổi vai trò nhân sự (VD: Nâng cấp PT lên OWNER hoặc hạ OWNER xuống PT).
+     * Có chốt chặn chống tự đổi quyền chính mình và bảo vệ OWNER cuối cùng.
+     */
     @PutMapping("/{id}/role")
     public ApiResponse<TeamUserResponse> updateRole(
         @PathVariable Long id,
@@ -49,6 +69,10 @@ public class TeamUserController {
         return ApiResponse.ok(teamUserService.updateRole(id, request.roleCode(), currentUser));
     }
 
+    /**
+     * Khóa hoặc mở khóa tài khoản nhân sự (ACTIVE / LOCKED).
+     * Khi tài khoản bị khóa, hồ sơ PT cũng tự động ngưng hoạt động.
+     */
     @PutMapping("/{id}/status")
     public ApiResponse<TeamUserResponse> updateStatus(
         @PathVariable Long id,
@@ -58,6 +82,10 @@ public class TeamUserController {
         return ApiResponse.ok(teamUserService.updateStatus(id, request.status(), currentUser));
     }
 
+    /**
+     * Chủ phòng đặt lại mật khẩu cho nhân sự (Admin Reset).
+     * Tự động thu hồi token (authVersion++) để đăng xuất nhân sự khỏi mọi thiết bị.
+     */
     @PostMapping("/{id}/reset-password")
     public ApiResponse<TeamUserResponse> resetPassword(
         @PathVariable Long id,

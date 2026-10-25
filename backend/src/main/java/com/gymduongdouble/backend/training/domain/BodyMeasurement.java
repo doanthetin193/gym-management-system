@@ -18,6 +18,15 @@ import lombok.Setter;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
+/**
+ * Entity lưu trữ số đo chỉ số cơ thể thực tế của hội viên (Body Measurement / InBody Tracking).
+ * <p>
+ * ĐẶC ĐIỂM DỮ LIỆU & KIẾN TRÚC:
+ * 1. Dữ liệu quan sát thực tế (Observed Data): Ghi nhận kết quả đo thực tế (cân nặng, chiều cao, vòng eo, ngực...).
+ * 2. Lưu trữ nối tiếp (Append-only History): Mỗi lần đo là một bản ghi mới có timestamp `recordedAt`.
+ *    Không ghi đè bản ghi cũ để hệ thống có thể vẽ biểu đồ tiến trình biến thiên vóc dáng theo thời gian.
+ * 3. "Chỉ số hiện tại" trên giao diện là bản ghi gần nhất (latest recordedAt), không phải một cột tĩnh trong bảng members.
+ */
 @Getter
 @Setter
 @NoArgsConstructor
